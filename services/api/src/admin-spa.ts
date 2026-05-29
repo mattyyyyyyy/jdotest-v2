@@ -35,7 +35,7 @@ button{font-family:inherit;}
 .jdo-sidebar{width:240px;flex-shrink:0;background:var(--bg-2);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100%;}
 .jdo-main{flex:1;min-width:0;display:flex;flex-direction:column;height:100%;}
 .jdo-content{flex:1;overflow:auto;}
-.jdo-content-inner{max-width:1320px;margin:0 auto;padding:24px 28px 64px;animation:fade .28s ease;}
+.jdo-content-inner{max-width:none;margin:0;padding:24px 32px 64px;animation:fade .28s ease;}
 @keyframes fade{from{transform:translateY(7px);opacity:0;}to{transform:none;opacity:1;}}
 .jdo-logo{display:flex;align-items:center;gap:9px;padding:18px 20px 14px;font-size:16px;font-weight:700;letter-spacing:.04em;}
 .jdo-logo-mark{color:var(--brand);font-size:15px;}
