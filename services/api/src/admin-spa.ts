@@ -178,6 +178,9 @@ function openForm(id){
         html += "<select id='f-"+f.k+"'><option value='true'"+(bv?" selected":"")+">是</option><option value='false'"+(!bv?" selected":"")+">否</option></select>";
       } else if(f.type==='cat'||f.type==='orderStatus'||f.type==='channel'||f.type==='couponType'||f.type==='aftStatus'){
         html += "<select id='f-"+f.k+"'>"+selectOptions(f.type, val)+"</select>";
+      } else if(f.type==='money'){
+        var yuanVal = (val===''||val==null) ? '' : (Number(val)/100);
+        html += "<input id='f-"+f.k+"' type='number' step='0.01' value='"+esc(yuanVal)+"'>";
       } else {
         html += "<input id='f-"+f.k+"'"+(f.type==='num'?" type='number'":"")+" value='"+esc(val)+"'>";
       }
@@ -197,6 +200,7 @@ function saveForm(id){
     var v = el.value;
     if(f.type==='bool') v = (v==='true');
     else if(f.type==='num') v = (v===''?0:Number(v));
+    else if(f.type==='money') v = (v===''?0:Math.round(Number(v)*100)); // 元输入 → 分存储
     body[f.k]=v;
   });
   var req = id ? api("PATCH","/api/v1/admin/"+cfg.key+"/"+id, body)

@@ -71,9 +71,12 @@ export function loadV3Data(): {
 
   return {
     categories: raw.categories.map((c, i) => ({ ...c, sort: i + 1 })),
-    // 给商品补库存（按销量粗略给）+ 默认上架
+    // 货币统一：V3 原始 price/ori 是「元」，这里统一转成「分」(整数) 作为唯一存储单位。
+    // 给商品补库存（按销量粗略给）+ 默认上架。
     products: raw.products.map((p) => ({
       ...p,
+      price: Math.round(p.price * 100),
+      ori: Math.round((p.ori ?? 0) * 100),
       stock: Math.max(10, Math.round((p.sold ?? 1) * 100)),
       onShelf: true,
     })),

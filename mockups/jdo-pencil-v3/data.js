@@ -175,13 +175,20 @@ window.JDO_DATA = (function () {
     if (xhr.status === 200) {
       var live = JSON.parse(xhr.responseText);
       if (live && live.products && live.products.length) {
+        // 货币统一：后端存「分」，V3 界面历史按「元」显示 → 在此边界把 price/ori 分→元。
+        var toYuan = function (p) {
+          return Object.assign({}, p, {
+            price: (p.price || 0) / 100,
+            ori: (p.ori || 0) / 100,
+          });
+        };
         window.JDO_DATA = {
           categories: live.categories,
-          products: live.products,
+          products: live.products.map(toYuan),
           banners: live.banners,
           heroRecs: live.heroRecs,
         };
-        if (window.console) console.log('[JDO] 已接入后台实时数据：' + live.products.length + ' 件在售商品');
+        if (window.console) console.log('[JDO] 已接入后台实时数据：' + live.products.length + ' 件在售商品（价格 分→元）');
       }
     }
   } catch (e) {

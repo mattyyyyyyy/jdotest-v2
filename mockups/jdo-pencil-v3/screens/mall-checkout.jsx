@@ -26,7 +26,8 @@ function MallCheckout({ onNav }) {
     const payload = {
       items: items.map((it) => {
         const p = productOf(it.id);
-        return { title: p ? p.title : it.id, price: p ? p.price : 0, qty: it.qty };
+        // V3 内部价格是「元」，统一接口收「分」→ 这里 ×100 转分
+        return { title: p ? p.title : it.id, price: Math.round((p ? p.price : 0) * 100), qty: it.qty };
       }),
       channel: 'car',
       createdAt: '刚刚',

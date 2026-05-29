@@ -58,7 +58,8 @@ export function buildApp(): FastifyInstance {
     // 走订单状态机：DRAFT --submit--> PENDING_PAYMENT
     const submitted = transition('DRAFT', 'submit');
     const status = submitted.ok ? submitted.state : 'PENDING_PAYMENT';
-    const totalAmount = body.items.reduce((s, it) => s + Math.round(it.price * 100) * it.qty, 0);
+    // 货币统一：items.price 为「分」，直接求和（不再 *100）
+    const totalAmount = body.items.reduce((s, it) => s + it.price * it.qty, 0);
     const order = store.create('orders', {
       userId: body.userId ?? 'u-1001',
       status,
@@ -173,8 +174,8 @@ const RESOURCE_LIST = [
       { k: 'id', label: '商品ID', type: 'text' },
       { k: 'title', label: '商品名称', type: 'text' },
       { k: 'cat', label: '分类', type: 'cat' },
-      { k: 'price', label: '现价', type: 'yuan' },
-      { k: 'ori', label: '原价', type: 'yuan' },
+      { k: 'price', label: '现价', type: 'fen' },
+      { k: 'ori', label: '原价', type: 'fen' },
       { k: 'stock', label: '库存', type: 'num' },
       { k: 'sold', label: '销量(万)', type: 'num' },
       { k: 'onShelf', label: '上架状态', type: 'bool' },
@@ -182,8 +183,8 @@ const RESOURCE_LIST = [
     fields: [
       { k: 'title', label: '商品名称', type: 'text' },
       { k: 'cat', label: '分类', type: 'cat' },
-      { k: 'price', label: '现价(元)', type: 'num' },
-      { k: 'ori', label: '原价(元)', type: 'num' },
+      { k: 'price', label: '现价(元)', type: 'money' },
+      { k: 'ori', label: '原价(元)', type: 'money' },
       { k: 'stock', label: '库存(件)', type: 'num' },
       { k: 'tag', label: '角标文案', type: 'text' },
       { k: 'onShelf', label: '上架', type: 'bool' },

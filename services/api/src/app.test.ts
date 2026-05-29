@@ -35,6 +35,12 @@ describe('消费端读接口', () => {
     expect(items.length).toBeGreaterThan(0);
     expect(items.every((p: { cat: string }) => p.cat === 'eat')).toBe(true);
   });
+
+  it('货币统一：商品价格存为「分」整数（e1 中石化 97元 → 9700）', async () => {
+    const e1 = (await app.inject({ method: 'GET', url: '/api/v1/products/e1' })).json();
+    expect(e1.price).toBe(9700); // 97.00 元 = 9700 分
+    expect(Number.isInteger(e1.price)).toBe(true);
+  });
 });
 
 describe('后台通用 CRUD（一套接口管所有实体）', () => {
@@ -117,13 +123,14 @@ describe('双向同步 · 前→后：消费端下单 → 后台看到', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/orders',
-      payload: { items: [{ title: '车载香薰', price: 39, qty: 2 }, { title: '玻璃水', price: 29.9, qty: 1 }], channel: 'car' },
+      // 货币统一：items.price 为「分」（V3 提交前已 元→分）
+      payload: { items: [{ title: '车载香薰', price: 3900, qty: 2 }, { title: '玻璃水', price: 2990, qty: 1 }], channel: 'car' },
     });
     expect(res.statusCode).toBe(200);
     const order = res.json().order;
     expect(order.status).toBe('PENDING_PAYMENT'); // 走了状态机 DRAFT→submit
     expect(order.channel).toBe('car');
-    expect(order.totalAmount).toBe(39 * 100 * 2 + Math.round(29.9 * 100)); // 分
+    expect(order.totalAmount).toBe(3900 * 2 + 2990); // 直接求和（分）= 10790
 
     const adminOrders = (await app.inject({ method: 'GET', url: '/api/v1/admin/orders' })).json().items;
     expect(adminOrders.length).toBe(before + 1);
