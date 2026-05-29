@@ -221,6 +221,34 @@ describe('购物车真实数据（加购→购物车→结算）', () => {
   });
 });
 
+describe('关联更新 / 级联（QA 审查修复）', () => {
+  it('删商品 → 同步清出购物车，无悬挂', async () => {
+    // 购物车种子含 g1
+    const cartBefore = (await app.inject({ method: 'GET', url: '/api/v1/cart' })).json().items;
+    expect(cartBefore.some((c: { productId: string }) => c.productId === 'g1')).toBe(true);
+    await app.inject({ method: 'DELETE', url: '/api/v1/admin/products/g1' });
+    const cartAfter = (await app.inject({ method: 'GET', url: '/api/v1/cart' })).json().items;
+    expect(cartAfter.some((c: { productId: string }) => c.productId === 'g1')).toBe(false);
+  });
+
+  it('删使用中的分类 → 409 拦截（防孤儿）', async () => {
+    const res = await app.inject({ method: 'DELETE', url: '/api/v1/admin/categories/energy' });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().code).toBe('CATEGORY_IN_USE');
+    // 分类仍在
+    const cats = (await app.inject({ method: 'GET', url: '/api/v1/categories' })).json().items;
+    expect(cats.some((c: { id: string }) => c.id === 'energy')).toBe(true);
+  });
+
+  it('删空分类 → 允许', async () => {
+    await app.inject({ method: 'POST', url: '/api/v1/admin/categories', payload: { name: '空分类X', icon: 'box', sort: 99 } });
+    const cats = (await app.inject({ method: 'GET', url: '/api/v1/admin/categories' })).json().items;
+    const empty = cats.find((c: { name: string }) => c.name === '空分类X');
+    const res = await app.inject({ method: 'DELETE', url: '/api/v1/admin/categories/' + empty.id });
+    expect(res.statusCode).toBe(200);
+  });
+});
+
 describe('运营看板 & 配置', () => {
   it('analytics 返回车机vs手机渠道对比', async () => {
     const a = (await app.inject({ method: 'GET', url: '/api/v1/admin/analytics' })).json();

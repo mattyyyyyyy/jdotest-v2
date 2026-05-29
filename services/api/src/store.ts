@@ -121,7 +121,13 @@ export const store = {
     const i = r.rows.findIndex((x) => x.id === id);
     if (i < 0) return false;
     r.rows.splice(i, 1);
+    // 级联：删商品时同步清出购物车，避免悬挂的购物车行
+    if (name === 'products') cart = cart.filter((c) => c.productId !== id);
     return true;
+  },
+  /** 分类是否被商品引用（删除前校验，防止商品 cat 变孤儿）*/
+  categoryInUse(id: string): number {
+    return res('products').rows.filter((p) => p.cat === id).length;
   },
 
   // ---------- 消费端定制读取（V3 shape）----------

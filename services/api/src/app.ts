@@ -175,6 +175,11 @@ export function buildApp(): FastifyInstance {
   app.delete('/api/v1/admin/:resource/:id', async (req, reply) => {
     const { resource, id } = req.params as { resource: string; id: string };
     if (!store.isResource(resource)) return reply.code(404).send(errBody('UNKNOWN_RESOURCE', '未知资源', { resource }));
+    // 关联校验：分类被商品引用时不允许删除（防止商品 cat 变孤儿）
+    if (resource === 'categories') {
+      const used = store.categoryInUse(id);
+      if (used > 0) return reply.code(409).send(errBody('CATEGORY_IN_USE', '该分类下还有 ' + used + ' 个商品，不能删除', { id, used }));
+    }
     const ok = store.remove(resource, id);
     if (!ok) return reply.code(404).send(errBody('NOT_FOUND', '记录不存在', { resource, id }));
     return { ok: true };

@@ -170,7 +170,12 @@ function MallDetail({ onNav, productId = 'g1' }) {
                   <Icon name="bag" size={22} /> 加入购物车
                 </span>
               </button>
-              <button className="btn-big primary" onClick={() => onNav('mall-checkout')}>立即购买</button>
+              <button className="btn-big primary" onClick={() => {
+                // 立即购买：先把当前商品加入购物车(已选)，再进结算页(否则结算只会结已有购物车，忽略本商品)
+                fetch('/api/v1/cart/items', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ productId: p.id, qty: qty, spec: (colors.find((c) => c.id === color) || {}).name || '默认规格' }) })
+                  .then((r) => r.json()).catch(() => {}).then(() => onNav('mall-checkout'));
+              }}>立即购买</button>
             </div>
           </div>
         </div>
