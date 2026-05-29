@@ -162,3 +162,29 @@ window.JDO_DATA = (function () {
 
   return { categories, products, banners, heroRecs };
 })();
+
+// ─── 前后台连通（v2 新增）─────────────────────────────────────
+// 若后端 API 可达（通过 /app 同源访问时），用后台实时数据覆盖上面的静态数据。
+// 界面与样式完全不动，只换数据源。后台改商品/分类/banner → 这里刷新即同步。
+// 未连接 API（如 npx serve 单独打开）时，自动回退到上面的内置静态数据。
+(function () {
+  try {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/api/v1/bootstrap', false); // 同步：保持现有同步读取 window.JDO_DATA 的模式
+    xhr.send(null);
+    if (xhr.status === 200) {
+      var live = JSON.parse(xhr.responseText);
+      if (live && live.products && live.products.length) {
+        window.JDO_DATA = {
+          categories: live.categories,
+          products: live.products,
+          banners: live.banners,
+          heroRecs: live.heroRecs,
+        };
+        if (window.console) console.log('[JDO] 已接入后台实时数据：' + live.products.length + ' 件在售商品');
+      }
+    }
+  } catch (e) {
+    if (window.console) console.warn('[JDO] 后台 API 未连接，使用内置静态数据');
+  }
+})();
