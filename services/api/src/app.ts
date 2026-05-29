@@ -223,6 +223,7 @@ const RESOURCE_LIST = [
       { k: 'onShelf', label: '上架状态', type: 'bool' },
     ],
     fields: [
+      { k: 'img', label: '商品图片（上传或填 URL）', type: 'image' },
       { k: 'title', label: '商品名称', type: 'text' },
       { k: 'cat', label: '分类', type: 'cat' },
       { k: 'price', label: '现价(元)', type: 'money' },

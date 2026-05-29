@@ -183,6 +183,13 @@ function openForm(id){
       } else if(f.type==='money'){
         var yuanVal = (val===''||val==null) ? '' : (Number(val)/100);
         html += "<input id='f-"+f.k+"' type='number' step='0.01' value='"+esc(yuanVal)+"'>";
+      } else if(f.type==='image'){
+        var imgv = (val==null) ? '' : String(val);
+        html += "<div style='display:flex;gap:10px;align-items:center;margin-bottom:8px'>"
+          + "<img id='f-"+f.k+"-prev' src='"+esc(imgv)+"' style='width:72px;height:54px;object-fit:cover;border-radius:8px;background:#222;border:1px solid #2b3440' onerror=\\"this.style.opacity=.25\\">"
+          + "<label class='btn-edit' style='display:inline-block'>上传图片<input type='file' accept='image/*' style='display:none' onchange=\\"onPickImage(this,'f-"+f.k+"')\\"></label>"
+          + "</div>";
+        html += "<input id='f-"+f.k+"' value='"+esc(imgv)+"' placeholder='图片 URL，或点上方上传文件' oninput=\\"var pv=document.getElementById('f-"+f.k+"-prev'); if(pv) pv.src=this.value;\\">";
       } else {
         html += "<input id='f-"+f.k+"'"+(f.type==='num'?" type='number'":"")+" value='"+esc(val)+"'>";
       }
@@ -210,6 +217,19 @@ function saveForm(id){
   req.then(function(){ closePanel(); selectRes(cfg.key); });
 }
 function closePanel(){ document.getElementById("panel").classList.remove("open"); }
+
+// 图片上传：读文件为 data URI，写入隐藏的图片 URL 输入框 + 更新预览
+function onPickImage(input, targetId){
+  var file = input.files && input.files[0]; if(!file) return;
+  if(file.size > 3*1024*1024){ alert('图片请小于 3MB'); return; }
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var uri = e.target.result;
+    var box = document.getElementById(targetId); if(box) box.value = uri;
+    var prev = document.getElementById(targetId+'-prev'); if(prev){ prev.src = uri; prev.style.opacity = 1; }
+  };
+  reader.readAsDataURL(file);
+}
 
 function showAnalytics(){
   setActive("nav-analytics");
