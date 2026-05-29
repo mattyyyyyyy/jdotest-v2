@@ -160,7 +160,12 @@ function MallDetail({ onNav, productId = 'g1' }) {
             </div>
 
             <div className="detail-cta">
-              <button className="btn-big outline" onClick={() => onNav('mall-cart')}>
+              <button className="btn-big outline" onClick={() => {
+                // 加入真实购物车（后端 /api/v1/cart），再进购物车页
+                fetch('/api/v1/cart/items', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ productId: p.id, qty: qty, spec: (colors.find((c) => c.id === color) || {}).name || '默认规格' }) })
+                  .then((r) => r.json()).catch(() => {}).then(() => onNav('mall-cart'));
+              }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
                   <Icon name="bag" size={22} /> 加入购物车
                 </span>

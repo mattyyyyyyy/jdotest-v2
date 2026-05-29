@@ -3,39 +3,32 @@
 const { useState: useStateCK } = React;
 
 function MallCheckout({ onNav }) {
-  const products = window.JDO_DATA.products;
-  const items = [
-    { id: 'g1', qty: 2, color: '木质香调' },
-    { id: 'e4', qty: 1, color: '6 瓶 / 箱' },
-    { id: 'g5', qty: 1, color: '岩石黑 · M' },
-  ];
-  const productOf = (id) => products.find((p) => p.id === id);
+  // 结算：从真实购物车取「已选」项（价格为分）
+  const [items, setItems] = useStateCK([]);
+  React.useEffect(() => {
+    fetch('/api/v1/cart')
+      .then((r) => r.json())
+      .then((d) => setItems((d.items || []).filter((it) => it.selected)))
+      .catch(() => {});
+  }, []);
 
   const [addr, setAddr] = useStateCK('home');
   const [ship, setShip] = useStateCK('pickup');
   const [pay,  setPay]  = useStateCK('qrcode');
 
-  const subtotal = items.reduce((s, it) => s + (productOf(it.id)?.price || 0) * it.qty, 0);
+  const yuan = (fen) => (fen || 0) / 100;
+  const subtotal = items.reduce((s, it) => s + yuan(it.price) * it.qty, 0);
   const discount = Math.round(subtotal * 0.06 * 100) / 100;
   const freight = ship === 'express' ? 8 : 0;
   const total = subtotal - discount + freight;
 
-  // 提交订单：把订单写到后端（后台订单管理立刻同步看到），再去支付页。
-  // 接不通 API（离线打开）时直接跳支付页，不阻塞演示。
+  // 提交订单：调 /api/v1/cart/checkout —— 后端取购物车已选项建单（走状态机）并移出购物车。
+  // 后台订单管理立刻同步看到。接不通 API（离线）时直接跳支付页，不阻塞演示。
   const placeOrder = () => {
-    const payload = {
-      items: items.map((it) => {
-        const p = productOf(it.id);
-        // V3 内部价格是「元」，统一接口收「分」→ 这里 ×100 转分
-        return { title: p ? p.title : it.id, price: Math.round((p ? p.price : 0) * 100), qty: it.qty };
-      }),
-      channel: 'car',
-      createdAt: '刚刚',
-    };
-    fetch('/api/v1/orders', {
+    fetch('/api/v1/cart/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ channel: 'car' }),
     })
       .then((r) => r.json())
       .then((d) => { if (window.console) console.log('[JDO] 已下单，订单号 ' + (d.order && d.order.id)); })
@@ -162,19 +155,16 @@ function MallCheckout({ onNav }) {
               <span className="v" style={{ color: 'var(--color-text-muted)', fontSize: 18 }}>{items.length} 件</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {items.map((it, i) => {
-                const p = productOf(it.id);
-                return (
-                  <div key={it.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr auto', gap: 14, alignItems: 'center' }}>
-                    <div className="cart-img" style={{ width: 80, height: 80, backgroundImage: `url(${p.img})` }} />
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 20, fontWeight: 300, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.title}</div>
-                      <div style={{ color: 'var(--color-text-muted)', fontSize: 16, marginTop: 4 }}>{it.color} · × {it.qty}</div>
-                    </div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 500 }}>¥ {(p.price * it.qty).toFixed(2)}</div>
+              {items.map((it) => (
+                <div key={it.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr auto', gap: 14, alignItems: 'center' }}>
+                  <div className="cart-img" style={{ width: 80, height: 80, backgroundImage: `url(${it.img})` }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 20, fontWeight: 300, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{it.title}</div>
+                    <div style={{ color: 'var(--color-text-muted)', fontSize: 16, marginTop: 4 }}>{it.spec} · × {it.qty}</div>
                   </div>
-                );
-              })}
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 500 }}>¥ {(yuan(it.price) * it.qty).toFixed(2)}</div>
+                </div>
+              ))}
             </div>
 
             <div className="divider" style={{ background: 'rgba(255,255,255,0.08)' }} />

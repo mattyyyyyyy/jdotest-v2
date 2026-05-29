@@ -39,6 +39,19 @@ export type ResourceName = (typeof RESOURCE_NAMES)[number];
 
 let config: Record<string, unknown> = {};
 
+interface CartItem { id: string; productId: string; qty: number; selected: boolean; spec: string }
+let cart: CartItem[] = [];
+let cartCounter = 1;
+function seedCart(): void {
+  cart = [
+    { id: 'ci-1', productId: 'g1', qty: 2, selected: true, spec: '木质香调' },
+    { id: 'ci-2', productId: 'e4', qty: 1, selected: true, spec: '6 瓶 / 箱' },
+    { id: 'ci-3', productId: 'g5', qty: 1, selected: true, spec: '岩石黑 · M' },
+    { id: 'ci-4', productId: 'f5', qty: 3, selected: false, spec: '30 包 / 箱' },
+  ];
+  cartCounter = 5;
+}
+
 function seedAll(): void {
   resources.clear();
   const v3 = loadV3Data();
@@ -64,6 +77,7 @@ function seedAll(): void {
     resources.set(name, { prefix: r.prefix, rows: r.rows.map((x) => ({ ...x })), counter: r.rows.length + 1 });
   }
   config = { ...seed.config };
+  seedCart();
 }
 
 seedAll();
@@ -137,6 +151,57 @@ export const store = {
   setConfig(patch: Record<string, unknown>): Record<string, unknown> {
     config = { ...config, ...patch };
     return { ...config };
+  },
+
+  // ---------- 购物车（真实数据；价格 join 商品现价，单位分）----------
+  cartView(): Array<Record<string, unknown>> {
+    return cart.map((c) => {
+      const p = res('products').rows.find((x) => x.id === c.productId);
+      return {
+        id: c.id,
+        productId: c.productId,
+        title: p ? p.title : c.productId,
+        img: p ? p.img : '',
+        price: p ? (p.price as number) : 0, // 分
+        qty: c.qty,
+        selected: c.selected,
+        spec: c.spec,
+        onShelf: p ? p.onShelf === true : false,
+      };
+    });
+  },
+  cartAdd(productId: string, qty = 1, spec = '默认规格'): CartItem {
+    const exist = cart.find((c) => c.productId === productId && c.spec === spec);
+    if (exist) {
+      exist.qty += qty;
+      return exist;
+    }
+    const item: CartItem = { id: `ci-${cartCounter++}`, productId, qty, selected: true, spec };
+    cart.unshift(item); // 新加购置顶
+    return item;
+  },
+  cartUpdate(id: string, patch: { qty?: number | undefined; selected?: boolean | undefined }): CartItem | undefined {
+    const it = cart.find((c) => c.id === id);
+    if (!it) return undefined;
+    if (patch.qty !== undefined) it.qty = Math.max(1, patch.qty);
+    if (patch.selected !== undefined) it.selected = patch.selected;
+    return it;
+  },
+  cartRemove(id: string): boolean {
+    const i = cart.findIndex((c) => c.id === id);
+    if (i < 0) return false;
+    cart.splice(i, 1);
+    return true;
+  },
+  /** 结算：取已选项，移出购物车，返回结算明细（分） */
+  cartCheckout(): { items: Array<{ title: string; price: number; qty: number }>; removed: number } {
+    const sel = cart.filter((c) => c.selected);
+    const items = sel.map((c) => {
+      const p = res('products').rows.find((x) => x.id === c.productId);
+      return { title: p ? (p.title as string) : c.productId, price: p ? (p.price as number) : 0, qty: c.qty };
+    });
+    cart = cart.filter((c) => !c.selected);
+    return { items, removed: sel.length };
   },
 
   reset(): void {

@@ -4,29 +4,39 @@ const { useState: useStateCart } = React;
 
 function MallCart({ onNav }) {
   const products = window.JDO_DATA.products;
-  // Pick 4 sample items for the cart
-  const initial = [
-    { id: 'g1', qty: 2, color: '木质香调',     checked: true },
-    { id: 'e4', qty: 1, color: '6 瓶 / 箱',     checked: true },
-    { id: 'g5', qty: 1, color: '岩石黑 · M',    checked: true },
-    { id: 'f5', qty: 3, color: '30 包 / 箱',    checked: false },
-  ];
-  const [items, setItems] = useStateCart(initial);
+  // 真实购物车：从后端 /api/v1/cart 拉取（价格为分）
+  const [items, setItems] = useStateCart([]);
 
-  const productOf = (id) => products.find((p) => p.id === id);
-  const update = (i, patch) => setItems(items.map((it, idx) => idx === i ? { ...it, ...patch } : it));
-  const remove = (i) => setItems(items.filter((_, idx) => idx !== i));
+  const reload = () =>
+    fetch('/api/v1/cart')
+      .then((r) => r.json())
+      .then((d) => setItems(d.items || []))
+      .catch(() => {});
+  React.useEffect(() => { reload(); }, []);
+
+  const yuan = (fen) => (fen || 0) / 100; // 分 → 元（显示）
+  const fmtY = (fen) => { const y = yuan(fen); return y.toFixed(y % 1 ? 1 : 0); };
+
+  const patch = (id, body) =>
+    fetch('/api/v1/cart/items/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then((r) => r.json()).then((d) => d.items && setItems(d.items)).catch(() => {});
+  const del = (id) =>
+    fetch('/api/v1/cart/items/' + id, { method: 'DELETE' })
+      .then((r) => r.json()).then((d) => d.items && setItems(d.items)).catch(() => {});
   const toggleAll = () => {
-    const all = items.every((it) => it.checked);
-    setItems(items.map((it) => ({ ...it, checked: !all })));
+    const all = items.length > 0 && items.every((it) => it.selected);
+    Promise.all(items.map((it) =>
+      fetch('/api/v1/cart/items/' + it.id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ selected: !all }) })
+    )).then(reload);
   };
 
-  const selected = items.filter((it) => it.checked);
-  const subtotal = selected.reduce((s, it) => s + (productOf(it.id)?.price || 0) * it.qty, 0);
+  const selected = items.filter((it) => it.selected);
+  const subtotal = selected.reduce((s, it) => s + yuan(it.price) * it.qty, 0);
   const discount = Math.round(subtotal * 0.06 * 100) / 100;
-  const freight = subtotal >= 99 ? 0 : 8;
+  const freight = subtotal >= 99 ? 0 : (subtotal > 0 ? 8 : 0);
   const total = subtotal - discount + freight;
   const totalQty = selected.reduce((s, it) => s + it.qty, 0);
+  const allChecked = items.length > 0 && items.every((it) => it.selected);
 
   return (
     <>
@@ -53,30 +63,32 @@ function MallCart({ onNav }) {
 
         <div className="cart-body">
           <div className="cart-list">
-            {items.map((it, i) => {
-              const p = productOf(it.id); if (!p) return null;
-              return (
-                <div key={it.id} className="cart-row">
-                  <div className={'checkbox' + (it.checked ? ' checked' : '')} onClick={() => update(i, { checked: !it.checked })}>
-                    {it.checked && <Icon name="plus" size={20} sw={3} stroke="#03171f" />}
-                  </div>
-                  <div className="cart-img" style={{ backgroundImage: `url(${p.img})` }} />
-                  <div className="cart-info">
-                    <div className="cart-name">{p.title}</div>
-                    <div className="cart-sku">规格 · {it.color} · 自营</div>
-                    <div className="cart-price"><span className="sym">¥</span>{p.price.toFixed(p.price % 1 ? 1 : 0)}</div>
-                  </div>
-                  <div className="qty">
-                    <button onClick={() => update(i, { qty: Math.max(1, it.qty - 1) })}><Icon name="chevL" size={18} /></button>
-                    <span className="num">{it.qty}</span>
-                    <button onClick={() => update(i, { qty: it.qty + 1 })}><Icon name="plus" size={18} /></button>
-                  </div>
-                  <button className="cart-del" title="删除" onClick={() => remove(i)}>
-                    <Icon name="back" size={22} stroke="currentColor" />
-                  </button>
+            {items.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--color-text-muted)', fontSize: 24 }}>
+                购物车是空的，去逛逛吧
+              </div>
+            )}
+            {items.map((it) => (
+              <div key={it.id} className="cart-row">
+                <div className={'checkbox' + (it.selected ? ' checked' : '')} onClick={() => patch(it.id, { selected: !it.selected })}>
+                  {it.selected && <Icon name="plus" size={20} sw={3} stroke="#03171f" />}
                 </div>
-              );
-            })}
+                <div className="cart-img" style={{ backgroundImage: `url(${it.img})` }} />
+                <div className="cart-info">
+                  <div className="cart-name">{it.title}</div>
+                  <div className="cart-sku">规格 · {it.spec} · 自营</div>
+                  <div className="cart-price"><span className="sym">¥</span>{fmtY(it.price)}</div>
+                </div>
+                <div className="qty">
+                  <button onClick={() => patch(it.id, { qty: Math.max(1, it.qty - 1) })}><Icon name="chevL" size={18} /></button>
+                  <span className="num">{it.qty}</span>
+                  <button onClick={() => patch(it.id, { qty: it.qty + 1 })}><Icon name="plus" size={18} /></button>
+                </div>
+                <button className="cart-del" title="删除" onClick={() => del(it.id)}>
+                  <Icon name="back" size={22} stroke="currentColor" />
+                </button>
+              </div>
+            ))}
 
             {/* recommendations row */}
             <div style={{ marginTop: 12 }}>
@@ -92,7 +104,8 @@ function MallCart({ onNav }) {
                       <div className="cart-name" style={{ fontSize: 20 }}>{p.title}</div>
                       <div className="cart-price" style={{ fontSize: 22 }}><span className="sym">¥</span>{p.price.toFixed(p.price % 1 ? 1 : 0)}</div>
                     </div>
-                    <button className="quick-add" style={{ width: 56, height: 56, color: 'var(--color-mint)' }}>
+                    <button className="quick-add" style={{ width: 56, height: 56, color: 'var(--color-mint)' }}
+                      onClick={(e) => { e.stopPropagation(); fetch('/api/v1/cart/items', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: p.id, qty: 1, spec: '默认规格' }) }).then((r) => r.json()).then((d) => d.items && setItems(d.items)); }}>
                       <Icon name="plus" size={26} />
                     </button>
                   </div>
@@ -104,8 +117,8 @@ function MallCart({ onNav }) {
           <div className="cart-summary">
             <div className="summary-row" style={{ alignItems: 'center' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12, color: 'var(--color-text-primary)', fontSize: 22 }}>
-                <div className={'checkbox' + (items.every((it) => it.checked) ? ' checked' : '')} onClick={toggleAll}>
-                  {items.every((it) => it.checked) && <Icon name="plus" size={20} sw={3} stroke="#03171f" />}
+                <div className={'checkbox' + (allChecked ? ' checked' : '')} onClick={toggleAll}>
+                  {allChecked && <Icon name="plus" size={20} sw={3} stroke="#03171f" />}
                 </div>
                 全选
               </span>

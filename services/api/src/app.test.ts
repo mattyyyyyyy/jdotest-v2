@@ -171,6 +171,56 @@ describe('双向同步 · 后→前：后台加商品（无图）→ 前台拿�
   });
 });
 
+describe('购物车真实数据（加购→购物车→结算）', () => {
+  it('GET /cart 返回种子购物车（价格分 + join 商品名）', async () => {
+    const { items } = (await app.inject({ method: 'GET', url: '/api/v1/cart' })).json();
+    expect(items.length).toBe(4);
+    expect(items[0]).toHaveProperty('title');
+    expect(items[0]).toHaveProperty('price'); // 分
+    expect(Number.isInteger(items[0].price)).toBe(true);
+  });
+
+  it('加购同款累加数量', async () => {
+    const before = (await app.inject({ method: 'GET', url: '/api/v1/cart' })).json().items.length;
+    await app.inject({ method: 'POST', url: '/api/v1/cart/items', payload: { productId: 'e1', qty: 1, spec: '默认规格' } });
+    const r2 = await app.inject({ method: 'POST', url: '/api/v1/cart/items', payload: { productId: 'e1', qty: 2, spec: '默认规格' } });
+    const items = r2.json().items;
+    expect(items.length).toBe(before + 1); // 同款只占一行
+    const e1 = items.find((i: { productId: string }) => i.productId === 'e1');
+    expect(e1.qty).toBe(3); // 1+2 累加
+  });
+
+  it('改数量 / 勾选 / 删除', async () => {
+    const cart = (await app.inject({ method: 'GET', url: '/api/v1/cart' })).json().items;
+    const id = cart[0].id;
+    const up = (await app.inject({ method: 'PATCH', url: '/api/v1/cart/items/' + id, payload: { qty: 9, selected: false } })).json();
+    const it = up.items.find((x: { id: string }) => x.id === id);
+    expect(it.qty).toBe(9);
+    expect(it.selected).toBe(false);
+    const del = await app.inject({ method: 'DELETE', url: '/api/v1/cart/items/' + id });
+    expect(del.json().items.some((x: { id: string }) => x.id === id)).toBe(false);
+  });
+
+  it('从购物车结算 → 生成订单 + 移出已选项 + 后台可见', async () => {
+    const ordersBefore = (await app.inject({ method: 'GET', url: '/api/v1/admin/orders' })).json().items.length;
+    const cart = (await app.inject({ method: 'GET', url: '/api/v1/cart' })).json().items;
+    const selectedCount = cart.filter((c: { selected: boolean }) => c.selected).length;
+    expect(selectedCount).toBeGreaterThan(0);
+
+    const res = await app.inject({ method: 'POST', url: '/api/v1/cart/checkout', payload: { channel: 'car' } });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.order.status).toBe('PENDING_PAYMENT');
+    expect(body.order.totalAmount).toBeGreaterThan(0);
+
+    // 已选项被移出购物车
+    expect(body.items.filter((c: { selected: boolean }) => c.selected).length).toBe(0);
+    // 后台订单 +1
+    const ordersAfter = (await app.inject({ method: 'GET', url: '/api/v1/admin/orders' })).json().items.length;
+    expect(ordersAfter).toBe(ordersBefore + 1);
+  });
+});
+
 describe('运营看板 & 配置', () => {
   it('analytics 返回车机vs手机渠道对比', async () => {
     const a = (await app.inject({ method: 'GET', url: '/api/v1/admin/analytics' })).json();

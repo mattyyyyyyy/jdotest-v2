@@ -78,6 +78,48 @@ export function buildApp(): FastifyInstance {
     return { state: r.state };
   });
 
+  // ---------- 购物车（真实数据）----------
+  app.get('/api/v1/cart', async () => ({ items: store.cartView() }));
+
+  app.post('/api/v1/cart/items', async (req, reply) => {
+    const body = z.object({ productId: z.string(), qty: z.number().int().positive().default(1), spec: z.string().optional() }).parse(req.body);
+    const item = store.cartAdd(body.productId, body.qty, body.spec ?? '默认规格');
+    return reply.code(201).send({ ok: true, item, items: store.cartView() });
+  });
+
+  app.patch('/api/v1/cart/items/:id', async (req, reply) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const patch = z.object({ qty: z.number().int().optional(), selected: z.boolean().optional() }).parse(req.body);
+    const it = store.cartUpdate(id, patch);
+    if (!it) return reply.code(404).send(errBody('CART_ITEM_NOT_FOUND', '购物车项不存在', { id }));
+    return { ok: true, items: store.cartView() };
+  });
+
+  app.delete('/api/v1/cart/items/:id', async (req, reply) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    if (!store.cartRemove(id)) return reply.code(404).send(errBody('CART_ITEM_NOT_FOUND', '购物车项不存在', { id }));
+    return { ok: true, items: store.cartView() };
+  });
+
+  // 从购物车结算：取已选项 → 创建订单（走状态机）→ 移出购物车
+  app.post('/api/v1/cart/checkout', async (req, reply) => {
+    const body = z.object({ channel: z.enum(['car', 'phone']).optional() }).parse(req.body ?? {});
+    const { items, removed } = store.cartCheckout();
+    if (removed === 0) return reply.code(400).send(errBody('EMPTY_SELECTION', '没有选中的商品', {}));
+    const submitted = transition('DRAFT', 'submit');
+    const status = submitted.ok ? submitted.state : 'PENDING_PAYMENT';
+    const totalAmount = items.reduce((s, it) => s + it.price * it.qty, 0);
+    const order = store.create('orders', {
+      userId: 'u-1001',
+      status,
+      totalAmount,
+      itemTitles: items.map((it) => it.title),
+      channel: body.channel ?? 'car',
+      createdAt: '刚刚',
+    });
+    return { ok: true, order, items: store.cartView() };
+  });
+
   // ============ 后台（admin）/api/v1/admin/* ============
   // 通用 CRUD：一套接口管所有实体（products/categories/banners/...）
   // Demo 未挂 RBAC（见 ADR-0011 / openspec add-admin-auth）
