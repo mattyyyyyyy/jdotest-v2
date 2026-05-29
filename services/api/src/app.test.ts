@@ -74,10 +74,23 @@ describe('后台通用 CRUD（一套接口管所有实体）', () => {
 });
 
 describe('前后台数据同步（每类实体）', () => {
-  it('商品：后台新增 → 前台 bootstrap 看到', async () => {
-    await app.inject({ method: 'POST', url: '/api/v1/admin/products', payload: { title: 'TEST车品', cat: 'gear', price: 50, ori: 99, stock: 9, onShelf: true } });
+  it('商品：后台新增 → 置顶 + 前台 bootstrap 看到', async () => {
+    await app.inject({ method: 'POST', url: '/api/v1/admin/products', payload: { title: 'TEST车品', cat: 'gear', price: 5000, ori: 9900, stock: 9, onShelf: true } });
+    // 后台列表置顶（items[0]）
+    const admin = (await app.inject({ method: 'GET', url: '/api/v1/admin/products' })).json().items;
+    expect(admin[0].title).toBe('TEST车品');
+    // 前台 bootstrap 能看到，且在最前
     const d = (await app.inject({ method: 'GET', url: '/api/v1/bootstrap' })).json();
     expect(d.products.some((p: { title: string }) => p.title === 'TEST车品')).toBe(true);
+    expect(d.products[0].title).toBe('TEST车品');
+  });
+
+  it('商品：新增不带 onShelf → 默认上架，前台可见（修同步 bug）', async () => {
+    await app.inject({ method: 'POST', url: '/api/v1/admin/products', payload: { title: '默认上架品', cat: 'gear', price: 6600 } });
+    const d = (await app.inject({ method: 'GET', url: '/api/v1/bootstrap' })).json();
+    const found = d.products.find((p: { title: string }) => p.title === '默认上架品');
+    expect(found).toBeTruthy();
+    expect(found.onShelf).toBe(true); // 不再默认下架
   });
 
   it('商品：后台下架 → 前台消失', async () => {

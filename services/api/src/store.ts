@@ -91,7 +91,7 @@ export const store = {
     const id = (data.id as string) ?? `${r.prefix}${r.counter++}`;
     let row: Row = { ...data, id };
     if (name === 'products') row = normalizeProduct(row);
-    r.rows.push(row);
+    r.rows.unshift(row); // 新增置顶：后台列表/前台都最先看到
     return row;
   },
   update(name: string, id: string, patch: Record<string, unknown>): Row | undefined {

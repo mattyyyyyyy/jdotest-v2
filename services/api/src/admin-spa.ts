@@ -174,7 +174,9 @@ function openForm(id){
       var val = existing && existing[f.k]!==undefined ? existing[f.k] : "";
       html += "<div class='field'><label>"+esc(f.label)+"</label>";
       if(f.type==='bool'){
-        var bv = val===true || val==="true";
+        var isNew = !existing;
+        var posDefault = (f.k==='onShelf'||f.k==='active'||f.k==='open'); // 新增时这些默认"是"
+        var bv = (val===true || val==="true") || (isNew && (val===''||val==null) && posDefault);
         html += "<select id='f-"+f.k+"'><option value='true'"+(bv?" selected":"")+">是</option><option value='false'"+(!bv?" selected":"")+">否</option></select>";
       } else if(f.type==='cat'||f.type==='orderStatus'||f.type==='channel'||f.type==='couponType'||f.type==='aftStatus'){
         html += "<select id='f-"+f.k+"'>"+selectOptions(f.type, val)+"</select>";
