@@ -1,12 +1,17 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from './app.js';
+import { store } from './store.js';
 
 let app: FastifyInstance;
 
 beforeAll(async () => {
   app = buildApp();
   await app.ready();
+});
+
+beforeEach(() => {
+  store.reset(); // 每个用例从干净种子态开始
 });
 
 afterAll(async () => {
@@ -58,6 +63,48 @@ describe('GET /api/v1/products/:id', () => {
     expect(res.statusCode).toBe(404);
     expect(res.json().code).toBe('PRODUCT_NOT_FOUND');
     expect(res.json()).toHaveProperty('traceId');
+  });
+});
+
+describe('前后台数据同步（核心演示）', () => {
+  it('后台新增商品 → 前台立刻看到', async () => {
+    const before = (await app.inject({ method: 'GET', url: '/api/v1/products' })).json().total;
+
+    const add = await app.inject({
+      method: 'POST',
+      url: '/api/v1/admin/products',
+      payload: { title: '车载灭火器', price: 8800, stock: 50, categoryId: 'rescue' },
+    });
+    expect(add.statusCode).toBe(201);
+
+    const after = await app.inject({ method: 'GET', url: '/api/v1/products' });
+    expect(after.json().total).toBe(before + 1);
+    expect(after.json().items.some((p: { title: string }) => p.title === '车载灭火器')).toBe(true);
+  });
+
+  it('后台下架商品 → 前台立刻消失', async () => {
+    // p-001 初始在售
+    expect((await app.inject({ method: 'GET', url: '/api/v1/products/p-001' })).statusCode).toBe(200);
+
+    await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/admin/products/p-001',
+      payload: { onShelf: false },
+    });
+
+    const store001 = await app.inject({ method: 'GET', url: '/api/v1/products/p-001' });
+    expect(store001.statusCode).toBe(404); // 前台已看不到
+    const list = await app.inject({ method: 'GET', url: '/api/v1/products' });
+    expect(list.json().items.some((p: { id: string }) => p.id === 'p-001')).toBe(false);
+    // 但后台仍能看到（含下架）
+    const adminList = await app.inject({ method: 'GET', url: '/api/v1/admin/products' });
+    expect(adminList.json().items.some((p: { id: string }) => p.id === 'p-001')).toBe(true);
+  });
+
+  it('后台改价 → 前台价格同步', async () => {
+    await app.inject({ method: 'PATCH', url: '/api/v1/admin/products/p-002', payload: { price: 12345 } });
+    const p = await app.inject({ method: 'GET', url: '/api/v1/products/p-002' });
+    expect(p.json().price).toBe(12345);
   });
 });
 
