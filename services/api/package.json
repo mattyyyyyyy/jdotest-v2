@@ -1,0 +1,22 @@
+{
+  "name": "@jdo/api",
+  "version": "0.1.0",
+  "description": "后端 modular monolith（Fastify + zod）— 消费端 /api/v1/* + 后台 /api/v1/admin/*",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@jdo/order-state-machine": "workspace:*",
+    "fastify": "^5.2.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2"
+  }
+}

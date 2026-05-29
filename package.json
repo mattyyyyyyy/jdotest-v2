@@ -1,0 +1,22 @@
+{
+  "name": "@jdo/root",
+  "private": true,
+  "version": "0.1.0",
+  "description": "车机端电商 + 后台管理 monorepo (JDOTEST v2)",
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "dev": "turbo run dev"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

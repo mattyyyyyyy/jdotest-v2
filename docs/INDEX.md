@@ -51,6 +51,7 @@
 
 | 日期 | Agent | 完成项 | 关键 commit |
 |---|---|---|---|
+| 2026-05-29 | claude-impl-slice1 | **首个可运行纵向切片落地**：pnpm monorepo 脚手架（package.json/pnpm-workspace/tsconfig.base/turbo/.npmrc）+ `packages/order-state-machine`（纯函数状态机，对应 openspec/specs/order，**20 单测全绿**）+ `services/api` 薄切片（Fastify + 7 场景分类 + 商品接口 + 复用状态机的 /orders/transition，**8 route 测试全绿** + 服务器实启 curl 通过）。typecheck 3/3 绿。**符合 PRD「首个 PR = 测试脚手架 + OrderStateMachine 示范」** | (pending) |
 | 2026-05-29 | claude-bootstrap-v2 | **JDOTEST v2 重做开工**：用 ai-project-bootstrapper 模板重组（`_templates/`）；新增后台管理整端（PRD v0.5 §I US-40~58 + `scope.md` + ADR-0010~0012）；消费端 UI 沿用 v3（不重画）；引入 OpenSpec 原生流程（`openspec/specs/{driving-mode,order}` 当前真相 + `changes/add-admin-*` 首批 proposal，`add-admin-auth` 4 件套完整且 `validate --strict` 通过） | (pending) |
 | 2026-05-27 | claude-main | **V3 确立为项目主前端**：`mockups/jdo-pencil-v3/` 为后续迭代/部署唯一版本；V1/V2 及根目录 `mockups/*.html` 标记为已归档；后续计划迁移到 `apps/h5`（Vite+TS） | (pending) |
 | 2026-05-27 | claude-adr-0009 | **ADR-0009 Accepted** 锁定 7 类场景（能量补给 / 爱车养护 / 一路吃喝 / 远行出差 / 车内好物 / 24h 救援 / 严选好物），以 V3 mockup 为准。**ADR-0008 → Superseded**。同步 [research/ia-scene-vs-category.md](./research/ia-scene-vs-category.md) §附录 + [research/competitor-analysis.md](./research/competitor-analysis.md) 引用 | (pending) |

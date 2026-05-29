@@ -73,9 +73,9 @@
 
 | ID | 名称 | 状态 | Owner | 备注 |
 |---|---|---|---|---|
-| BE-catalog | 商品服务 | 🟡 unclaimed | — | — |
+| BE-catalog | 商品服务 | 🔵 in-progress | claude-impl-slice1 | 薄切片已落地（内存 seed + /api/v1/products[/:id] + /categories），待接 Prisma/PG |
 | BE-cart | 购物车服务 | 🟡 unclaimed | — | Redis-heavy |
-| BE-order | 订单服务 | 🟡 unclaimed | — | 含状态机 |
+| BE-order | 订单服务 | 🔵 in-progress | claude-impl-slice1 | `packages/order-state-machine` 纯函数 + 20 单测已落地；service/repo 待接 DB |
 | BE-payment | 支付服务（mock） | 🟡 unclaimed | — | — |
 | BE-user | 账号服务 | 🟡 unclaimed | — | JWT |
 | BE-fulfillment | 履约服务 | 🟡 unclaimed | — | 自提点 + 物流轨迹 |
