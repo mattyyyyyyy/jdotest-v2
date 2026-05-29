@@ -1,0 +1,143 @@
+/* ============================================================
+   车机电商 · Design Tokens
+   单一真相：与 docs/design/design-system.md §1 一致
+   ============================================================ */
+
+:root {
+  /* ─── 颜色 / 中性 ─── */
+  --color-bg-0: #0A0B0E;
+  --color-bg-1: #11141A;
+  --color-bg-2: #181C24;
+  --color-bg-3: #21262D;
+  --color-surface-glass: rgba(20, 22, 26, 0.60);
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-border-default: rgba(255, 255, 255, 0.10);
+  --color-border-strong: rgba(255, 255, 255, 0.18);
+  --color-text-primary: #F1F5F9;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted: #64748B;
+  --color-text-disabled: #475569;
+  --color-text-inverse: #0A0B0E;
+
+  /* ─── 颜色 / 品牌 + 强调 ─── */
+  --color-brand-500: #3B82F6;
+  --color-brand-400: #60A5FA;
+  --color-brand-600: #2563EB;
+  --color-accent: #06B6D4;
+  --color-accent-glow: rgba(6, 182, 212, 0.20);
+  --color-mint: #5EEAD4;
+  --color-gold: #D6BC8A;
+
+  /* ─── 颜色 / 语义 ─── */
+  --color-success: #22C55E;
+  --color-success-bg: rgba(34, 197, 94, 0.12);
+  --color-warn: #F59E0B;
+  --color-warn-bg: rgba(245, 158, 11, 0.12);
+  --color-error: #EF4444;
+  --color-error-bg: rgba(239, 68, 68, 0.12);
+  --color-driving: #FB923C;
+  --color-driving-bg: rgba(251, 146, 60, 0.12);
+
+  /* ─── 字体族 ─── */
+  --font-sans: "Manrope", "Noto Sans SC", "PingFang SC", "HarmonyOS Sans", system-ui, sans-serif;
+  --font-display: "Outfit", "Noto Sans SC", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+
+  /* ─── 字号 / 行高 ─── */
+  --font-xs: 18px;
+  --font-sm: 20px;
+  --font-base: 24px;
+  --font-lg: 28px;
+  --font-xl: 32px;
+  --font-2xl: 40px;
+  --font-3xl: 56px;
+  --font-display: 72px;
+
+  --leading-tight: 1.1;
+  --leading-snug: 1.3;
+  --leading-normal: 1.4;
+  --leading-relaxed: 1.5;
+
+  /* ─── 字重 ─── */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ─── 间距 ─── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* ─── 圆角 ─── */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-2xl: 40px;
+  --radius-pill: 9999px;
+
+  /* ─── 阴影 / 高光 ─── */
+  --shadow-glass: 0 8px 32px 0 rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.06);
+  --shadow-elev-1: 0 4px 16px 0 rgba(0,0,0,0.30);
+  --shadow-elev-2: 0 12px 40px 0 rgba(0,0,0,0.50);
+  --glow-brand: 0 0 0 4px rgba(59, 130, 246, 0.20);
+  --glow-accent: 0 0 24px 0 rgba(6, 182, 212, 0.30);
+  --glow-mint: 0 0 32px 0 rgba(94, 234, 212, 0.25);
+  --glow-driving: 0 0 32px 0 rgba(251, 146, 60, 0.40);
+
+  /* ─── 模糊 ─── */
+  --blur-sm: 12px;
+  --blur-md: 24px;
+  --blur-lg: 32px;
+
+  /* ─── 触控 ─── */
+  --touch-min: 88px;
+  --touch-comfortable: 96px;
+  --touch-hero: 120px;
+  --touch-spacing: 16px;
+
+  /* ─── 动效 ─── */
+  --duration-instant: 0ms;
+  --duration-fast: 150ms;
+  --duration-base: 240ms;
+  --duration-slow: 400ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ─── 栅格 ─── */
+  --grid-margin: 32px;
+  --grid-gutter: 24px;
+  --rail-width: 240px;
+
+  /* ─── Z-index ─── */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-dropdown: 100;
+  --z-overlay: 1000;
+  --z-modal: 1100;
+  --z-toast: 1200;
+  --z-debug: 9999;
+}
+
+/* ─── 行车态覆盖 ─── */
+[data-mode="driving"] {
+  --font-xs: 20px;
+  --font-sm: 24px;
+  --font-base: 28px;
+  --font-lg: 32px;
+  --font-xl: 40px;
+  --touch-min: 96px;
+  --touch-comfortable: 120px;
+  --duration-fast: 0ms;
+  --duration-base: 0ms;
+  --duration-slow: 0ms;
+  --grid-margin: 64px;
+}
