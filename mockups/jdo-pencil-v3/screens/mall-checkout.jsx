@@ -20,6 +20,28 @@ function MallCheckout({ onNav }) {
   const freight = ship === 'express' ? 8 : 0;
   const total = subtotal - discount + freight;
 
+  // 提交订单：把订单写到后端（后台订单管理立刻同步看到），再去支付页。
+  // 接不通 API（离线打开）时直接跳支付页，不阻塞演示。
+  const placeOrder = () => {
+    const payload = {
+      items: items.map((it) => {
+        const p = productOf(it.id);
+        return { title: p ? p.title : it.id, price: p ? p.price : 0, qty: it.qty };
+      }),
+      channel: 'car',
+      createdAt: '刚刚',
+    };
+    fetch('/api/v1/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then((r) => r.json())
+      .then((d) => { if (window.console) console.log('[JDO] 已下单，订单号 ' + (d.order && d.order.id)); })
+      .catch(() => {})
+      .finally(() => onNav('mall-pay'));
+  };
+
   const addrOptions = [
     { id: 'home',    name: '李先生 · 138****6789', tag: '家', detail: '上海市 浦东新区 张江路 1888 弄 6 号 · 浦东新区' },
     { id: 'company', name: '李先生 · 138****6789', tag: '公司', detail: '上海市 黄浦区 南京东路 666 号 · 创智 28F' },
@@ -165,7 +187,7 @@ function MallCheckout({ onNav }) {
               <span className="v"><span style={{ fontSize: 20, color: 'var(--color-text-muted)' }}>¥</span> {total.toFixed(2)}</span>
             </div>
 
-            <button className="btn-big primary" onClick={() => onNav('mall-pay')}>
+            <button className="btn-big primary" onClick={placeOrder}>
               提交订单
             </button>
             <div style={{ color: 'var(--color-text-muted)', fontSize: 16, textAlign: 'center' }}>提交后会生成扫码支付二维码</div>

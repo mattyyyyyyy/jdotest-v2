@@ -111,6 +111,46 @@ describe('前后台数据同步（每类实体）', () => {
   });
 });
 
+describe('双向同步 · 前→后：消费端下单 → 后台看到', () => {
+  it('POST /api/v1/orders 创建订单并出现在后台订单列表', async () => {
+    const before = (await app.inject({ method: 'GET', url: '/api/v1/admin/orders' })).json().items.length;
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/orders',
+      payload: { items: [{ title: '车载香薰', price: 39, qty: 2 }, { title: '玻璃水', price: 29.9, qty: 1 }], channel: 'car' },
+    });
+    expect(res.statusCode).toBe(200);
+    const order = res.json().order;
+    expect(order.status).toBe('PENDING_PAYMENT'); // 走了状态机 DRAFT→submit
+    expect(order.channel).toBe('car');
+    expect(order.totalAmount).toBe(39 * 100 * 2 + Math.round(29.9 * 100)); // 分
+
+    const adminOrders = (await app.inject({ method: 'GET', url: '/api/v1/admin/orders' })).json().items;
+    expect(adminOrders.length).toBe(before + 1);
+    expect(adminOrders.some((o: { id: string }) => o.id === order.id)).toBe(true);
+  });
+});
+
+describe('双向同步 · 后→前：后台加商品（无图）→ 前台拿到默认图，不黑块', () => {
+  it('admin 新增商品自动补默认 img/sold/star', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/admin/products',
+      payload: { title: '无图测试品', cat: 'gear', price: 88, ori: 188, stock: 5, onShelf: true },
+    });
+    const p = res.json();
+    expect(p.img).toBeTruthy(); // 不再是 undefined
+    expect(String(p.img).startsWith('data:image')).toBe(true); // 占位 SVG
+    expect(p.sold).toBeDefined();
+    expect(p.star).toBeDefined();
+    // 前台 bootstrap 能搜到它且带图
+    const d = (await app.inject({ method: 'GET', url: '/api/v1/bootstrap' })).json();
+    const found = d.products.find((x: { title: string }) => x.title === '无图测试品');
+    expect(found).toBeTruthy();
+    expect(found.img).toBeTruthy();
+  });
+});
+
 describe('运营看板 & 配置', () => {
   it('analytics 返回车机vs手机渠道对比', async () => {
     const a = (await app.inject({ method: 'GET', url: '/api/v1/admin/analytics' })).json();

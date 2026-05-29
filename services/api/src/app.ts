@@ -45,6 +45,31 @@ export function buildApp(): FastifyInstance {
     return { items: store.ordersByUser(q.userId) };
   });
 
+  // 消费端下单：创建真实订单 → 后台订单管理立刻能看到（双向同步的"前→后"方向）
+  app.post('/api/v1/orders', async (req) => {
+    const body = z
+      .object({
+        items: z.array(z.object({ title: z.string(), price: z.number(), qty: z.number().int().positive().default(1) })).min(1),
+        userId: z.string().optional(),
+        channel: z.enum(['car', 'phone']).optional(),
+        createdAt: z.string().optional(),
+      })
+      .parse(req.body);
+    // 走订单状态机：DRAFT --submit--> PENDING_PAYMENT
+    const submitted = transition('DRAFT', 'submit');
+    const status = submitted.ok ? submitted.state : 'PENDING_PAYMENT';
+    const totalAmount = body.items.reduce((s, it) => s + Math.round(it.price * 100) * it.qty, 0);
+    const order = store.create('orders', {
+      userId: body.userId ?? 'u-1001',
+      status,
+      totalAmount,
+      itemTitles: body.items.map((it) => it.title),
+      channel: body.channel ?? 'car',
+      createdAt: body.createdAt ?? '刚刚',
+    });
+    return { ok: true, order };
+  });
+
   app.post('/api/v1/orders/transition', async (req, reply) => {
     const body = z.object({ state: z.string(), event: z.string() }).parse(req.body);
     const r = transition(body.state as OrderState, body.event as OrderEvent);

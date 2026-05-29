@@ -89,7 +89,8 @@ export const store = {
   create(name: string, data: Record<string, unknown>): Row {
     const r = res(name);
     const id = (data.id as string) ?? `${r.prefix}${r.counter++}`;
-    const row: Row = { ...data, id };
+    let row: Row = { ...data, id };
+    if (name === 'products') row = normalizeProduct(row);
     r.rows.push(row);
     return row;
   },
@@ -142,3 +143,21 @@ export const store = {
     seedAll();
   },
 };
+
+/** 后台新增/缺字段的商品补默认值，避免前台渲染成黑块（无图）或报错 */
+const PLACEHOLDER_IMG =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 400'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23223040'/%3E%3Cstop offset='1' stop-color='%230f1722'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='600' height='400' fill='url(%23g)'/%3E%3Cg fill='none' stroke='%235eead4' stroke-width='8' opacity='0.6'%3E%3Crect x='250' y='160' width='100' height='90' rx='10'/%3E%3Cpath d='M270 160 v-16 a30 30 0 0 1 60 0 v16'/%3E%3C/g%3E%3Ctext x='300' y='300' fill='%237c8b9a' font-family='sans-serif' font-size='28' text-anchor='middle'%3EJDO 严选%3C/text%3E%3C/svg%3E";
+
+function normalizeProduct(row: Row): Row {
+  const p: Row = { ...row };
+  if (!p.img) p.img = PLACEHOLDER_IMG;
+  if (typeof p.price === 'string') p.price = Number(p.price) || 0;
+  if (typeof p.ori === 'string') p.ori = Number(p.ori) || 0;
+  if (p.price === undefined) p.price = 0;
+  if (p.ori === undefined) p.ori = 0;
+  if (p.sold === undefined) p.sold = 0.1;
+  if (p.star === undefined) p.star = 5;
+  if (!p.tagKind) p.tagKind = 'mint';
+  if (p.onShelf === undefined) p.onShelf = true;
+  return p;
+}
