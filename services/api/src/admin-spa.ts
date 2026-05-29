@@ -62,18 +62,51 @@ export const ADMIN_APP_HTML = `<!doctype html><html lang="zh"><head><meta charse
 export const ADMIN_APP_JS = `
 var RES = [];
 var CUR = null;
+var CATMAP = {};   // 分类 id → 名（让分类显示成"能量补给"而非"energy"）
+var CATS = [];     // 分类选项
+
+// 枚举 → 中文（对应 docs/design/data-dictionary.md）
+var ORDER_CN = { DRAFT:'待提交', PENDING_PAYMENT:'待支付', PAID:'已支付', SHIPPING:'配送中', COMPLETED:'已完成', CANCELED:'已取消', EXPIRED:'已过期', REFUNDING:'退款中', REFUNDED:'已退款' };
+var CHANNEL_CN = { car:'车机', phone:'手机' };
+var COUPON_CN = { fixed:'满减', discount:'折扣' };
+var AFT_CN = { pending:'待审', approved:'通过', rejected:'拒绝' };
+
 function api(method, url, body){
   var opt = { method: method, headers: {} };
   if(body){ opt.headers["Content-Type"]="application/json"; opt.body = JSON.stringify(body); }
   return fetch(url, opt).then(function(r){ return r.json().catch(function(){return null;}); });
 }
-function fmt(v){
-  if(v===true) return "是"; if(v===false) return "否";
-  if(v===null||v===undefined) return "";
-  if(Array.isArray(v)) return v.join(" / ");
-  if(typeof v==="object") return JSON.stringify(v);
-  return String(v);
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+
+// 按列类型格式化单元格
+function fmtCell(row, col){
+  var v = row[col.k];
+  switch(col.type){
+    case 'image':
+      var src = v || ''; return "<img src='"+esc(src)+"' style='width:54px;height:40px;object-fit:cover;border-radius:6px;background:#222' onerror=\\"this.style.opacity=.2\\">";
+    case 'bool':
+      var cls=v?'on':'off'; return "<button class='badge "+cls+"' onclick=\\"toggleBool('"+row.id+"','"+col.k+"',"+(v?'true':'false')+")\\">"+boolLabel(col.k,v)+"</button>";
+    case 'cat': return esc(CATMAP[v] || v || '');
+    case 'yuan': return v==null?'':'¥'+v;
+    case 'fen': return v==null?'':'¥'+(Number(v)/100).toFixed(2);
+    case 'num': return v==null?'':String(v);
+    case 'list': return Array.isArray(v)? esc(v.join(' / ')) : esc(v);
+    case 'orderStatus': return "<span class='badge "+(v==='PAID'||v==='COMPLETED'?'on':(v==='CANCELED'||v==='EXPIRED'?'off':''))+"' style='cursor:default'>"+(ORDER_CN[v]||v)+"</span>";
+    case 'channel': return CHANNEL_CN[v]||v;
+    case 'couponType': return COUPON_CN[v]||v;
+    case 'aftStatus': return AFT_CN[v]||v;
+    default: return esc(v);
+  }
 }
+function boolLabel(col,v){
+  if(col==="onShelf") return v?"已上架":"已下架";
+  if(col==="active") return v?"启用":"停用";
+  if(col==="open") return v?"营业":"停业";
+  if(col==="banned") return v?"已封禁":"正常";
+  if(col==="hidden") return v?"已隐藏":"显示";
+  return v?"是":"否";
+}
+
 function buildNav(){
   var nav = document.getElementById("nav");
   var html = "<div class='sec'>概览</div>";
@@ -102,19 +135,11 @@ function renderTable(items){
   var html = "<div class='bar'><h2>"+cfg.label+"</h2><span class='count'>共 "+items.length+" 条</span>"+
     "<button class='btn-add' onclick=\\"openForm()\\">+ 新增</button></div>";
   html += "<table><thead><tr>";
-  cfg.columns.forEach(function(c){ html += "<th>"+c+"</th>"; });
+  cfg.columns.forEach(function(c){ html += "<th>"+esc(c.label)+"</th>"; });
   html += "<th>操作</th></tr></thead><tbody>";
   items.forEach(function(row){
     html += "<tr>";
-    cfg.columns.forEach(function(c){
-      var v = row[c];
-      if(typeof v==="boolean"){
-        var cls = v?"on":"off"; var txt = boolLabel(c,v);
-        html += "<td><button class='badge "+cls+"' onclick=\\"toggleBool('"+row.id+"','"+c+"',"+v+")\\">"+txt+"</button></td>";
-      } else {
-        html += "<td>"+fmt(v)+"</td>";
-      }
-    });
+    cfg.columns.forEach(function(c){ html += "<td>"+fmtCell(row,c)+"</td>"; });
     html += "<td><div class='ops'>"+
       "<button class='btn-edit' onclick=\\"openForm('"+row.id+"')\\">编辑</button>"+
       "<button class='btn-del' onclick=\\"delRow('"+row.id+"')\\">删除</button>"+
@@ -122,14 +147,6 @@ function renderTable(items){
   });
   html += "</tbody></table>";
   document.getElementById("main").innerHTML = html;
-}
-function boolLabel(col,v){
-  if(col==="onShelf") return v?"已上架":"已下架";
-  if(col==="active") return v?"启用":"停用";
-  if(col==="open") return v?"营业":"停业";
-  if(col==="banned") return v?"已封禁":"正常";
-  if(col==="hidden") return v?"已隐藏":"显示";
-  return v?"是":"否";
 }
 function toggleBool(id, field, val){
   var patch = {}; patch[field] = !val;
@@ -139,23 +156,33 @@ function delRow(id){
   if(!confirm("确认删除 "+id+" ?")) return;
   api("DELETE","/api/v1/admin/"+CUR.key+"/"+id).then(function(){ selectRes(CUR.key); });
 }
+
+function selectOptions(type, val){
+  var opts = [];
+  if(type==='cat') opts = CATS.map(function(c){ return [c.id, c.name]; });
+  else if(type==='orderStatus') opts = Object.keys(ORDER_CN).map(function(k){ return [k, ORDER_CN[k]]; });
+  else if(type==='channel') opts = Object.keys(CHANNEL_CN).map(function(k){ return [k, CHANNEL_CN[k]]; });
+  else if(type==='couponType') opts = Object.keys(COUPON_CN).map(function(k){ return [k, COUPON_CN[k]]; });
+  else if(type==='aftStatus') opts = Object.keys(AFT_CN).map(function(k){ return [k, AFT_CN[k]]; });
+  return opts.map(function(o){ return "<option value='"+o[0]+"'"+(String(val)===String(o[0])?" selected":"")+">"+o[1]+"</option>"; }).join("");
+}
 function openForm(id){
-  var cfg = CUR;
-  var existing = null;
+  var cfg = CUR; var existing = null;
   var done = function(){
     var html = "<h3>"+(id?"编辑 ":"新增 ")+cfg.label+"</h3>";
     cfg.fields.forEach(function(f){
-      var val = existing && existing[f]!==undefined ? existing[f] : "";
-      if(typeof val==="boolean" || f==="onShelf"||f==="active"||f==="open"||f==="banned"||f==="hidden"){
+      var val = existing && existing[f.k]!==undefined ? existing[f.k] : "";
+      html += "<div class='field'><label>"+esc(f.label)+"</label>";
+      if(f.type==='bool'){
         var bv = val===true || val==="true";
-        html += "<div class='field'><label>"+f+"</label><select id='f-"+f+"'>"+
-          "<option value='true'"+(bv?" selected":"")+">是</option>"+
-          "<option value='false'"+(!bv?" selected":"")+">否</option></select></div>";
+        html += "<select id='f-"+f.k+"'><option value='true'"+(bv?" selected":"")+">是</option><option value='false'"+(!bv?" selected":"")+">否</option></select>";
+      } else if(f.type==='cat'||f.type==='orderStatus'||f.type==='channel'||f.type==='couponType'||f.type==='aftStatus'){
+        html += "<select id='f-"+f.k+"'>"+selectOptions(f.type, val)+"</select>";
       } else {
-        html += "<div class='field'><label>"+f+"</label><input id='f-"+f+"' value='"+String(val).replace(/'/g,"&#39;")+"'></div>";
+        html += "<input id='f-"+f.k+"'"+(f.type==='num'?" type='number'":"")+" value='"+esc(val)+"'>";
       }
+      html += "</div>";
     });
-    html += "<div class='hint'>金额类字段：products 价格按元，orders/coupons 按分。</div>";
     html += "<div class='row'><button class='btn-save' onclick=\\"saveForm('"+(id||"")+"')\\">保存</button>"+
       "<button class='btn-cancel' onclick=\\"closePanel()\\">取消</button></div>";
     var p = document.getElementById("panel"); p.innerHTML = html; p.classList.add("open");
@@ -166,11 +193,11 @@ function openForm(id){
 function saveForm(id){
   var cfg = CUR; var body = {};
   cfg.fields.forEach(function(f){
-    var el = document.getElementById("f-"+f); if(!el) return;
+    var el = document.getElementById("f-"+f.k); if(!el) return;
     var v = el.value;
-    if(v==="true") v=true; else if(v==="false") v=false;
-    else if(v!=="" && !isNaN(Number(v)) && (f==="price"||f==="ori"||f==="stock"||f==="sort"||f==="amount"||f==="threshold"||f==="points"||f==="star")) v=Number(v);
-    body[f]=v;
+    if(f.type==='bool') v = (v==='true');
+    else if(f.type==='num') v = (v===''?0:Number(v));
+    body[f.k]=v;
   });
   var req = id ? api("PATCH","/api/v1/admin/"+cfg.key+"/"+id, body)
               : api("POST","/api/v1/admin/"+cfg.key, body);
@@ -216,8 +243,13 @@ function saveConfig(){
   api("PATCH","/api/v1/admin/config", body).then(function(){ alert("已保存"); });
 }
 
-api("GET","/api/v1/admin/resources").then(function(d){
-  RES = d.items || [];
+// 先拉分类建 id→名映射，再加载资源（让分类列显示中文名 + 表单可选分类）
+api("GET","/api/v1/admin/categories").then(function(cd){
+  CATS = (cd && cd.items) || [];
+  CATS.forEach(function(c){ CATMAP[c.id] = c.name; });
+  return api("GET","/api/v1/admin/resources");
+}).then(function(d){
+  RES = (d && d.items) || [];
   buildNav();
   selectRes("products"); // 默认进商品管理
 });

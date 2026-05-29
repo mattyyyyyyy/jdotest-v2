@@ -160,18 +160,195 @@ export function buildApp(): FastifyInstance {
   return app;
 }
 
-/** 后台导航：resource key → 中文标签 + 列表展示字段 + 表单字段 */
+/**
+ * 后台导航 + 列/表单定义（带中文标签与类型，对应 docs/design/data-dictionary.md）。
+ * 列 col = { k, label, type }；表单字段 f = { k, label, type, opts? }
+ * type: text/num/yuan(元)/fen(分)/bool/image/cat(分类)/orderStatus/channel/couponType/aftStatus/role/list
+ */
 const RESOURCE_LIST = [
-  { key: 'products', label: '商品管理', columns: ['id', 'title', 'cat', 'price', 'stock', 'onShelf'], fields: ['title', 'cat', 'price', 'ori', 'stock', 'tag', 'onShelf'] },
-  { key: 'categories', label: '分类管理', columns: ['id', 'name', 'icon', 'sort'], fields: ['name', 'icon', 'sort'] },
-  { key: 'banners', label: 'Banner', columns: ['id', 'title', 'sub', 'tone', 'active'], fields: ['title', 'sub', 'tone', 'img', 'active'] },
-  { key: 'heroRecs', label: '推荐位', columns: ['id', 'tag', 'title', 'navScene', 'active'], fields: ['tag', 'title', 'sub', 'kind', 'navScene', 'active'] },
-  { key: 'orders', label: '订单管理', columns: ['id', 'userId', 'status', 'totalAmount', 'channel'], fields: ['status', 'channel'] },
-  { key: 'users', label: '用户管理', columns: ['id', 'phone', 'name', 'points', 'balance', 'banned'], fields: ['name', 'points', 'banned'] },
-  { key: 'coupons', label: '优惠券', columns: ['id', 'name', 'type', 'amount', 'stock', 'active'], fields: ['name', 'type', 'amount', 'threshold', 'stock', 'active'] },
-  { key: 'reviews', label: '评价管理', columns: ['id', 'productId', 'star', 'text', 'hidden'], fields: ['hidden'] },
-  { key: 'pickupPoints', label: '自提点', columns: ['id', 'name', 'address', 'hours', 'open'], fields: ['name', 'address', 'hours', 'open'] },
-  { key: 'aftersale', label: '售后', columns: ['id', 'orderId', 'reason', 'status'], fields: ['status'] },
-  { key: 'shipping', label: '物流', columns: ['id', 'trackingNo', 'status'], fields: ['trackingNo', 'status'] },
-  { key: 'adminUsers', label: '系统·账号', columns: ['id', 'account', 'role'], fields: ['account', 'role'] },
+  {
+    key: 'products', label: '商品管理',
+    columns: [
+      { k: 'img', label: '图', type: 'image' },
+      { k: 'id', label: '商品ID', type: 'text' },
+      { k: 'title', label: '商品名称', type: 'text' },
+      { k: 'cat', label: '分类', type: 'cat' },
+      { k: 'price', label: '现价', type: 'yuan' },
+      { k: 'ori', label: '原价', type: 'yuan' },
+      { k: 'stock', label: '库存', type: 'num' },
+      { k: 'sold', label: '销量(万)', type: 'num' },
+      { k: 'onShelf', label: '上架状态', type: 'bool' },
+    ],
+    fields: [
+      { k: 'title', label: '商品名称', type: 'text' },
+      { k: 'cat', label: '分类', type: 'cat' },
+      { k: 'price', label: '现价(元)', type: 'num' },
+      { k: 'ori', label: '原价(元)', type: 'num' },
+      { k: 'stock', label: '库存(件)', type: 'num' },
+      { k: 'tag', label: '角标文案', type: 'text' },
+      { k: 'onShelf', label: '上架', type: 'bool' },
+    ],
+  },
+  {
+    key: 'categories', label: '分类管理',
+    columns: [
+      { k: 'id', label: '分类ID', type: 'text' },
+      { k: 'name', label: '分类名', type: 'text' },
+      { k: 'icon', label: '图标', type: 'text' },
+      { k: 'sort', label: '排序', type: 'num' },
+    ],
+    fields: [
+      { k: 'name', label: '分类名', type: 'text' },
+      { k: 'icon', label: '图标(bolt/wrench/cookie/luggage/car/phone/sparkles)', type: 'text' },
+      { k: 'sort', label: '排序', type: 'num' },
+    ],
+  },
+  {
+    key: 'banners', label: 'Banner 横幅',
+    columns: [
+      { k: 'id', label: 'ID', type: 'text' },
+      { k: 'title', label: '主标题', type: 'text' },
+      { k: 'sub', label: '副标题', type: 'text' },
+      { k: 'tone', label: '配色', type: 'text' },
+      { k: 'active', label: '启用', type: 'bool' },
+    ],
+    fields: [
+      { k: 'title', label: '主标题', type: 'text' },
+      { k: 'sub', label: '副标题', type: 'text' },
+      { k: 'tone', label: '配色(blue/emerald)', type: 'text' },
+      { k: 'img', label: '图 URL', type: 'text' },
+      { k: 'active', label: '启用', type: 'bool' },
+    ],
+  },
+  {
+    key: 'heroRecs', label: '推荐位',
+    columns: [
+      { k: 'id', label: 'ID', type: 'text' },
+      { k: 'tag', label: '角标', type: 'text' },
+      { k: 'title', label: '标题', type: 'text' },
+      { k: 'navScene', label: '跳转场景', type: 'cat' },
+      { k: 'active', label: '启用', type: 'bool' },
+    ],
+    fields: [
+      { k: 'tag', label: '角标', type: 'text' },
+      { k: 'title', label: '标题', type: 'text' },
+      { k: 'sub', label: '副文', type: 'text' },
+      { k: 'navScene', label: '跳转场景', type: 'cat' },
+      { k: 'active', label: '启用', type: 'bool' },
+    ],
+  },
+  {
+    key: 'orders', label: '订单管理',
+    columns: [
+      { k: 'id', label: '订单号', type: 'text' },
+      { k: 'userId', label: '用户', type: 'text' },
+      { k: 'itemTitles', label: '商品清单', type: 'list' },
+      { k: 'totalAmount', label: '金额', type: 'fen' },
+      { k: 'status', label: '状态', type: 'orderStatus' },
+      { k: 'channel', label: '入口', type: 'channel' },
+      { k: 'createdAt', label: '下单时间', type: 'text' },
+    ],
+    fields: [
+      { k: 'status', label: '状态', type: 'orderStatus' },
+      { k: 'channel', label: '入口渠道', type: 'channel' },
+    ],
+  },
+  {
+    key: 'users', label: '用户管理',
+    columns: [
+      { k: 'id', label: '用户ID', type: 'text' },
+      { k: 'phone', label: '手机号', type: 'text' },
+      { k: 'name', label: '昵称', type: 'text' },
+      { k: 'points', label: '积分', type: 'num' },
+      { k: 'balance', label: '余额', type: 'fen' },
+      { k: 'banned', label: '账号状态', type: 'bool' },
+    ],
+    fields: [
+      { k: 'name', label: '昵称', type: 'text' },
+      { k: 'points', label: '积分', type: 'num' },
+      { k: 'banned', label: '封禁', type: 'bool' },
+    ],
+  },
+  {
+    key: 'coupons', label: '优惠券',
+    columns: [
+      { k: 'id', label: 'ID', type: 'text' },
+      { k: 'name', label: '券名', type: 'text' },
+      { k: 'type', label: '类型', type: 'couponType' },
+      { k: 'amount', label: '面额(分/折)', type: 'num' },
+      { k: 'threshold', label: '门槛', type: 'fen' },
+      { k: 'stock', label: '剩余(张)', type: 'num' },
+      { k: 'active', label: '启用', type: 'bool' },
+    ],
+    fields: [
+      { k: 'name', label: '券名', type: 'text' },
+      { k: 'type', label: '类型', type: 'couponType' },
+      { k: 'amount', label: '面额(满减填分,折扣填折数*10)', type: 'num' },
+      { k: 'threshold', label: '门槛(分)', type: 'num' },
+      { k: 'stock', label: '剩余张数', type: 'num' },
+      { k: 'active', label: '启用', type: 'bool' },
+    ],
+  },
+  {
+    key: 'reviews', label: '评价管理',
+    columns: [
+      { k: 'id', label: 'ID', type: 'text' },
+      { k: 'productId', label: '商品', type: 'text' },
+      { k: 'star', label: '评分', type: 'num' },
+      { k: 'text', label: '内容', type: 'text' },
+      { k: 'hidden', label: '显示状态', type: 'bool' },
+    ],
+    fields: [{ k: 'hidden', label: '隐藏', type: 'bool' }],
+  },
+  {
+    key: 'pickupPoints', label: '自提点',
+    columns: [
+      { k: 'id', label: 'ID', type: 'text' },
+      { k: 'name', label: '名称', type: 'text' },
+      { k: 'address', label: '地址', type: 'text' },
+      { k: 'hours', label: '营业时间', type: 'text' },
+      { k: 'open', label: '营业状态', type: 'bool' },
+    ],
+    fields: [
+      { k: 'name', label: '名称', type: 'text' },
+      { k: 'address', label: '地址', type: 'text' },
+      { k: 'hours', label: '营业时间', type: 'text' },
+      { k: 'open', label: '营业', type: 'bool' },
+    ],
+  },
+  {
+    key: 'aftersale', label: '售后',
+    columns: [
+      { k: 'id', label: '售后单号', type: 'text' },
+      { k: 'orderId', label: '关联订单', type: 'text' },
+      { k: 'reason', label: '原因', type: 'text' },
+      { k: 'status', label: '状态', type: 'aftStatus' },
+    ],
+    fields: [{ k: 'status', label: '状态', type: 'aftStatus' }],
+  },
+  {
+    key: 'shipping', label: '物流',
+    columns: [
+      { k: 'id', label: '订单号', type: 'text' },
+      { k: 'trackingNo', label: '运单号', type: 'text' },
+      { k: 'status', label: '状态', type: 'text' },
+      { k: 'nodes', label: '轨迹', type: 'list' },
+    ],
+    fields: [
+      { k: 'trackingNo', label: '运单号', type: 'text' },
+      { k: 'status', label: '状态', type: 'text' },
+    ],
+  },
+  {
+    key: 'adminUsers', label: '系统·账号',
+    columns: [
+      { k: 'id', label: 'ID', type: 'text' },
+      { k: 'account', label: '账号', type: 'text' },
+      { k: 'role', label: '角色', type: 'text' },
+    ],
+    fields: [
+      { k: 'account', label: '账号', type: 'text' },
+      { k: 'role', label: '角色(超管/运营/客服/财务)', type: 'text' },
+    ],
+  },
 ];

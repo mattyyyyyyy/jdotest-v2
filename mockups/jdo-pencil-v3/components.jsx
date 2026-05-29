@@ -158,7 +158,7 @@ function Dock({ route, onNav }) {
 function ProductCard({ p, onNav }) {
   const ribbonClass = ({ red: '', mint: 'cyan', gold: 'gold', cyan: 'cyan' }[p.tagKind || 'red']) || '';
   return (
-    <div className="prod-card" onClick={() => onNav && onNav('mall-detail')}>
+    <div className="prod-card" onClick={() => onNav && onNav('mall-detail', p.id)}>
       <div className="prod-img" style={{ backgroundImage: `url(${p.img})` }}>
         {p.tag && (
           <div className={'ribbon ' + ribbonClass}>{p.tag}</div>

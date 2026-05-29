@@ -36,6 +36,7 @@ function App() {
   const [t, setTweak] = useTweaks(APP_DEFAULTS);
   const validInitial = ROUTES.find((r) => r.id === APP_DEFAULTS.initialScreen)?.id || 'ivi';
   const [route, setRoute] = useStateApp(validInitial);
+  const [navArg, setNavArg] = useStateApp(null); // 跨屏参数：如点商品传 productId
 
   const [enteringMall, setEnteringMall] = useStateApp(false);
 
@@ -58,7 +59,7 @@ function App() {
   // mall content. Otherwise mall renders normal for 1 frame, then the CSS
   // animation kicks in by jumping back to translateY(40%) — visually a
   // "exit-then-enter" stutter, then on subsequent navs a "slide-down vanish".
-  const onNav = (next) => {
+  const onNav = (next, arg) => {
     const isMallNow = route.startsWith('mall');
     const isMallNext = next.startsWith('mall');
     if (!isMallNow && isMallNext) {
@@ -66,6 +67,7 @@ function App() {
     } else if (isMallNow && !isMallNext) {
       setEnteringMall(false);
     }
+    setNavArg(arg !== undefined ? arg : null); // 记住跨屏参数（如商品 id）
     setRoute(next);
   };
 
@@ -84,7 +86,7 @@ function App() {
       {route === 'mall-home'      && <MallHome onNav={onNav} cols={t.cols} />}
       {route === 'mall-category'  && <MallCategory onNav={onNav} cols={t.cols} />}
       {route === 'mall-search'    && <MallSearch onNav={onNav} />}
-      {route === 'mall-detail'    && <MallDetail onNav={onNav} />}
+      {route === 'mall-detail'    && <MallDetail onNav={onNav} productId={navArg} />}
       {route === 'mall-cart'      && <MallCart onNav={onNav} />}
       {route === 'mall-checkout'  && <MallCheckout onNav={onNav} />}
       {route === 'mall-pay'       && <MallPay onNav={onNav} />}

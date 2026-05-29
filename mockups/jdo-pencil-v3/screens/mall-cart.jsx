@@ -86,7 +86,7 @@ function MallCart({ onNav }) {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
                 {products.slice(20, 23).map((p) => (
-                  <div key={p.id} className="cart-row" style={{ gridTemplateColumns: '120px 1fr auto', padding: 14 }} onClick={() => onNav('mall-detail')}>
+                  <div key={p.id} className="cart-row" style={{ gridTemplateColumns: '120px 1fr auto', padding: 14 }} onClick={() => onNav('mall-detail', p.id)}>
                     <div className="cart-img" style={{ width: 120, height: 120, backgroundImage: `url(${p.img})` }} />
                     <div className="cart-info">
                       <div className="cart-name" style={{ fontSize: 20 }}>{p.title}</div>

@@ -121,7 +121,7 @@ function MallSearch({ onNav }) {
                   const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                   const matched = p.title.replace(new RegExp(`(${escaped})`, 'g'), '<b>$1</b>');
                   return (
-                    <div key={p.id} className={'sugg-row' + (i === 0 ? ' match' : '')} onClick={() => onNav('mall-detail')}>
+                    <div key={p.id} className={'sugg-row' + (i === 0 ? ' match' : '')} onClick={() => onNav('mall-detail', p.id)}>
                       <div className="ico"><Icon name="search" size={22} sw={1.5} /></div>
                       <div className="name" dangerouslySetInnerHTML={{ __html: matched }} />
                       <div className="count">¥{p.price.toFixed(p.price % 1 ? 1 : 0)} · {p.sold}k+ 已售</div>
