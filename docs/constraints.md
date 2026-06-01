@@ -55,7 +55,7 @@
 | must | 编辑前完成开工三件套（读 CLAUDE/INDEX + 登记 Workstream）| hook `check-workstream-registered.sh` |
 | must | commit 末尾带 `agent:` 尾标 | hook `check-agent-tag.sh` |
 | must | 新增 docs/*.md 必须登记 INDEX（防孤儿）| hook `check-index-updated.sh` |
-| must | 改 openspec/** 通过 `validate --strict` | hook `openspec-validate.sh` |
+| must | 改 openspec/** 通过 `validate --all --strict` | hook `openspec-validate.sh` |
 | must | API 契约单一真相 openapi.yaml，controller 漂移 CI 报错 | api-contracts.md（CI 待建）|
 | should | 文档同步（源码↔spec/ADR）、测试 gate（Stop 前跑 test）| CLAUDE.md 软约束（误报率高，暂未 hook 化）|
 | should | Conventional Commits（feat/fix/docs/refactor/test/chore/perf）| CONTRIBUTING.md（待补）|

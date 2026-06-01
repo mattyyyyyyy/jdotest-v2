@@ -49,7 +49,7 @@
 | `scan-secrets.sh` | PreToolUse(Edit/Write) | 密钥扫描：写入高置信度密钥/私钥 → 拒绝 |
 | `check-agent-tag.sh` | PreToolUse(Bash) | commit 自报家门：`git commit` 缺 `agent:` 尾标 → 拒绝 |
 | `check-index-updated.sh` | PostToolUse(Write/Edit) | 防孤儿：新增 `docs/**/*.md` 未登记 INDEX → 反馈提醒 |
-| `openspec-validate.sh` | PostToolUse(Write/Edit) | 改 `openspec/**` 后跑 `validate --strict`（CLI 缺失则跳过）|
+| `openspec-validate.sh` | PostToolUse(Write/Edit) | 改 `openspec/**` 后跑 `validate --all --strict`（注意必须带 `--all`，否则空跑；hook 自动补 `~/.local/node20/bin` 到 PATH，CLI 缺失则跳过）|
 
 > 暂以 `should`（软约束）保留、未配 hook 的：**文档同步**（源码↔spec/ADR 联动）、**测试 gate**（Stop 前跑 lint/test）——这两条误报率高，待规则收敛后再升为 hook，避免噪音削弱护栏可信度。
 

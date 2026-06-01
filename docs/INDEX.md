@@ -54,7 +54,7 @@
 
 | 日期 | Agent | 完成项 | 关键 commit |
 |---|---|---|---|
-| 2026-06-01 | claude-harness-reconcile | **Harness 强制层 + 文档唯一真相整改**（用 ai-project-bootstrapper skill 反向优化 v2）：① 落地 `.claude` 5 个 hook（开工三件套 / 密钥扫描 / commit 自报家门 / 防孤儿 / openspec 校验，`exit 2` 实测通过，会话中真实拦截过 Write）② INDEX 同步（孤儿 6→0、回填真实 commit、补登 admin/demo 两条遗漏）③ 拆 PRD §Implementation Decisions → architecture/backend-spec/api-contracts（566→352 行，留指针）④ 补 constraints / open-questions / task-plan ⑤ 补 Observability 层（.env.example / PR 模板 / CONTRIBUTING / CODEOWNERS）⑥ P2：核实 ADR-0009 七类 sync 一致（关 Q4）+ 如实登记 OpenSpec 生命周期阻塞（Q10）；反向修 bootstrapper-skill 3 项（hook schema 错 / docs｜openspec 双轨 / dogfooding 诚实化，skill repo `ba58c69`）| `9aa6772` `bc3ef7e` `8443224` `949d6ef` `0c0279a` |
+| 2026-06-01 | claude-harness-reconcile | **Harness 强制层 + 文档唯一真相整改**（用 ai-project-bootstrapper skill 反向优化 v2）：① 落地 `.claude` 5 个 hook（开工三件套 / 密钥扫描 / commit 自报家门 / 防孤儿 / openspec 校验，`exit 2` 实测通过，会话中真实拦截过 Write）② INDEX 同步（孤儿 6→0、回填真实 commit、补登 admin/demo 两条遗漏）③ 拆 PRD §Implementation Decisions → architecture/backend-spec/api-contracts（566→352 行，留指针）④ 补 constraints / open-questions / task-plan ⑤ 补 Observability 层（.env.example / PR 模板 / CONTRIBUTING / CODEOWNERS）⑥ P2：核实 ADR-0009 七类 sync 一致（关 Q4）+ 如实登记 OpenSpec 生命周期阻塞（Q10）；反向修 bootstrapper-skill 3 项（hook schema 错 / docs｜openspec 双轨 / dogfooding 诚实化，skill repo `ba58c69`）⑦ 本机装 Node20 + openspec CLI（`~/.local/node20`）跑通 `validate --all --strict`（3/3 绿）；真跑又抓出 hook 与文档的 `validate --strict` **空跑 bug**（缺 `--all`），修 hook（+PATH 自定位）+ CLAUDE/constraints + skill（`bf78049`）；登记 Q11（_templates 副本待重新 vendoring）| `9aa6772` `bc3ef7e` `8443224` `949d6ef` `0c0279a` `+本次` |
 | 2026-05-29 | claude-admin-impl | **后台管理整站 + 前后台闭环 + 口径统一 + QA**：完整 admin SPA（登录占位 / 商品 / 订单 / 用户 / 营销 / 履约 / 内容 / 看板）· V3↔后台双向数据同步 · 货币统一为「分」· 字段中文化 + 数据字典 · 新增商品默认上架并进电商 · 购物车接真实数据全链路 · 商品图片上传（data URI/URL）· Claude Design 深色后台设计稿落地 + 内容区铺满宽屏 · QA 修复（立即购买 / 删除级联 / 分类占用拦截）· 配套 `consistency-plan` + `admin-benchmark` 调研 | `7a5b41c`→`3c29141` |
 | 2026-05-29 | claude-demo-sync | 前后台数据同步可视化演示（首个连通 demo）| `6f28441` |
 | 2026-05-29 | claude-impl-slice1 | **首个可运行纵向切片落地**：pnpm monorepo 脚手架（package.json/pnpm-workspace/tsconfig.base/turbo/.npmrc）+ `packages/order-state-machine`（纯函数状态机，对应 openspec/specs/order，**20 单测全绿**）+ `services/api` 薄切片（Fastify + 7 场景分类 + 商品接口 + 复用状态机的 /orders/transition，**8 route 测试全绿** + 服务器实启 curl 通过）。typecheck 3/3 绿。**符合 PRD「首个 PR = 测试脚手架 + OrderStateMachine 示范」** | `c6608ee` |
@@ -241,7 +241,7 @@
 
 | Change | 状态 | 备注 |
 |---|---|---|
-| [add-admin-auth](../openspec/changes/add-admin-auth/) | ✅ 4 件套完整 · `validate --strict` 通过 | admin RBAC + 审计（示范完整 change）|
+| [add-admin-auth](../openspec/changes/add-admin-auth/) | ✅ 4 件套完整 · `validate --all --strict` 通过（2026-06-01 实测，CLI 1.3.1）| admin RBAC + 审计（示范完整 change）|
 | add-admin-catalog | 🟡 骨架（待 `/opsx:propose` 填充）| 商品/SKU/分类后台 |
 | add-admin-order | 🟡 骨架 | 订单管理/发货/退款 |
 | add-admin-analytics | 🟡 骨架 | 运营看板 |
