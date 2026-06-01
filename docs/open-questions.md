@@ -12,7 +12,8 @@
 |---|---|---|---|---|
 | Q2 | **数据全内存、重启丢失**：`services/api/src/store.ts` 未接库 | 内存 store，接口语义同 Prisma | 演示数据不持久；多人协作易丢 | 后端 agent（consistency-plan P2#10 / ADR-0003）|
 | Q11 | **`_templates/` 是 skill 的 vendored 副本，已与上游分叉**：本轮修了 `../ai-project-bootstrapper-skill` 的 hook schema / validate 命令 / 双轨措辞，但 `jdotest-v2/_templates/` 那份快照未同步（Ownership Zone 标只读不改）| 副本仍含旧错（扁平 hook schema、`validate --strict` 空跑命令）| 读 _templates 的人会拿到过期信息 | 维护者 · 从 skill repo 重新 vendoring（不手改）|
-| Q10 | **OpenSpec 生命周期未跑完**：`changes/archive/` 空；order 已实现但无 change→archive 痕迹；`add-admin-{catalog,order,analytics}` 仍骨架（仅 README + .openspec.yaml）| ✅ CLI 已装（`~/.local/node20/bin/openspec` 1.3.1），`validate --all --strict` 3/3 通过（add-admin-auth + order + driving-mode）。剩余阻塞：3 骨架 change 待 `/opsx:propose` 填充 + feature 待实施才能 apply→archive | propose→apply→archive 尚未走完整环 | 实施 agent · 逐个 `/opsx:propose` → apply → `openspec archive` |
+| Q10 | **OpenSpec 生命周期剩余**：✅ 首个完整环已走通（add-admin-auth propose→apply→archive，`changes/archive/2026-06-01-add-admin-auth/`）。剩：order 已实现但无 change→archive 痕迹（追溯性）；`add-admin-{catalog,order,analytics}` 仍骨架 | CLI 已装并 `validate --all --strict` 3/3 绿 | 其余域尚未走环 | 实施 agent · 逐个 `/opsx:propose` → apply → archive |
+| Q12 | **消费端真实登录未做**：车主端（车机扫码 `auth-qr` / 手机验证码 `auth-login`）仍为 mock，无 `add-qr-login` change | 后端 admin-auth 的 token/scrypt 套路可复用 | 消费端登录链路缺真实实现 | 实施 agent · `/opsx:propose add-qr-login` → apply |
 
 ## 🟡 业务方需拍板（来自 PRD 关键风险）
 
