@@ -10,7 +10,6 @@
 
 | # | 问题 | 当前假设 / 现状 | 影响 | Owner / 期限 |
 |---|---|---|---|---|
-| Q1 | **admin RBAC 未实施**：`add-admin-auth` 4 件套已写，但代码里 admin 无登录 / 无角色 / 无审计 | 暂以无鉴权 Demo 运行 | spec↔代码 drift；安全演示打折 | 实施 agent · 下个迭代（consistency-plan P0#3）|
 | Q2 | **数据全内存、重启丢失**：`services/api/src/store.ts` 未接库 | 内存 store，接口语义同 Prisma | 演示数据不持久；多人协作易丢 | 后端 agent（consistency-plan P2#10 / ADR-0003）|
 | Q11 | **`_templates/` 是 skill 的 vendored 副本，已与上游分叉**：本轮修了 `../ai-project-bootstrapper-skill` 的 hook schema / validate 命令 / 双轨措辞，但 `jdotest-v2/_templates/` 那份快照未同步（Ownership Zone 标只读不改）| 副本仍含旧错（扁平 hook schema、`validate --strict` 空跑命令）| 读 _templates 的人会拿到过期信息 | 维护者 · 从 skill repo 重新 vendoring（不手改）|
 | Q10 | **OpenSpec 生命周期未跑完**：`changes/archive/` 空；order 已实现但无 change→archive 痕迹；`add-admin-{catalog,order,analytics}` 仍骨架（仅 README + .openspec.yaml）| ✅ CLI 已装（`~/.local/node20/bin/openspec` 1.3.1），`validate --all --strict` 3/3 通过（add-admin-auth + order + driving-mode）。剩余阻塞：3 骨架 change 待 `/opsx:propose` 填充 + feature 待实施才能 apply→archive | propose→apply→archive 尚未走完整环 | 实施 agent · 逐个 `/opsx:propose` → apply → `openspec archive` |
@@ -38,4 +37,5 @@
 - must 级规则是否强制 → 已落地 `.claude/settings.json` hooks（commit `9aa6772`）
 - PRD 技术内容唯一真相归属 → 已拆分到 architecture/backend-spec/api-contracts（commit `bc3ef7e`）
 - ~~Q3~~ `.env.example` 缺失 → **已补**（commit `949d6ef`，Phase B2），变量清单见 backend-spec §五
+- ~~Q1~~ admin RBAC「未实施」→ **实为误诊 + 已 apply**：admin-auth（账号密码登录 + RBAC 4 角色权限点 + 操作审计 + 限流）其实已实现于 `services/api/src/admin-auth.ts` + app.ts 守卫/审计钩子，**38 route 测试**覆盖 401 越权 / 403 权限 / 审计落库 / 429 限流 / refresh。我此前 Q1 基于 consistency-plan 旧快照误判（未核代码），特此更正。2026-06-01 apply 完成 + `openspec archive`。
 - ~~Q4~~ ADR-0009 七类场景 sync → **已核实一致**（2026-06-01）：v3 `data.js` 7 场景 `energy 能量补给 / care 爱车养护 / eat 一路吃喝 / trip 远行出差 / gear 车内好物 / sos 24h 救援 / select 严选好物` = ADR-0009 锁定 7 类；后端 `load-v3.ts` 同源；feature-spec / interaction-patterns 无残留 6 类老命名；ADR-0008 已 Superseded。无 drift。

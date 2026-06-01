@@ -1,19 +1,97 @@
 import { fileURLToPath } from 'node:url';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import fstatic from '@fastify/static';
 import { z } from 'zod';
 import { transition, type OrderState, type OrderEvent } from '@jdo/order-state-machine';
 import { store } from './store.js';
 import { ADMIN_APP_HTML, ADMIN_APP_JS } from './admin-spa.js';
+import * as auth from './admin-auth.js';
 
 function errBody(code: string, message: string, details: unknown = {}) {
   return { code, message, details, traceId: 'demo-trace' };
 }
 
+/** 扩展请求：守卫填入的 admin 身份与审计改前快照 */
+type Req = FastifyRequest & { admin?: auth.TokenPayload; auditBefore?: unknown };
+
 export function buildApp(): FastifyInstance {
   const app = Fastify({ logger: false });
 
   app.get('/health', async () => ({ status: 'ok' }));
+
+  // ============ 后台员工鉴权 /api/v1/admin/auth/*（openspec/specs/admin-auth）============
+  // 账号密码登录 → 下发 admin token；与车主账号隔离。
+  app.post('/api/v1/admin/auth/login', async (req, reply) => {
+    if (auth.rateLimited(req.ip)) return reply.code(429).send(errBody('RATE_LIMITED', '登录尝试过于频繁，请稍后再试', {}));
+    const body = z.object({ account: z.string(), password: z.string() }).parse(req.body);
+    const u = store.list('adminUsers').find((x) => x.account === body.account);
+    if (!u) return reply.code(401).send(errBody('ADMIN_LOGIN_FAILED', '账号或密码错误', {}));
+    // 惰性补 passwordHash（Demo 默认密码；store.reset 后仍可登录）
+    if (!u.passwordHash) store.update('adminUsers', u.id, { passwordHash: auth.hashPassword(auth.demoPassword(u.account as string)) });
+    const stored = store.get('adminUsers', u.id)?.passwordHash as string;
+    if (!auth.verifyPassword(body.password, stored)) return reply.code(401).send(errBody('ADMIN_LOGIN_FAILED', '账号或密码错误', {}));
+    const now = Math.floor(Date.now() / 1000);
+    const claims = { sub: u.id, account: u.account as string, role: u.role as string };
+    return {
+      accessToken: auth.signToken(claims, 'admin', auth.ACCESS_TTL, now),
+      refreshToken: auth.signToken(claims, 'admin-refresh', auth.REFRESH_TTL, now),
+      admin: { id: u.id, account: u.account, role: u.role },
+      permissions: auth.ROLE_PERMS[u.role as string] ?? [],
+    };
+  });
+
+  app.post('/api/v1/admin/auth/refresh', async (req, reply) => {
+    const body = z.object({ refreshToken: z.string() }).parse(req.body);
+    const p = auth.verifyToken(body.refreshToken, 'admin-refresh');
+    if (!p) return reply.code(401).send(errBody('ADMIN_REFRESH_INVALID', 'refresh token 失效，请重新登录', {}));
+    const now = Math.floor(Date.now() / 1000);
+    return { accessToken: auth.signToken({ sub: p.sub, account: p.account, role: p.role }, 'admin', auth.ACCESS_TTL, now) };
+  });
+
+  app.get('/api/v1/admin/auth/me', async (req, reply) => {
+    const p = auth.verifyToken(auth.bearer(req.headers.authorization), 'admin');
+    if (!p) return reply.code(401).send(errBody('ADMIN_UNAUTHENTICATED', '需要后台登录', {}));
+    return { id: p.sub, account: p.account, role: p.role, permissions: auth.ROLE_PERMS[p.role] ?? [] };
+  });
+
+  // 守卫：/api/v1/admin/*（除 login/refresh）必须带有效 admin token + 对应权限点。
+  // 消费端 token / 无 token 一律 401；权限不足 403。BREAKING per add-admin-auth。
+  app.addHook('preHandler', async (req, reply) => {
+    const r = auth.parseAdminRoute(req.method, req.url);
+    if (!r.underAdmin || r.isAuthPublic) return; // 非后台，或 login/refresh：放行
+    const payload = auth.verifyToken(auth.bearer(req.headers.authorization), 'admin');
+    if (!payload) return reply.code(401).send(errBody('ADMIN_UNAUTHENTICATED', '需要后台登录（admin token 缺失或失效）', {}));
+    (req as Req).admin = payload;
+    if (r.permission && !auth.hasPermission(payload.role, r.permission)) {
+      return reply.code(403).send(errBody('ADMIN_FORBIDDEN', '权限不足', { need: r.permission, role: payload.role }));
+    }
+    // 写操作：抓改前快照供审计 before-after
+    if (r.isWrite && r.resource && r.id && store.isResource(r.resource)) {
+      const before = store.get(r.resource, r.id);
+      (req as Req).auditBefore = before ? { ...before } : null;
+    }
+  });
+
+  // 审计：admin 写操作成功后落 auditLogs（who/when/action/target/before-after/ip）。
+  // 用 onSend（响应发出前执行且被 await），保证审计在请求返回前已落库，避免竞态。
+  app.addHook('onSend', async (req, reply, payload) => {
+    const r = auth.parseAdminRoute(req.method, req.url);
+    const admin = (req as Req).admin;
+    if (r.underAdmin && !r.isAuth && r.isWrite && reply.statusCode < 400 && admin) {
+      store.create('auditLogs', {
+        adminId: admin.sub,
+        account: admin.account,
+        role: admin.role,
+        action: req.method,
+        target: r.id ? `${r.resource}/${r.id}` : r.resource,
+        before: (req as Req).auditBefore ?? null,
+        after: (req.body as unknown) ?? null,
+        ip: req.ip,
+        at: new Date().toISOString(),
+      });
+    }
+    return payload;
+  });
 
   // ============ 消费端（前台）/api/v1/* ============
 

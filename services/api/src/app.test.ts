@@ -1,26 +1,42 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
 import { buildApp } from './app.js';
 import { store } from './store.js';
+import * as auth from './admin-auth.js';
 
 let app: FastifyInstance;
+let superToken = '';
+
+// 统一注入：默认带超管 token（既有用例都假设全权访问）；可用 opts.headers 覆盖。
+// 消费端 /api/v1/* 不受守卫影响，带 header 也无害。
+const inj = (opts: InjectOptions): Promise<LightMyRequestResponse> =>
+  app.inject({ ...opts, headers: { authorization: `Bearer ${superToken}`, ...((opts.headers as Record<string, string> | undefined) ?? {}) } }) as Promise<LightMyRequestResponse>;
+
+async function login(account: string, password: string): Promise<string> {
+  const r = await app.inject({ method: 'POST', url: '/api/v1/admin/auth/login', payload: { account, password } });
+  return r.json().accessToken as string;
+}
 
 beforeAll(async () => {
   app = buildApp();
   await app.ready();
+  superToken = await login('admin', 'admin123'); // 超管，token 无状态，store.reset 不影响
 });
-beforeEach(() => store.reset());
+beforeEach(() => {
+  store.reset();
+  auth.__resetRateLimit();
+});
 afterAll(async () => {
   await app.close();
 });
 
 describe('健康 & 引导数据', () => {
   it('/health ok', async () => {
-    expect((await app.inject({ method: 'GET', url: '/health' })).json()).toEqual({ status: 'ok' });
+    expect((await inj({ method: 'GET', url: '/health' })).json()).toEqual({ status: 'ok' });
   });
 
   it('/api/v1/bootstrap 返回 V3 四件套（来自 V3 data.js 种子）', async () => {
-    const d = (await app.inject({ method: 'GET', url: '/api/v1/bootstrap' })).json();
+    const d = (await inj({ method: 'GET', url: '/api/v1/bootstrap' })).json();
     expect(d.categories).toHaveLength(7); // 7 场景
     expect(d.categories[0].id).toBe('energy');
     expect(d.products.length).toBeGreaterThan(50); // V3 60+ 商品
@@ -31,13 +47,13 @@ describe('健康 & 引导数据', () => {
 
 describe('消费端读接口', () => {
   it('?cat=eat 只返回一路吃喝', async () => {
-    const { items } = (await app.inject({ method: 'GET', url: '/api/v1/products?cat=eat' })).json();
+    const { items } = (await inj({ method: 'GET', url: '/api/v1/products?cat=eat' })).json();
     expect(items.length).toBeGreaterThan(0);
     expect(items.every((p: { cat: string }) => p.cat === 'eat')).toBe(true);
   });
 
   it('货币统一：商品价格存为「分」整数（e1 中石化 97元 → 9700）', async () => {
-    const e1 = (await app.inject({ method: 'GET', url: '/api/v1/products/e1' })).json();
+    const e1 = (await inj({ method: 'GET', url: '/api/v1/products/e1' })).json();
     expect(e1.price).toBe(9700); // 97.00 元 = 9700 分
     expect(Number.isInteger(e1.price)).toBe(true);
   });
@@ -45,7 +61,7 @@ describe('消费端读接口', () => {
 
 describe('后台通用 CRUD（一套接口管所有实体）', () => {
   it('resources 列出所有可管理实体', async () => {
-    const { items } = (await app.inject({ method: 'GET', url: '/api/v1/admin/resources' })).json();
+    const { items } = (await inj({ method: 'GET', url: '/api/v1/admin/resources' })).json();
     const keys = items.map((r: { key: string }) => r.key);
     expect(keys).toContain('products');
     expect(keys).toContain('orders');
@@ -54,19 +70,19 @@ describe('后台通用 CRUD（一套接口管所有实体）', () => {
   });
 
   it('admin 看到全部商品（含下架），数量 ≥ 前台在售', async () => {
-    const adminCount = (await app.inject({ method: 'GET', url: '/api/v1/admin/products' })).json().items.length;
-    const frontCount = (await app.inject({ method: 'GET', url: '/api/v1/products' })).json().total;
+    const adminCount = (await inj({ method: 'GET', url: '/api/v1/admin/products' })).json().items.length;
+    const frontCount = (await inj({ method: 'GET', url: '/api/v1/products' })).json().total;
     expect(adminCount).toBeGreaterThanOrEqual(frontCount);
   });
 
   it('未知 resource → 404', async () => {
-    expect((await app.inject({ method: 'GET', url: '/api/v1/admin/nope' })).statusCode).toBe(404);
+    expect((await inj({ method: 'GET', url: '/api/v1/admin/nope' })).statusCode).toBe(404);
   });
 
   it('对每个实体都能列表（全 12 个 resource 不报错）', async () => {
-    const { items } = (await app.inject({ method: 'GET', url: '/api/v1/admin/resources' })).json();
+    const { items } = (await inj({ method: 'GET', url: '/api/v1/admin/resources' })).json();
     for (const r of items) {
-      const res = await app.inject({ method: 'GET', url: '/api/v1/admin/' + r.key });
+      const res = await inj({ method: 'GET', url: '/api/v1/admin/' + r.key });
       expect(res.statusCode, r.key).toBe(200);
       expect(Array.isArray(res.json().items), r.key).toBe(true);
     }
@@ -75,65 +91,65 @@ describe('后台通用 CRUD（一套接口管所有实体）', () => {
 
 describe('前后台数据同步（每类实体）', () => {
   it('商品：后台新增 → 置顶 + 前台 bootstrap 看到', async () => {
-    await app.inject({ method: 'POST', url: '/api/v1/admin/products', payload: { title: 'TEST车品', cat: 'gear', price: 5000, ori: 9900, stock: 9, onShelf: true } });
+    await inj({ method: 'POST', url: '/api/v1/admin/products', payload: { title: 'TEST车品', cat: 'gear', price: 5000, ori: 9900, stock: 9, onShelf: true } });
     // 后台列表置顶（items[0]）
-    const admin = (await app.inject({ method: 'GET', url: '/api/v1/admin/products' })).json().items;
+    const admin = (await inj({ method: 'GET', url: '/api/v1/admin/products' })).json().items;
     expect(admin[0].title).toBe('TEST车品');
     // 前台 bootstrap 能看到，且在最前
-    const d = (await app.inject({ method: 'GET', url: '/api/v1/bootstrap' })).json();
+    const d = (await inj({ method: 'GET', url: '/api/v1/bootstrap' })).json();
     expect(d.products.some((p: { title: string }) => p.title === 'TEST车品')).toBe(true);
     expect(d.products[0].title).toBe('TEST车品');
   });
 
   it('商品：新增不带 onShelf → 默认上架，前台可见（修同步 bug）', async () => {
-    await app.inject({ method: 'POST', url: '/api/v1/admin/products', payload: { title: '默认上架品', cat: 'gear', price: 6600 } });
-    const d = (await app.inject({ method: 'GET', url: '/api/v1/bootstrap' })).json();
+    await inj({ method: 'POST', url: '/api/v1/admin/products', payload: { title: '默认上架品', cat: 'gear', price: 6600 } });
+    const d = (await inj({ method: 'GET', url: '/api/v1/bootstrap' })).json();
     const found = d.products.find((p: { title: string }) => p.title === '默认上架品');
     expect(found).toBeTruthy();
     expect(found.onShelf).toBe(true); // 不再默认下架
   });
 
   it('商品：后台下架 → 前台消失', async () => {
-    const all = (await app.inject({ method: 'GET', url: '/api/v1/admin/products' })).json().items;
+    const all = (await inj({ method: 'GET', url: '/api/v1/admin/products' })).json().items;
     const id = all[0].id;
-    await app.inject({ method: 'PATCH', url: '/api/v1/admin/products/' + id, payload: { onShelf: false } });
-    const front = (await app.inject({ method: 'GET', url: '/api/v1/products' })).json();
+    await inj({ method: 'PATCH', url: '/api/v1/admin/products/' + id, payload: { onShelf: false } });
+    const front = (await inj({ method: 'GET', url: '/api/v1/products' })).json();
     expect(front.items.some((p: { id: string }) => p.id === id)).toBe(false);
   });
 
   it('分类：后台改名 → 前台分类同步', async () => {
-    await app.inject({ method: 'PATCH', url: '/api/v1/admin/categories/energy', payload: { name: '能量站' } });
-    const cats = (await app.inject({ method: 'GET', url: '/api/v1/categories' })).json().items;
+    await inj({ method: 'PATCH', url: '/api/v1/admin/categories/energy', payload: { name: '能量站' } });
+    const cats = (await inj({ method: 'GET', url: '/api/v1/categories' })).json().items;
     expect(cats.find((c: { id: string }) => c.id === 'energy').name).toBe('能量站');
   });
 
   it('Banner：后台停用 → 前台 bootstrap 不再返回', async () => {
-    const banners = (await app.inject({ method: 'GET', url: '/api/v1/admin/banners' })).json().items;
+    const banners = (await inj({ method: 'GET', url: '/api/v1/admin/banners' })).json().items;
     const id = banners[0].id;
-    await app.inject({ method: 'PATCH', url: '/api/v1/admin/banners/' + id, payload: { active: false } });
-    const d = (await app.inject({ method: 'GET', url: '/api/v1/bootstrap' })).json();
+    await inj({ method: 'PATCH', url: '/api/v1/admin/banners/' + id, payload: { active: false } });
+    const d = (await inj({ method: 'GET', url: '/api/v1/bootstrap' })).json();
     expect(d.banners.some((b: { id: string }) => b.id === id)).toBe(false);
   });
 
   it('订单：后台改状态生效', async () => {
-    await app.inject({ method: 'PATCH', url: '/api/v1/admin/orders/o-20003', payload: { status: 'PAID' } });
-    const o = (await app.inject({ method: 'GET', url: '/api/v1/admin/orders/o-20003' })).json();
+    await inj({ method: 'PATCH', url: '/api/v1/admin/orders/o-20003', payload: { status: 'PAID' } });
+    const o = (await inj({ method: 'GET', url: '/api/v1/admin/orders/o-20003' })).json();
     expect(o.status).toBe('PAID');
   });
 
   it('删除：后台删商品 → 列表减少', async () => {
-    const before = (await app.inject({ method: 'GET', url: '/api/v1/admin/products' })).json().items.length;
-    const id = (await app.inject({ method: 'GET', url: '/api/v1/admin/products' })).json().items[0].id;
-    await app.inject({ method: 'DELETE', url: '/api/v1/admin/products/' + id });
-    const after = (await app.inject({ method: 'GET', url: '/api/v1/admin/products' })).json().items.length;
+    const before = (await inj({ method: 'GET', url: '/api/v1/admin/products' })).json().items.length;
+    const id = (await inj({ method: 'GET', url: '/api/v1/admin/products' })).json().items[0].id;
+    await inj({ method: 'DELETE', url: '/api/v1/admin/products/' + id });
+    const after = (await inj({ method: 'GET', url: '/api/v1/admin/products' })).json().items.length;
     expect(after).toBe(before - 1);
   });
 });
 
 describe('双向同步 · 前→后：消费端下单 → 后台看到', () => {
   it('POST /api/v1/orders 创建订单并出现在后台订单列表', async () => {
-    const before = (await app.inject({ method: 'GET', url: '/api/v1/admin/orders' })).json().items.length;
-    const res = await app.inject({
+    const before = (await inj({ method: 'GET', url: '/api/v1/admin/orders' })).json().items.length;
+    const res = await inj({
       method: 'POST',
       url: '/api/v1/orders',
       // 货币统一：items.price 为「分」（V3 提交前已 元→分）
@@ -145,7 +161,7 @@ describe('双向同步 · 前→后：消费端下单 → 后台看到', () => {
     expect(order.channel).toBe('car');
     expect(order.totalAmount).toBe(3900 * 2 + 2990); // 直接求和（分）= 10790
 
-    const adminOrders = (await app.inject({ method: 'GET', url: '/api/v1/admin/orders' })).json().items;
+    const adminOrders = (await inj({ method: 'GET', url: '/api/v1/admin/orders' })).json().items;
     expect(adminOrders.length).toBe(before + 1);
     expect(adminOrders.some((o: { id: string }) => o.id === order.id)).toBe(true);
   });
@@ -153,7 +169,7 @@ describe('双向同步 · 前→后：消费端下单 → 后台看到', () => {
 
 describe('双向同步 · 后→前：后台加商品（无图）→ 前台拿到默认图，不黑块', () => {
   it('admin 新增商品自动补默认 img/sold/star', async () => {
-    const res = await app.inject({
+    const res = await inj({
       method: 'POST',
       url: '/api/v1/admin/products',
       payload: { title: '无图测试品', cat: 'gear', price: 88, ori: 188, stock: 5, onShelf: true },
@@ -164,7 +180,7 @@ describe('双向同步 · 后→前：后台加商品（无图）→ 前台拿�
     expect(p.sold).toBeDefined();
     expect(p.star).toBeDefined();
     // 前台 bootstrap 能搜到它且带图
-    const d = (await app.inject({ method: 'GET', url: '/api/v1/bootstrap' })).json();
+    const d = (await inj({ method: 'GET', url: '/api/v1/bootstrap' })).json();
     const found = d.products.find((x: { title: string }) => x.title === '无图测试品');
     expect(found).toBeTruthy();
     expect(found.img).toBeTruthy();
@@ -173,7 +189,7 @@ describe('双向同步 · 后→前：后台加商品（无图）→ 前台拿�
 
 describe('购物车真实数据（加购→购物车→结算）', () => {
   it('GET /cart 返回种子购物车（价格分 + join 商品名）', async () => {
-    const { items } = (await app.inject({ method: 'GET', url: '/api/v1/cart' })).json();
+    const { items } = (await inj({ method: 'GET', url: '/api/v1/cart' })).json();
     expect(items.length).toBe(4);
     expect(items[0]).toHaveProperty('title');
     expect(items[0]).toHaveProperty('price'); // 分
@@ -181,9 +197,9 @@ describe('购物车真实数据（加购→购物车→结算）', () => {
   });
 
   it('加购同款累加数量', async () => {
-    const before = (await app.inject({ method: 'GET', url: '/api/v1/cart' })).json().items.length;
-    await app.inject({ method: 'POST', url: '/api/v1/cart/items', payload: { productId: 'e1', qty: 1, spec: '默认规格' } });
-    const r2 = await app.inject({ method: 'POST', url: '/api/v1/cart/items', payload: { productId: 'e1', qty: 2, spec: '默认规格' } });
+    const before = (await inj({ method: 'GET', url: '/api/v1/cart' })).json().items.length;
+    await inj({ method: 'POST', url: '/api/v1/cart/items', payload: { productId: 'e1', qty: 1, spec: '默认规格' } });
+    const r2 = await inj({ method: 'POST', url: '/api/v1/cart/items', payload: { productId: 'e1', qty: 2, spec: '默认规格' } });
     const items = r2.json().items;
     expect(items.length).toBe(before + 1); // 同款只占一行
     const e1 = items.find((i: { productId: string }) => i.productId === 'e1');
@@ -191,23 +207,23 @@ describe('购物车真实数据（加购→购物车→结算）', () => {
   });
 
   it('改数量 / 勾选 / 删除', async () => {
-    const cart = (await app.inject({ method: 'GET', url: '/api/v1/cart' })).json().items;
+    const cart = (await inj({ method: 'GET', url: '/api/v1/cart' })).json().items;
     const id = cart[0].id;
-    const up = (await app.inject({ method: 'PATCH', url: '/api/v1/cart/items/' + id, payload: { qty: 9, selected: false } })).json();
+    const up = (await inj({ method: 'PATCH', url: '/api/v1/cart/items/' + id, payload: { qty: 9, selected: false } })).json();
     const it = up.items.find((x: { id: string }) => x.id === id);
     expect(it.qty).toBe(9);
     expect(it.selected).toBe(false);
-    const del = await app.inject({ method: 'DELETE', url: '/api/v1/cart/items/' + id });
+    const del = await inj({ method: 'DELETE', url: '/api/v1/cart/items/' + id });
     expect(del.json().items.some((x: { id: string }) => x.id === id)).toBe(false);
   });
 
   it('从购物车结算 → 生成订单 + 移出已选项 + 后台可见', async () => {
-    const ordersBefore = (await app.inject({ method: 'GET', url: '/api/v1/admin/orders' })).json().items.length;
-    const cart = (await app.inject({ method: 'GET', url: '/api/v1/cart' })).json().items;
+    const ordersBefore = (await inj({ method: 'GET', url: '/api/v1/admin/orders' })).json().items.length;
+    const cart = (await inj({ method: 'GET', url: '/api/v1/cart' })).json().items;
     const selectedCount = cart.filter((c: { selected: boolean }) => c.selected).length;
     expect(selectedCount).toBeGreaterThan(0);
 
-    const res = await app.inject({ method: 'POST', url: '/api/v1/cart/checkout', payload: { channel: 'car' } });
+    const res = await inj({ method: 'POST', url: '/api/v1/cart/checkout', payload: { channel: 'car' } });
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.order.status).toBe('PENDING_PAYMENT');
@@ -216,7 +232,7 @@ describe('购物车真实数据（加购→购物车→结算）', () => {
     // 已选项被移出购物车
     expect(body.items.filter((c: { selected: boolean }) => c.selected).length).toBe(0);
     // 后台订单 +1
-    const ordersAfter = (await app.inject({ method: 'GET', url: '/api/v1/admin/orders' })).json().items.length;
+    const ordersAfter = (await inj({ method: 'GET', url: '/api/v1/admin/orders' })).json().items.length;
     expect(ordersAfter).toBe(ordersBefore + 1);
   });
 });
@@ -224,49 +240,136 @@ describe('购物车真实数据（加购→购物车→结算）', () => {
 describe('关联更新 / 级联（QA 审查修复）', () => {
   it('删商品 → 同步清出购物车，无悬挂', async () => {
     // 购物车种子含 g1
-    const cartBefore = (await app.inject({ method: 'GET', url: '/api/v1/cart' })).json().items;
+    const cartBefore = (await inj({ method: 'GET', url: '/api/v1/cart' })).json().items;
     expect(cartBefore.some((c: { productId: string }) => c.productId === 'g1')).toBe(true);
-    await app.inject({ method: 'DELETE', url: '/api/v1/admin/products/g1' });
-    const cartAfter = (await app.inject({ method: 'GET', url: '/api/v1/cart' })).json().items;
+    await inj({ method: 'DELETE', url: '/api/v1/admin/products/g1' });
+    const cartAfter = (await inj({ method: 'GET', url: '/api/v1/cart' })).json().items;
     expect(cartAfter.some((c: { productId: string }) => c.productId === 'g1')).toBe(false);
   });
 
   it('删使用中的分类 → 409 拦截（防孤儿）', async () => {
-    const res = await app.inject({ method: 'DELETE', url: '/api/v1/admin/categories/energy' });
+    const res = await inj({ method: 'DELETE', url: '/api/v1/admin/categories/energy' });
     expect(res.statusCode).toBe(409);
     expect(res.json().code).toBe('CATEGORY_IN_USE');
     // 分类仍在
-    const cats = (await app.inject({ method: 'GET', url: '/api/v1/categories' })).json().items;
+    const cats = (await inj({ method: 'GET', url: '/api/v1/categories' })).json().items;
     expect(cats.some((c: { id: string }) => c.id === 'energy')).toBe(true);
   });
 
   it('删空分类 → 允许', async () => {
-    await app.inject({ method: 'POST', url: '/api/v1/admin/categories', payload: { name: '空分类X', icon: 'box', sort: 99 } });
-    const cats = (await app.inject({ method: 'GET', url: '/api/v1/admin/categories' })).json().items;
+    await inj({ method: 'POST', url: '/api/v1/admin/categories', payload: { name: '空分类X', icon: 'box', sort: 99 } });
+    const cats = (await inj({ method: 'GET', url: '/api/v1/admin/categories' })).json().items;
     const empty = cats.find((c: { name: string }) => c.name === '空分类X');
-    const res = await app.inject({ method: 'DELETE', url: '/api/v1/admin/categories/' + empty.id });
+    const res = await inj({ method: 'DELETE', url: '/api/v1/admin/categories/' + empty.id });
     expect(res.statusCode).toBe(200);
   });
 });
 
 describe('运营看板 & 配置', () => {
   it('analytics 返回车机vs手机渠道对比', async () => {
-    const a = (await app.inject({ method: 'GET', url: '/api/v1/admin/analytics' })).json();
+    const a = (await inj({ method: 'GET', url: '/api/v1/admin/analytics' })).json();
     expect(a.channel).toHaveProperty('car');
     expect(a.channel).toHaveProperty('phone');
     expect(a.orderTotal).toBeGreaterThan(0);
   });
 
   it('config 可改行车态阈值', async () => {
-    await app.inject({ method: 'PATCH', url: '/api/v1/admin/config', payload: { drivingSpeedThreshold: 8 } });
-    const c = (await app.inject({ method: 'GET', url: '/api/v1/admin/config' })).json();
+    await inj({ method: 'PATCH', url: '/api/v1/admin/config', payload: { drivingSpeedThreshold: 8 } });
+    const c = (await inj({ method: 'GET', url: '/api/v1/admin/config' })).json();
     expect(c.drivingSpeedThreshold).toBe(8);
   });
 });
 
 describe('订单状态机仍可用', () => {
   it('合法/非法转换', async () => {
-    expect((await app.inject({ method: 'POST', url: '/api/v1/orders/transition', payload: { state: 'DRAFT', event: 'submit' } })).json().state).toBe('PENDING_PAYMENT');
-    expect((await app.inject({ method: 'POST', url: '/api/v1/orders/transition', payload: { state: 'DRAFT', event: 'delivered' } })).statusCode).toBe(409);
+    expect((await inj({ method: 'POST', url: '/api/v1/orders/transition', payload: { state: 'DRAFT', event: 'submit' } })).json().state).toBe('PENDING_PAYMENT');
+    expect((await inj({ method: 'POST', url: '/api/v1/orders/transition', payload: { state: 'DRAFT', event: 'delivered' } })).statusCode).toBe(409);
+  });
+});
+
+describe('后台员工鉴权 admin-auth（openspec/specs/admin-auth）', () => {
+  it('账号密码登录成功 → 下发 access+refresh + 角色', async () => {
+    const r = await app.inject({ method: 'POST', url: '/api/v1/admin/auth/login', payload: { account: 'admin', password: 'admin123' } });
+    expect(r.statusCode).toBe(200);
+    const b = r.json();
+    expect(b.accessToken).toBeTruthy();
+    expect(b.refreshToken).toBeTruthy();
+    expect(b.admin.role).toBe('超管');
+  });
+
+  it('密码错误 → 401', async () => {
+    const r = await app.inject({ method: 'POST', url: '/api/v1/admin/auth/login', payload: { account: 'admin', password: 'wrong' } });
+    expect(r.statusCode).toBe(401);
+    expect(r.json().code).toBe('ADMIN_LOGIN_FAILED');
+  });
+
+  it('无 token 访问 /api/v1/admin/* → 401', async () => {
+    const r = await app.inject({ method: 'GET', url: '/api/v1/admin/products' }); // 故意不带 token
+    expect(r.statusCode).toBe(401);
+    expect(r.json().code).toBe('ADMIN_UNAUTHENTICATED');
+  });
+
+  it('伪造/消费端 token → 401（typ 不匹配，不放行）', async () => {
+    const r = await app.inject({ method: 'GET', url: '/api/v1/admin/products', headers: { authorization: 'Bearer not-a-real-admin-token' } });
+    expect(r.statusCode).toBe(401);
+  });
+
+  it('客服改价格（products:write）→ 403，且不写入', async () => {
+    const cs = await login('cs01', 'cs123');
+    const id = (await inj({ method: 'GET', url: '/api/v1/admin/products' })).json().items[0].id;
+    const before = (await inj({ method: 'GET', url: '/api/v1/admin/products/' + id })).json().price;
+    const r = await app.inject({ method: 'PATCH', url: '/api/v1/admin/products/' + id, payload: { price: 1 }, headers: { authorization: `Bearer ${cs}` } });
+    expect(r.statusCode).toBe(403);
+    expect(r.json().code).toBe('ADMIN_FORBIDDEN');
+    const after = (await inj({ method: 'GET', url: '/api/v1/admin/products/' + id })).json().price;
+    expect(after).toBe(before); // 未改
+  });
+
+  it('客服可改订单状态（orders:write）→ 200', async () => {
+    const cs = await login('cs01', 'cs123');
+    const r = await app.inject({ method: 'PATCH', url: '/api/v1/admin/orders/o-20003', payload: { status: 'PAID' }, headers: { authorization: `Bearer ${cs}` } });
+    expect(r.statusCode).toBe(200);
+  });
+
+  it('RBAC 权限点矩阵：超管全权 / 客服无 catalog 写 / 财务只读', () => {
+    expect(auth.hasPermission('超管', 'products:write')).toBe(true);
+    expect(auth.hasPermission('超管', 'anything:write')).toBe(true);
+    expect(auth.hasPermission('客服', 'products:write')).toBe(false);
+    expect(auth.hasPermission('客服', 'orders:write')).toBe(true);
+    expect(auth.hasPermission('财务', 'orders:write')).toBe(false);
+    expect(auth.hasPermission('财务', 'orders:read')).toBe(true);
+  });
+
+  it('写操作落审计日志（who/action/target/before-after/ip）', async () => {
+    const id = (await inj({ method: 'GET', url: '/api/v1/admin/products' })).json().items[0].id;
+    await inj({ method: 'PATCH', url: '/api/v1/admin/products/' + id, payload: { stock: 123 } });
+    const logs = (await inj({ method: 'GET', url: '/api/v1/admin/auditLogs' })).json().items;
+    const log = logs.find((l: { target: string; action: string }) => l.target === 'products/' + id && l.action === 'PATCH') as Record<string, any>;
+    expect(log).toBeTruthy();
+    expect(log.account).toBe('admin');
+    expect(log.before).toBeTruthy(); // 改前快照
+    expect(log.after.stock).toBe(123); // 改后载荷
+    expect(log.ip).toBeTruthy();
+  });
+
+  it('refresh token 换新 access', async () => {
+    const lr = (await app.inject({ method: 'POST', url: '/api/v1/admin/auth/login', payload: { account: 'admin', password: 'admin123' } })).json();
+    const rr = await app.inject({ method: 'POST', url: '/api/v1/admin/auth/refresh', payload: { refreshToken: lr.refreshToken } });
+    expect(rr.statusCode).toBe(200);
+    expect(rr.json().accessToken).toBeTruthy();
+  });
+
+  it('/me 返回当前身份 + 权限点', async () => {
+    const me = (await inj({ method: 'GET', url: '/api/v1/admin/auth/me' })).json();
+    expect(me.role).toBe('超管');
+    expect(Array.isArray(me.permissions)).toBe(true);
+  });
+
+  it('登录限流 5/min/IP → 第 6 次 429', async () => {
+    let last = 200;
+    for (let i = 0; i < 6; i++) {
+      last = (await app.inject({ method: 'POST', url: '/api/v1/admin/auth/login', payload: { account: 'admin', password: 'wrong' } })).statusCode;
+    }
+    expect(last).toBe(429);
   });
 });

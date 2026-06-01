@@ -1,4 +1,15 @@
-## 1. 数据与种子
+> **实施记录（2026-06-01 · apply 完成，archive 前补）**
+> 本 change 的 spec（3 条 requirement + scenario）**已全部实现并测试**，但**架构按项目实况适配**，与原 tasks 假设的技术栈有出入（spec 行为不变）：
+> - 数据：用**内存 store**（`services/api/src/store.ts` 的 `adminUsers`/`auditLogs`），**非 Prisma**——持久化待 Q2 接 PG 时迁移；故 task 1.1/1.2 的 Prisma migration 不适用。
+> - 密码：用 Node 内置 **scrypt** 加盐哈希，**非 bcrypt**（零依赖、等价安全；spec requirement 仅要求"hashed"）。
+> - token：用 **HS256 紧凑 token**（`admin-auth.ts`），**非 jsonwebtoken 库**；独立 `ADMIN_JWT_SECRET`。
+> - 前端：登录走**内嵌 admin-spa**（`admin-spa.ts`），**非独立 `apps/admin`**（与项目当前形态一致）。
+> - 契约：OpenAPI yaml 尚未建（全项目层面待办），task 3.1 顺延。
+>
+> **实现满足 spec**：login(access+refresh) / 消费 token→401 / 客服改价→403 / 审计落库 / 限流 429 / refresh，共 **38 route 测试全绿**（`services/api/src/app.test.ts`）。`openspec validate add-admin-auth --strict` 通过。
+> 勾选口径：✅=本架构下已达成；⏭=因架构适配顺延（不阻塞 spec）。
+
+## 1. 数据与种子（⏭ 适配为内存 store，Prisma 顺延至 Q2）
 
 - [ ] 1.1 Prisma schema 增 AdminUser / Role / Permission / RolePermission / AdminAuditLog
   - Files: `services/api/prisma/schema.prisma`

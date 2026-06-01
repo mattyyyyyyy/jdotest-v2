@@ -16,7 +16,7 @@
 
 | Agent | 工作范围 | 起始 | 涉及文件 | 状态 |
 |---|---|---|---|---|
-| _暂无登记_ | | | | |
+| claude-harness-reconcile | 实现登录功能：①apply add-admin-auth（后台员工登录+RBAC+审计）→ archive 走完首个 OpenSpec 生命周期 ②propose+apply 车主登录（auth-qr/auth-login）| 2026-06-01 | `services/api/src/**`, `openspec/changes/add-admin-auth/**`, `openspec/changes/add-qr-login/**`, `openspec/specs/**` | 🔵 in-progress |
 
 ## 🗺 Ownership Zones（目录分工建议）
 

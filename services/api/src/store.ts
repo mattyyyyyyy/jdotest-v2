@@ -34,6 +34,7 @@ export const RESOURCE_NAMES = [
   'aftersale',
   'shipping',
   'adminUsers',
+  'auditLogs',
 ] as const;
 export type ResourceName = (typeof RESOURCE_NAMES)[number];
 
@@ -70,6 +71,7 @@ function seedAll(): void {
     // shipping 用 orderId 作 id
     shipping: { prefix: 'sh-', rows: seed.shipping.map((s) => ({ id: s.orderId, ...s })) as unknown as Row[] },
     adminUsers: { prefix: 'a-', rows: seed.adminUsers.map((a) => ({ ...a })) as unknown as Row[] },
+    auditLogs: { prefix: 'log-', rows: [] as Row[] },
   };
 
   for (const name of RESOURCE_NAMES) {
