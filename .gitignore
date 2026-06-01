@@ -27,3 +27,6 @@ Thumbs.db
 
 # openspec 本地临时
 openspec/**/.tmp/
+
+# claude 个人临时配置（settings.json 入仓共享护栏，local 不入仓）
+.claude/settings.local.json

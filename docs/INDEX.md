@@ -16,7 +16,7 @@
 
 | Agent | 工作范围 | 起始 | 涉及文件 | 状态 |
 |---|---|---|---|---|
-| _暂无登记_ | | | | |
+| claude-harness-reconcile | ① 接入 Harness 第④层 hooks（开工三件套/密钥/commit 自报/防孤儿/openspec 校验）② INDEX 同步：登记孤儿文档 + 回填真实 commit + 清理 Workstreams | 2026-06-01 | `.claude/settings.json`, `.claude/hooks/*`, `.gitignore`, `docs/INDEX.md` | 🔵 in-progress |
 
 ## 🗺 Ownership Zones（目录分工建议）
 
@@ -51,14 +51,16 @@
 
 | 日期 | Agent | 完成项 | 关键 commit |
 |---|---|---|---|
-| 2026-05-29 | claude-impl-slice1 | **首个可运行纵向切片落地**：pnpm monorepo 脚手架（package.json/pnpm-workspace/tsconfig.base/turbo/.npmrc）+ `packages/order-state-machine`（纯函数状态机，对应 openspec/specs/order，**20 单测全绿**）+ `services/api` 薄切片（Fastify + 7 场景分类 + 商品接口 + 复用状态机的 /orders/transition，**8 route 测试全绿** + 服务器实启 curl 通过）。typecheck 3/3 绿。**符合 PRD「首个 PR = 测试脚手架 + OrderStateMachine 示范」** | (pending) |
-| 2026-05-29 | claude-bootstrap-v2 | **JDOTEST v2 重做开工**：用 ai-project-bootstrapper 模板重组（`_templates/`）；新增后台管理整端（PRD v0.5 §I US-40~58 + `scope.md` + ADR-0010~0012）；消费端 UI 沿用 v3（不重画）；引入 OpenSpec 原生流程（`openspec/specs/{driving-mode,order}` 当前真相 + `changes/add-admin-*` 首批 proposal，`add-admin-auth` 4 件套完整且 `validate --strict` 通过） | (pending) |
-| 2026-05-27 | claude-main | **V3 确立为项目主前端**：`mockups/jdo-pencil-v3/` 为后续迭代/部署唯一版本；V1/V2 及根目录 `mockups/*.html` 标记为已归档；后续计划迁移到 `apps/h5`（Vite+TS） | (pending) |
-| 2026-05-27 | claude-adr-0009 | **ADR-0009 Accepted** 锁定 7 类场景（能量补给 / 爱车养护 / 一路吃喝 / 远行出差 / 车内好物 / 24h 救援 / 严选好物），以 V3 mockup 为准。**ADR-0008 → Superseded**。同步 [research/ia-scene-vs-category.md](./research/ia-scene-vs-category.md) §附录 + [research/competitor-analysis.md](./research/competitor-analysis.md) 引用 | (pending) |
-| 2026-05-27 | claude-pencil-import-v3 | **导入 v3 原型**：21 屏（与 v2 同骨架），mall-home 大改版（顶部 banner + 下方 rail+产品分栏 / 去掉"查看全部"按钮）· 同步 wallpaper-path fix · 落到 `mockups/jdo-pencil-v3/`（**保留 v1/v2**） | (pending) |
-| 2026-05-27 | claude-pencil-import-v2 | **导入 v2 原型**：21 屏全功能 React 原型（IVI + 商城 20 屏，含 ADR-0008 场景型 IA 落地 + 暗夜极光车型壁纸 + 行车态降级演示）· 落到 `mockups/jdo-pencil-v2/`（**保留 v1**）· 修复 bundle 的 wallpaper 相对路径 bug | (pending) |
-| 2026-05-27 | claude-ia-scene-first | **场景型 IA 三件套**：①竞品报告追加车机商店 v0.2.0 观察 ②`research/ia-scene-vs-category.md` 新增 ③`ADR-0008-ia-scene-first` 决议为场景型 IA（Accepted） | (pending) |
-| 2026-05-27 | claude-pencil-import | 从 Claude Design 导出包导入 `JDO 车机电商.html` 原型（IVI 首页 + 商城 6 屏 React + 2560×1600 画布） · 落到 `mockups/jdo-pencil/` | (pending) |
+| 2026-05-29 | claude-admin-impl | **后台管理整站 + 前后台闭环 + 口径统一 + QA**：完整 admin SPA（登录占位 / 商品 / 订单 / 用户 / 营销 / 履约 / 内容 / 看板）· V3↔后台双向数据同步 · 货币统一为「分」· 字段中文化 + 数据字典 · 新增商品默认上架并进电商 · 购物车接真实数据全链路 · 商品图片上传（data URI/URL）· Claude Design 深色后台设计稿落地 + 内容区铺满宽屏 · QA 修复（立即购买 / 删除级联 / 分类占用拦截）· 配套 `consistency-plan` + `admin-benchmark` 调研 | `7a5b41c`→`3c29141` |
+| 2026-05-29 | claude-demo-sync | 前后台数据同步可视化演示（首个连通 demo）| `6f28441` |
+| 2026-05-29 | claude-impl-slice1 | **首个可运行纵向切片落地**：pnpm monorepo 脚手架（package.json/pnpm-workspace/tsconfig.base/turbo/.npmrc）+ `packages/order-state-machine`（纯函数状态机，对应 openspec/specs/order，**20 单测全绿**）+ `services/api` 薄切片（Fastify + 7 场景分类 + 商品接口 + 复用状态机的 /orders/transition，**8 route 测试全绿** + 服务器实启 curl 通过）。typecheck 3/3 绿。**符合 PRD「首个 PR = 测试脚手架 + OrderStateMachine 示范」** | `c6608ee` |
+| 2026-05-29 | claude-bootstrap-v2 | **JDOTEST v2 重做开工**：用 ai-project-bootstrapper 模板重组（`_templates/`）；新增后台管理整端（PRD v0.5 §I US-40~58 + `scope.md` + ADR-0010~0012）；消费端 UI 沿用 v3（不重画）；引入 OpenSpec 原生流程（`openspec/specs/{driving-mode,order}` 当前真相 + `changes/add-admin-*` 首批 proposal，`add-admin-auth` 4 件套完整且 `validate --strict` 通过） | `8f12c04` |
+| 2026-05-27 | claude-main | **V3 确立为项目主前端**：`mockups/jdo-pencil-v3/` 为后续迭代/部署唯一版本；V1/V2 及根目录 `mockups/*.html` 标记为已归档；后续计划迁移到 `apps/h5`（Vite+TS） | 随 `8f12c04` 导入 |
+| 2026-05-27 | claude-adr-0009 | **ADR-0009 Accepted** 锁定 7 类场景（能量补给 / 爱车养护 / 一路吃喝 / 远行出差 / 车内好物 / 24h 救援 / 严选好物），以 V3 mockup 为准。**ADR-0008 → Superseded**。同步 [research/ia-scene-vs-category.md](./research/ia-scene-vs-category.md) §附录 + [research/competitor-analysis.md](./research/competitor-analysis.md) 引用 | 随 `8f12c04` 导入 |
+| 2026-05-27 | claude-pencil-import-v3 | **导入 v3 原型**：21 屏（与 v2 同骨架），mall-home 大改版（顶部 banner + 下方 rail+产品分栏 / 去掉"查看全部"按钮）· 同步 wallpaper-path fix · 落到 `mockups/jdo-pencil-v3/`（**保留 v1/v2**） | 随 `8f12c04` 导入 |
+| 2026-05-27 | claude-pencil-import-v2 | **导入 v2 原型**：21 屏全功能 React 原型（IVI + 商城 20 屏，含 ADR-0008 场景型 IA 落地 + 暗夜极光车型壁纸 + 行车态降级演示）· 落到 `mockups/jdo-pencil-v2/`（**保留 v1**）· 修复 bundle 的 wallpaper 相对路径 bug | 随 `8f12c04` 导入 |
+| 2026-05-27 | claude-ia-scene-first | **场景型 IA 三件套**：①竞品报告追加车机商店 v0.2.0 观察 ②`research/ia-scene-vs-category.md` 新增 ③`ADR-0008-ia-scene-first` 决议为场景型 IA（Accepted） | 随 `8f12c04` 导入 |
+| 2026-05-27 | claude-pencil-import | 从 Claude Design 导出包导入 `JDO 车机电商.html` 原型（IVI 首页 + 商城 6 屏 React + 2560×1600 画布） · 落到 `mockups/jdo-pencil/` | 随 `8f12c04` 导入 |
 
 ---
 
@@ -87,6 +89,11 @@ _暂无（首份待 ADR-0001 ~ 0003 落地后产出）_
 | [design-system.md](./design/design-system.md) | **设计系统 v1.0 · 系统级 token 与组件契约的单一真相**（颜色 / 字号 / 间距 / 动效 / 行车态降级 / 横屏适配） | Draft | 2026-05-26 |
 | [interaction-patterns.md](./design/interaction-patterns.md) | **跨页面交互中间层** · 9 套交互模式（再买/登录拦截/地址/支付/购物车同步/搜索/通知/错误恢复/行车态切换）+ 8 维状态矩阵（页面×行车×在线×登录）+ 6 棵决策树 | Draft | 2026-05-26 |
 | [page-spec.md](./design/page-spec.md) | **UI 视觉层权威源** · 设计调性 + 12 页区块布局（含行车态首页 + 地址簿）+ mock 字段 + 首批 5 页建议 · 路由已与 feature-spec 对齐 | Draft | 2026-05-26 |
+| [admin-spec.md](./design/admin-spec.md) | **后台管理站设计** · admin IA / 页面 / 字段映射（依据消费端 V3 数据模型 + ADR-0010~0012）| Draft | 2026-05-29 |
+| [admin-design-brief.md](./design/admin-design-brief.md) | **后台 UI 设计 Brief（自包含任务书）** · 内联模块/页面/字段/布局/视觉/组件，汇总 admin-spec + admin-benchmark + data-dictionary + ADR-0010~12 + design-system，供 Claude Design 生成界面 | Draft | 2026-05-29 |
+| [data-dictionary.md](./design/data-dictionary.md) | **数据字典** · 前端界面字段 ↔ 后台数据字段对齐（命名 / 类型 / 单位 / 取值），前后台字段单一真相 | Draft | 2026-05-29 |
+| [consistency-plan.md](./design/consistency-plan.md) | **前后台一致性统一计划** · 已统一项 + P0~P2 待统一清单（购物车真实数据 / 鉴权 / 时间 ID 枚举口径 / 持久化）+ 分阶段计划（每阶段一个 OpenSpec change）| Draft | 2026-05-29 |
+| [claude-design-jdo-admin/](./design/claude-design-jdo-admin/_BUNDLE-README.md) | Claude Design 后台设计稿**导出包**（HTML/CSS/JS handoff bundle）· 已被 `services/api/src/admin-spa.ts` 落地实现 | Reference | 2026-05-29 |
 
 ## 🖥 项目主前端 mockups/jdo-pencil-v3/（⭐ 当前）
 
@@ -237,6 +244,7 @@ _暂无（首份待 ADR-0001 ~ 0003 落地后产出）_
 |---|---|---|---|
 | [competitor-analysis.md](./research/competitor-analysis.md) | 7 家车厂竞品（NIO / 理想 / 问界 / Tesla / 小鹏 / 小米 / Polestar）+ AAOS / NHTSA / HarmonyOS HMI 规范 + 给我们 Demo 的设计建议 · **2026-05-27 追加车机商店 v0.2.0-foundation 实机观察** | Accepted | 2026-05-27 |
 | [ia-scene-vs-category.md](./research/ia-scene-vs-category.md) | **场景型 vs 品类型 IA 调研** · 5 节论证 + 反方观点反驳 + 提议的 6 类场景一级分类 · 输入到 ADR-0008 | Draft | 2026-05-27 |
+| [admin-benchmark.md](./research/admin-benchmark.md) | **主流电商后台调研** · 界面布局 / 分类逻辑 / 功能子项对标基线 + 与本项目 admin 差距分析 · 输入到 admin-spec | Accepted | 2026-05-29 |
 
 ## 🖼 图示 diagrams/（仓库根目录）
 

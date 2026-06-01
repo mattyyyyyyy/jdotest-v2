@@ -41,7 +41,17 @@
 
 **铁律**：`must` 级规则不落 hook 就不算强制。Hook 拦截用 **`exit 2`**（不是 `exit 1`，`exit 1` 只告警不拦截）。
 
-本项目建议配的 hook：开工三件套检查、`openspec validate --strict`、文档同步、密钥扫描、commit 自报家门。
+本项目**已配置**的 hook（见 [`.claude/settings.json`](./.claude/settings.json) + [`.claude/hooks/`](./.claude/hooks/)，均 `exit 2` 拦截）：
+
+| Hook | 事件 | 强制规则 |
+|---|---|---|
+| `check-workstream-registered.sh` | PreToolUse(Edit/Write) | 开工三件套：未在 INDEX §Active Workstreams 登记 → 拒绝编辑（豁免 INDEX/CLAUDE/.claude）|
+| `scan-secrets.sh` | PreToolUse(Edit/Write) | 密钥扫描：写入高置信度密钥/私钥 → 拒绝 |
+| `check-agent-tag.sh` | PreToolUse(Bash) | commit 自报家门：`git commit` 缺 `agent:` 尾标 → 拒绝 |
+| `check-index-updated.sh` | PostToolUse(Write/Edit) | 防孤儿：新增 `docs/**/*.md` 未登记 INDEX → 反馈提醒 |
+| `openspec-validate.sh` | PostToolUse(Write/Edit) | 改 `openspec/**` 后跑 `validate --strict`（CLI 缺失则跳过）|
+
+> 暂以 `should`（软约束）保留、未配 hook 的：**文档同步**（源码↔spec/ADR 联动）、**测试 gate**（Stop 前跑 lint/test）——这两条误报率高，待规则收敛后再升为 hook，避免噪音削弱护栏可信度。
 
 ---
 
