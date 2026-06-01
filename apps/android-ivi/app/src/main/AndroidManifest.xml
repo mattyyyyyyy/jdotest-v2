@@ -3,6 +3,8 @@
 
     <application
         android:label="JDO 车机"
+        android:largeHeap="true"
+        android:hardwareAccelerated="true"
         android:supportsRtl="true"
         android:theme="@style/Theme.JdoIvi">
         <activity
