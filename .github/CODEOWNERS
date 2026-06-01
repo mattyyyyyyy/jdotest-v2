@@ -1,0 +1,14 @@
+# 路径 → owner，触发 GitHub 自动指派 review。
+# 对应 docs/INDEX.md §Ownership Zones；两边不一致以本文件为准。
+# Demo 阶段单一 owner；多人协作时按 zone 细分（把下方 @mattyyyyyyy 换成对应负责人）。
+
+*                         @mattyyyyyyy
+
+# 关键决策 / 契约 / 强制规则：改动需 owner review
+/docs/decisions/          @mattyyyyyyy
+/docs/architecture.md     @mattyyyyyyy
+/docs/backend-spec.md     @mattyyyyyyy
+/docs/api-contracts.md    @mattyyyyyyy
+/docs/constraints.md      @mattyyyyyyy
+/.claude/                 @mattyyyyyyy
+/openspec/specs/          @mattyyyyyyy

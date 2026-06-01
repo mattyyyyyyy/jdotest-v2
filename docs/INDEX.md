@@ -264,6 +264,18 @@
 | [information-architecture.excalidraw](../diagrams/information-architecture.excalidraw) | 信息架构图（IA） | 2026-05-25 |
 | [system-architecture.excalidraw](../diagrams/system-architecture.excalidraw) | 系统技术架构图 | 2026-05-25 |
 
+## 🔧 配置与协作护栏（仓库根 / .github / .claude）
+
+> harness 第④层（hook 强制）+ 第⑤层（observability）的载体。
+
+| 文件 | 用途 | 状态 | 日期 |
+|---|---|---|---|
+| [.claude/settings.json](../.claude/settings.json) + [hooks/](../.claude/hooks/) | **must 级规则强制层**（开工三件套 / 密钥扫描 / commit 自报家门 / 防孤儿 / openspec 校验，均 `exit 2`）| Active | 2026-06-01 |
+| [.env.example](../.env.example) | 环境变量模板（占位值，真密钥不入仓）· 对应 backend-spec §五 | Active | 2026-06-01 |
+| [.github/PULL_REQUEST_TEMPLATE.md](../.github/PULL_REQUEST_TEMPLATE.md) | PR 必填项（测试证据 + 文档同步 checklist）| Active | 2026-06-01 |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) | 人类贡献者协作规则（与 CLAUDE.md 分工）| Active | 2026-06-01 |
+| [.github/CODEOWNERS](../.github/CODEOWNERS) | 路径 → owner，对应 §Ownership Zones | Active | 2026-06-01 |
+
 ---
 
 ## 文档状态约定
