@@ -3,20 +3,11 @@
   "configurations": [
     {
       "name": "api-server",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@jdo/api", "dev"],
-      "port": 3000
-    },
-    {
-      "name": "v3-mockup",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "mockups/jdo-pencil-v3", "-p", "4173"],
-      "port": 4173
-    },
-    {
-      "name": "all-turbo",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev"],
+      "runtimeExecutable": "/Users/matty/.local/node20/bin/node",
+      "runtimeArgs": [
+        "/Users/matty/Documents/Codex/2026-05-31/prior-conversation-with-codex-conversation-role/jdotest-v2/services/api/node_modules/tsx/dist/cli.mjs",
+        "/Users/matty/Documents/Codex/2026-05-31/prior-conversation-with-codex-conversation-role/jdotest-v2/services/api/src/server.ts"
+      ],
       "port": 3000
     }
   ]

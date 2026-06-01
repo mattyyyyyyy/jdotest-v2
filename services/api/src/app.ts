@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import fstatic from '@fastify/static';
 import { z } from 'zod';
-import { transition, type OrderState, type OrderEvent } from '@jdo/order-state-machine';
+import { transition, allowedEvents, type OrderState, type OrderEvent } from '@jdo/order-state-machine';
 import { store } from './store.js';
 import { ADMIN_APP_HTML, ADMIN_APP_JS } from './admin-spa.js';
 import * as auth from './admin-auth.js';
@@ -263,6 +263,22 @@ export function buildApp(): FastifyInstance {
 
   app.get('/api/v1/admin/config', async () => store.config());
   app.patch('/api/v1/admin/config', async (req) => store.setConfig(req.body as Record<string, unknown>));
+
+  // 订单状态流转：走与消费端同一套订单状态机（openspec/specs/order）。
+  // 发货=prepared/delivered、取消=cancel、退款=refundReq/refunded；非法流转→409。
+  app.patch('/api/v1/admin/orders/:id/status', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const body = z.object({ event: z.string() }).parse(req.body);
+    const order = store.get('orders', id);
+    if (!order) return reply.code(404).send(errBody('NOT_FOUND', '订单不存在', { id }));
+    const from = order.status as OrderState;
+    const result = transition(from, body.event as OrderEvent);
+    if (!result.ok) {
+      return reply.code(409).send(errBody('INVALID_TRANSITION', '非法订单状态流转', { from, event: body.event, allowed: allowedEvents(from) }));
+    }
+    const updated = store.update('orders', id, { status: result.state });
+    return { ok: true, order: updated, from, to: result.state };
+  });
 
   app.get('/api/v1/admin/:resource', async (req, reply) => {
     const { resource } = req.params as { resource: string };

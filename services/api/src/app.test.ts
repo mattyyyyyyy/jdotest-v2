@@ -439,3 +439,57 @@ describe('车主登录 · 车机扫码 + mock-login（auth-qr）', () => {
     expect((await get('/api/v1/auth/me', superToken)).statusCode).toBe(401);
   });
 });
+
+describe('admin-order · 订单状态走同一套状态机', () => {
+  it('合法流转 PAID --prepared--> SHIPPING → 200', async () => {
+    const r = await inj({ method: 'PATCH', url: '/api/v1/admin/orders/o-20001/status', payload: { event: 'prepared' } });
+    expect(r.statusCode).toBe(200);
+    expect(r.json().to).toBe('SHIPPING');
+    expect((await inj({ method: 'GET', url: '/api/v1/admin/orders/o-20001' })).json().status).toBe('SHIPPING');
+  });
+
+  it('非法流转 PENDING_PAYMENT --delivered--> → 409（附 allowed）', async () => {
+    const r = await inj({ method: 'PATCH', url: '/api/v1/admin/orders/o-20003/status', payload: { event: 'delivered' } });
+    expect(r.statusCode).toBe(409);
+    expect(r.json().details.allowed).toContain('paid');
+  });
+
+  it('客服可改订单状态（orders:write）→ 200', async () => {
+    const cs = await login('cs01', 'cs123');
+    const r = await app.inject({ method: 'PATCH', url: '/api/v1/admin/orders/o-20001/status', payload: { event: 'prepared' }, headers: { authorization: `Bearer ${cs}` } });
+    expect(r.statusCode).toBe(200);
+  });
+
+  it('运营无 orders:write → 改订单状态 403', async () => {
+    const ops = await login('ops01', 'ops123');
+    const r = await app.inject({ method: 'PATCH', url: '/api/v1/admin/orders/o-20001/status', payload: { event: 'prepared' }, headers: { authorization: `Bearer ${ops}` } });
+    expect(r.statusCode).toBe(403);
+  });
+});
+
+describe('admin-analytics · 运营看板', () => {
+  it('看板返回 pv/uv/行车态切换/车机vs手机/gmv', async () => {
+    const a = (await inj({ method: 'GET', url: '/api/v1/admin/analytics' })).json();
+    expect(typeof a.pv).toBe('number');
+    expect(typeof a.uv).toBe('number');
+    expect(typeof a.drivingSwitches).toBe('number');
+    expect(a.channel).toHaveProperty('car');
+    expect(a.channel).toHaveProperty('phone');
+    expect(a.channel.car + a.channel.phone).toBeLessThanOrEqual(a.orderTotal);
+    expect(typeof a.gmv).toBe('number');
+  });
+});
+
+describe('admin-catalog · 商品/库存/分类', () => {
+  it('调整库存（PATCH stock）→ 生效', async () => {
+    const id = (await inj({ method: 'GET', url: '/api/v1/admin/products' })).json().items[0].id;
+    await inj({ method: 'PATCH', url: '/api/v1/admin/products/' + id, payload: { stock: 999 } });
+    expect((await inj({ method: 'GET', url: '/api/v1/admin/products/' + id })).json().stock).toBe(999);
+  });
+
+  it('无图新增商品 → 自动补占位图（不渲染黑块）', async () => {
+    const created = (await inj({ method: 'POST', url: '/api/v1/admin/products', payload: { title: '无图测试品', cat: 'gear', price: 1000 } })).json();
+    expect(typeof created.img).toBe('string');
+    expect((created.img as string).length).toBeGreaterThan(0);
+  });
+});
