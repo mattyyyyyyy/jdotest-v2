@@ -105,7 +105,7 @@ commit message 末尾加：`agent: claude-<short-context>`
 
 ## 📌 锁定结论（不要再问）
 
-- **消费端运行形态**：车机内嵌 H5 / WebView（横屏，行车态降级）
+- **消费端运行形态**：~~车机内嵌 H5 / WebView~~ → **原生安卓 App（Kotlin + Jetpack Compose，普通安卓车机/平板）**，横屏 + 行车态降级（**2026-06-02 改，见 [ADR-0013](./docs/decisions/ADR-0013-consumer-native-android.md)**；H5 原型 `mockups/jdo-pencil-v3` 降级为视觉/交互参照基准）
 - **后台端运行形态**：标准桌面 Web（PC 浏览器，非车机；不受 88px 触控 / 行车态约束）
 - **UI 基准**：消费端 = `mockups/jdo-pencil-v3`（**不重画**）；后台端 = 复用 `design-system.md` 的 token / 色板，桌面布局，**不另造设计语言**
 - **业务范围**：通用全品类车机电商 + 后台运营管理

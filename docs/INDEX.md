@@ -16,7 +16,8 @@
 
 | Agent | 工作范围 | 起始 | 涉及文件 | 状态 |
 |---|---|---|---|---|
-| _暂无登记_ | | | | |
+| claude-harness-reconcile | 消费端运行形态改原生安卓（Compose，普通安卓车机/平板）：落 ADR-0013（supersede H5 锁定结论）+ 移植 design tokens 保证设计 1:1 | 2026-06-02 | `docs/decisions/ADR-0013-*.md`, `docs/INDEX.md` | 🔵 in-progress |
+| claude-harness-reconcile | （暂停·未提交）收 3 个 admin 骨架 change + admin-order 状态机端点 + admin-spa 鉴权修复 + launch.json | 2026-06-01 | `services/api/src/**`, `.claude/launch.json`, `openspec/changes/add-admin-*/**` | 🟡 paused |
 
 ## 🗺 Ownership Zones（目录分工建议）
 
@@ -43,6 +44,7 @@
 | **`CLAUDE.md`** | **全员协商** | 改公约前必须在 Active Workstreams 登记并征询其它在线 agent |
 | `apps/h5/**` `services/api/**` `packages/**` | 实施 agent | 待落地，按 ADR-0006 monorepo 结构 |
 | `apps/admin/**` | admin 实施 agent | **后台管理前端**（桌面 Web，per ADR-0010）· 待落地 |
+| `apps/android-ivi/**` | 原生实施 agent | **消费端原生安卓（Compose）** per ADR-0013 · 已落地设计 token 主题（首切片）；屏幕待迁移。⚠️ 需 Android Studio 构建（沙箱无 SDK）|
 | `services/api/**/admin*` `/api/v1/admin/*` | admin 实施 agent | 后台后端命名空间，复用同一 monolith |
 | `openspec/specs/**` | 全员（只读）| **不直接编辑**，改 spec 走 change → archive |
 | `openspec/changes/<id>/**` | 该 change 的 propose agent | 一个 change 一个 owner，4 件套填满后 apply |
@@ -222,6 +224,7 @@
 | [ADR-0010](./decisions/ADR-0010-admin-app-shape.md) | **后台管理应用形态**（独立 `apps/admin` + 复用同一后端 `/api/v1/admin/*`）| Accepted | 2026-05-29 |
 | [ADR-0011](./decisions/ADR-0011-admin-rbac.md) | **后台权限模型**（独立 AdminUser + RBAC 角色/权限点 + 审计日志）| Accepted | 2026-05-29 |
 | [ADR-0012](./decisions/ADR-0012-admin-ui-baseline.md) | **后台 UI 基准**（复用 design token + 桌面布局，不重画）| Accepted | 2026-05-29 |
+| [ADR-0013](./decisions/ADR-0013-consumer-native-android.md) | **消费端改原生安卓**（Kotlin + Jetpack Compose，普通安卓车机/平板；设计靠 token 移植 1:1 保持；**Supersedes H5 锁定结论**）| Accepted | 2026-06-02 |
 
 > **依赖顺序**：ADR-0006 → 0001 / 0002 / 0003 → 0007 → 0004 → 0005。
 > 详见 PRD.md §起手 Coding 计划 / 开干前必须先定的 ADR。
