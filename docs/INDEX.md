@@ -16,7 +16,7 @@
 
 | Agent | 工作范围 | 起始 | 涉及文件 | 状态 |
 |---|---|---|---|---|
-| claude-harness-reconcile | Q12 车主登录：propose→apply→archive `add-qr-login`（车机扫码登录会话 + 手机确认下发车主 JWT + Demo mock-login，复用鉴权基建）| 2026-06-01 | `openspec/changes/add-qr-login/**`, `services/api/src/consumer-auth.ts`, `services/api/src/app.ts`, `services/api/src/app.test.ts`, `openspec/specs/auth-qr/**` | 🔵 in-progress |
+| _暂无登记_ | | | | |
 
 ## 🗺 Ownership Zones（目录分工建议）
 
@@ -54,6 +54,7 @@
 
 | 日期 | Agent | 完成项 | 关键 commit |
 |---|---|---|---|
+| 2026-06-01 | claude-harness-reconcile | **实现车主端登录（车机扫码）+ 第二个 OpenSpec 生命周期**：propose→apply→archive `add-qr-login`——`consumer-auth.ts`（车主 token typ=user 独立 secret + 扫码会话 TTL/banned）+ 5 路由（qr-code/qr-confirm/qr-status/mock-login/me）+ 9 测试（含车主↔admin 双向越权隔离）；archive 生成 `specs/auth-qr/`。关 Q12 | `f591cee` + archive |
 | 2026-06-01 | claude-harness-reconcile | **实现后台登录功能 + 跑通首个 OpenSpec 生命周期**：apply `add-admin-auth`（admin 账号密码登录 + RBAC 4 角色权限点守卫 + 操作审计 + 5/min 限流；scrypt/HS256/内存 store 适配）→ 38 route 测试（401 越权 / 403 客服改价 / 审计落库 / 429 / refresh）→ 修 5 处 typecheck 严格错 → `openspec archive` 合并 delta 到 `specs/admin-auth/`（propose→apply→archive 首次走完，解 Q10 核心）。更正误诊的 Q1 | `7409a35` + archive |
 | 2026-06-01 | claude-harness-reconcile | **Harness 强制层 + 文档唯一真相整改**（用 ai-project-bootstrapper skill 反向优化 v2）：① 落地 `.claude` 5 个 hook（开工三件套 / 密钥扫描 / commit 自报家门 / 防孤儿 / openspec 校验，`exit 2` 实测通过，会话中真实拦截过 Write）② INDEX 同步（孤儿 6→0、回填真实 commit、补登 admin/demo 两条遗漏）③ 拆 PRD §Implementation Decisions → architecture/backend-spec/api-contracts（566→352 行，留指针）④ 补 constraints / open-questions / task-plan ⑤ 补 Observability 层（.env.example / PR 模板 / CONTRIBUTING / CODEOWNERS）⑥ P2：核实 ADR-0009 七类 sync 一致（关 Q4）+ 如实登记 OpenSpec 生命周期阻塞（Q10）；反向修 bootstrapper-skill 3 项（hook schema 错 / docs｜openspec 双轨 / dogfooding 诚实化，skill repo `ba58c69`）⑦ 本机装 Node20 + openspec CLI（`~/.local/node20`）跑通 `validate --all --strict`（3/3 绿）；真跑又抓出 hook 与文档的 `validate --strict` **空跑 bug**（缺 `--all`），修 hook（+PATH 自定位）+ CLAUDE/constraints + skill（`bf78049`）；登记 Q11（_templates 副本待重新 vendoring）| `9aa6772` `bc3ef7e` `8443224` `949d6ef` `0c0279a` `+本次` |
 | 2026-05-29 | claude-admin-impl | **后台管理整站 + 前后台闭环 + 口径统一 + QA**：完整 admin SPA（登录占位 / 商品 / 订单 / 用户 / 营销 / 履约 / 内容 / 看板）· V3↔后台双向数据同步 · 货币统一为「分」· 字段中文化 + 数据字典 · 新增商品默认上架并进电商 · 购物车接真实数据全链路 · 商品图片上传（data URI/URL）· Claude Design 深色后台设计稿落地 + 内容区铺满宽屏 · QA 修复（立即购买 / 删除级联 / 分类占用拦截）· 配套 `consistency-plan` + `admin-benchmark` 调研 | `7a5b41c`→`3c29141` |
@@ -237,6 +238,7 @@
 | [driving-mode](../openspec/specs/driving-mode/spec.md) | ✅ 已写 | 行车态进入/退出 + 交互限制（签名功能示范）|
 | [order](../openspec/specs/order/spec.md) | ✅ 已写 | 订单状态机 + 价格库存服务端为准 |
 | [admin-auth](../openspec/specs/admin-auth/spec.md) | ✅ 已写（**首个走完 propose→apply→archive 的域**，2026-06-01）| 后台登录 + RBAC 4 角色权限点 + 操作审计（实现 `services/api/src/admin-auth.ts`，38 测试）|
+| [auth-qr](../openspec/specs/auth-qr/spec.md) | ✅ 已写（propose→apply→archive，2026-06-01）| 车主端车机扫码登录 + 手机确认下发车主 JWT + Demo mock-login（实现 `services/api/src/consumer-auth.ts`，9 测试，与 admin 隔离）|
 | catalog / cart / payment / auth-login / auth-qr / user / fulfillment | 🟡 待补 | 用 `/opsx:propose` 或从 feature-spec 迁移 |
 
 ### 进行中变更 `openspec/changes/`（首批 admin）
