@@ -73,6 +73,8 @@ JDO 车机电商一级分类（mall rail）正式由 6 类升级为 **7 类**，
 
 ### 后续需要做的事
 
+> **✅ sync 核对（2026-06-01 · claude-harness-reconcile）**：实现侧已对齐 7 类——`mockups/jdo-pencil-v3/data.js` 定义 7 场景 `energy 能量补给 / care 爱车养护 / eat 一路吃喝 / trip 远行出差 / gear 车内好物 / sos 24h 救援 / select 严选好物`，后端 `services/api/src/data/load-v3.ts` 同源加载；feature-spec / interaction-patterns 无残留 6 类老命名。下方 #1~#5 中：核心实现（v3 + 后端）已达成；#5 指向的根目录 `mockups/category.html` 属**已归档**老原型，不再维护。残留 schema 项（#6）转入 [open-questions.md](../open-questions.md)。详见 open-questions §已解决 Q4。
+
 > 继承自 ADR-0008 §后续需要做的事，但分类基数从 6 改 7。各 owner 仍需在 [INDEX.md §Active Workstreams](../INDEX.md) 登记后再做。
 
 1. [docs/feature-spec.md](../feature-spec.md) §IA 重写为 7 类场景（工程 agent · 半天）

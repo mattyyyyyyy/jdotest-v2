@@ -12,8 +12,7 @@
 |---|---|---|---|---|
 | Q1 | **admin RBAC 未实施**：`add-admin-auth` 4 件套已写，但代码里 admin 无登录 / 无角色 / 无审计 | 暂以无鉴权 Demo 运行 | spec↔代码 drift；安全演示打折 | 实施 agent · 下个迭代（consistency-plan P0#3）|
 | Q2 | **数据全内存、重启丢失**：`services/api/src/store.ts` 未接库 | 内存 store，接口语义同 Prisma | 演示数据不持久；多人协作易丢 | 后端 agent（consistency-plan P2#10 / ADR-0003）|
-| Q3 | **`.env.example` 缺失**：环境变量分层已定义但无清单文件 | 见 backend-spec §五 | 新人无法照单配环境 | Phase B 即补（本轮）|
-| Q4 | **ADR-0009 七类场景命名 sync 是否收尾**：mockup v3 / 后端 seed / feature-spec / interaction-patterns 是否都已对齐 7 类 | ADR-0009 §后续需要做的事 列了清单，完成度未核 | IA drift（"代码 7 类 vs 文档 6 类"风险）| IA agent · 待核对 |
+| Q10 | **OpenSpec 生命周期未跑通**：`changes/archive/` 空；order 已实现但无 change→archive 痕迹；`add-admin-{catalog,order,analytics}` 仍骨架（仅 README + .openspec.yaml）| 阻塞于①本机无 node/npm 装不了 openspec CLI ②feature 未实施 | propose→apply→archive 形同虚设 | 实施 agent · 装 CLI 后逐个 `/opsx:propose` → apply → `openspec archive` |
 
 ## 🟡 业务方需拍板（来自 PRD 关键风险）
 
@@ -37,3 +36,5 @@
 - 后台形态 / 权限 / UI 基准 → **ADR-0010~0012**（Accepted）
 - must 级规则是否强制 → 已落地 `.claude/settings.json` hooks（commit `9aa6772`）
 - PRD 技术内容唯一真相归属 → 已拆分到 architecture/backend-spec/api-contracts（commit `bc3ef7e`）
+- ~~Q3~~ `.env.example` 缺失 → **已补**（commit `949d6ef`，Phase B2），变量清单见 backend-spec §五
+- ~~Q4~~ ADR-0009 七类场景 sync → **已核实一致**（2026-06-01）：v3 `data.js` 7 场景 `energy 能量补给 / care 爱车养护 / eat 一路吃喝 / trip 远行出差 / gear 车内好物 / sos 24h 救援 / select 严选好物` = ADR-0009 锁定 7 类；后端 `load-v3.ts` 同源；feature-spec / interaction-patterns 无残留 6 类老命名；ADR-0008 已 Superseded。无 drift。
