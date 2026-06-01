@@ -1,0 +1,9 @@
+# Android / Gradle build 产物（不入仓）
+build/
+.gradle/
+local.properties
+*.apk
+*.aab
+.cxx/
+captures/
+.idea/

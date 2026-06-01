@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 宿主 Activity 主题：无 ActionBar 的暗色基底；Compose 内用 JdoTheme 控制实际视觉 -->
+    <style name="Theme.JdoIvi" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#0A0B0E</item>
+        <item name="android:navigationBarColor">#0A0B0E</item>
+        <item name="android:windowBackground">#0A0B0E</item>
+    </style>
+</resources>
