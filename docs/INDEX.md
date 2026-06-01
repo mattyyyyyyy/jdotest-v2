@@ -73,6 +73,9 @@
 - [docs/PRD.md](./PRD.md) — 产品需求文档 **v0.6（§Implementation Decisions 按唯一真相拆分到 architecture/backend-spec/api-contracts）** · Draft · 2026-06-01
 - [docs/architecture.md](./architecture.md) · [docs/backend-spec.md](./backend-spec.md) · [docs/api-contracts.md](./api-contracts.md) — **实现细节三件套（唯一真相）** · Draft · 2026-06-01
 - [docs/scope.md](./scope.md) — **MVP 范围（admin 已入范围）** · Draft · 2026-05-29
+- [docs/constraints.md](./constraints.md) — **约束唯一真相**（must/should/optional/out × 驾驶安全 / 车机适配 / 业务 / 性能 / 工程协作）· Draft · 2026-06-01
+- [docs/task-plan.md](./task-plan.md) — **第一阶段任务总索引**（当前落地状态 + 指向 consistency-plan / openspec changes）· Draft · 2026-06-01
+- [docs/open-questions.md](./open-questions.md) — **开放问题**（RBAC 未实施 / 持久化 / ADR-0009 sync 等 drift + 业务待拍板 + 已解决指针）· Draft · 2026-06-01
 - [mockups/jdo-pencil-v3/JDO 车机电商.html](../mockups/jdo-pencil-v3/JDO%20%E8%BD%A6%E6%9C%BA%E7%94%B5%E5%95%86.html) — **消费端主前端 · 21 屏 React 原型（V3，不重画）**· 需 HTTP server（`npx serve mockups/jdo-pencil-v3 -p 3000`）
 - [docs/feature-spec.md](./feature-spec.md) — **派活看板 + 路由→domain 映射**（消费端 P-01~13 + **后台 A-01~14**）· Draft · 2026-05-29
 - [openspec/](../openspec/) — **Feature 级 spec（OpenSpec 原生）**：`specs/` 当前真相 + `changes/` 提议变更

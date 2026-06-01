@@ -45,7 +45,7 @@ AuditLog       id, adminUserId, action, target, before, after, at  # 后台写�
   3. 车机轮询 `GET /api/v1/auth/qr-status?sessionId=` → `pending` / `confirmed` / `expired`
   4. `confirmed` 后下发 JWT，车机本地持久化
 - **Demo 简化**：`POST /api/v1/auth/mock-login` 直接拿 demo 账户 JWT，跳过二维码
-- **后台鉴权**：独立 AdminUser + RBAC 角色（超管 / 运营 / 客服 / 财务）+ 写操作审计，与车主账号隔离（ADR-0011）。⚠️ **现状：admin RBAC 尚未实施**（spec 已写于 `add-admin-auth`，代码 drift，见 [design/consistency-plan.md](./design/consistency-plan.md) P0#3；将登记到 open-questions.md · Phase B 待补）
+- **后台鉴权**：独立 AdminUser + RBAC 角色（超管 / 运营 / 客服 / 财务）+ 写操作审计，与车主账号隔离（ADR-0011）。⚠️ **现状：admin RBAC 尚未实施**（spec 已写于 `add-admin-auth`，代码 drift，见 [open-questions.md](./open-questions.md) Q1 / [consistency-plan](./design/consistency-plan.md) P0#3）
 
 ## 四、本地开发端口约定
 
@@ -63,7 +63,7 @@ AuditLog       id, adminUserId, action, target, before, after, at  # 后台写�
 - `.env.development` / `.env.production` —— 模板（入仓，含示例值）
 - 敏感变量（JWT secret、DB 密码）只通过云厂商 secret manager 注入，不进任何 `.env` 文件
 - 前端只读 `VITE_PUBLIC_*` 前缀变量，避免泄漏
-- 变量清单的单一真相：仓库根 `.env.example`（Phase B 待补）
+- 变量清单的单一真相：仓库根 `.env.example`（待补，见 [open-questions.md](./open-questions.md) Q3）
 
 ## 六、数据持久化现状
 
