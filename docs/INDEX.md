@@ -16,7 +16,7 @@
 
 | Agent | 工作范围 | 起始 | 涉及文件 | 状态 |
 |---|---|---|---|---|
-| claude-harness-reconcile | ① 接入 Harness 第④层 hooks（开工三件套/密钥/commit 自报/防孤儿/openspec 校验）② INDEX 同步：登记孤儿文档 + 回填真实 commit + 清理 Workstreams | 2026-06-01 | `.claude/settings.json`, `.claude/hooks/*`, `.gitignore`, `docs/INDEX.md` | 🔵 in-progress |
+| claude-harness-reconcile | ✅①hooks ✅②INDEX 同步（已提交 `9aa6772`）· 🔵 P1：拆 PRD 技术内容→architecture/backend-spec/api-contracts（留指针）+ 补 constraints/open-questions/task-plan + Observability 层 | 2026-06-01 | `docs/architecture.md`, `docs/backend-spec.md`, `docs/api-contracts.md`, `docs/PRD.md`, `docs/INDEX.md` | 🔵 in-progress |
 
 ## 🗺 Ownership Zones（目录分工建议）
 
@@ -30,7 +30,10 @@
 | `docs/design/page-spec.md` | UI agent | 视觉布局权威源 |
 | `docs/design/interaction-patterns.md` | UX agent | 交互模式 / 状态矩阵 / 决策树 |
 | `docs/feature-spec.md` | 工程 agent | 路由 / 接口 / 状态机权威源，**改前必须在 Active Workstreams 登记** |
-| `docs/PRD.md` | 产品 agent | 升版本前必须在 Active Workstreams 登记 |
+| `docs/architecture.md` | 架构 agent | 系统形态 / 模块边界 / 目录结构 / 流程合约单一真相 |
+| `docs/backend-spec.md` | 后端 agent | 数据模型 / 鉴权 / 端口 / 环境变量单一真相，**改 schema 先改这里** |
+| `docs/api-contracts.md` | 后端+前端 agent | API 契约单一真相，**改字段先改这里，前后端同步** |
+| `docs/PRD.md` | 产品 agent | 升版本前必须在 Active Workstreams 登记；只放产品意图，技术细节链到 architecture/backend-spec/api-contracts |
 | `docs/research/` | 调研 agent | 调研先来这里检索，避免重复 |
 | `mockups/jdo-pencil-v3/**` | UI agent | **项目主前端**（2026-05-27 确立），后续迭代 / 部署均基于此 |
 | `mockups/jdo-pencil/` `mockups/jdo-pencil-v2/` | — | **已归档**，不再维护，仅供参考 |
@@ -67,7 +70,8 @@
 ## 📌 入口文档（必读）
 
 - [CLAUDE.md](../CLAUDE.md) — 项目协作公约 v3（Harness 5 层 + OpenSpec 原生 + admin 域）· Accepted · 2026-05-29
-- [docs/PRD.md](./PRD.md) — 产品需求文档 **v0.5（新增 §I 后台管理）** · Draft · 2026-05-29
+- [docs/PRD.md](./PRD.md) — 产品需求文档 **v0.6（§Implementation Decisions 按唯一真相拆分到 architecture/backend-spec/api-contracts）** · Draft · 2026-06-01
+- [docs/architecture.md](./architecture.md) · [docs/backend-spec.md](./backend-spec.md) · [docs/api-contracts.md](./api-contracts.md) — **实现细节三件套（唯一真相）** · Draft · 2026-06-01
 - [docs/scope.md](./scope.md) — **MVP 范围（admin 已入范围）** · Draft · 2026-05-29
 - [mockups/jdo-pencil-v3/JDO 车机电商.html](../mockups/jdo-pencil-v3/JDO%20%E8%BD%A6%E6%9C%BA%E7%94%B5%E5%95%86.html) — **消费端主前端 · 21 屏 React 原型（V3，不重画）**· 需 HTTP server（`npx serve mockups/jdo-pencil-v3 -p 3000`）
 - [docs/feature-spec.md](./feature-spec.md) — **派活看板 + 路由→domain 映射**（消费端 P-01~13 + **后台 A-01~14**）· Draft · 2026-05-29
@@ -76,9 +80,13 @@
 
 ## 📐 架构设计 architecture/
 
-> 系统级架构说明、技术栈总览。
+> 系统级架构说明、技术栈总览。**唯一真相分工**：产品意图在 PRD，实现细节在下表三文档。
 
-_暂无（首份待 ADR-0001 ~ 0003 落地后产出）_
+| 文档 | 摘要 | 状态 | 日期 |
+|---|---|---|---|
+| [architecture.md](./architecture.md) | **系统架构唯一真相** · 系统形态 + 前端深模块 + 后端模块 + 横切 + 模块间流程合约 + 仓库目录结构 + 技术决策→ADR 映射（迁移自 PRD §Implementation Decisions）| Draft | 2026-06-01 |
+| [backend-spec.md](./backend-spec.md) | **后端规格唯一真相** · 数据模型核心实体 + 鉴权（JWT / 车机扫码 / admin RBAC）+ 端口约定 + 环境变量分层 + 持久化现状（改 schema 先改这里）| Draft | 2026-06-01 |
+| [api-contracts.md](./api-contracts.md) | **API 契约唯一真相** · REST 协议 + 错误格式 + 版本 + 分页 + 共享代码契约 + 联调三阶段（改 API 字段先改这里）| Draft | 2026-06-01 |
 
 ## 🎨 设计 design/
 

@@ -1,10 +1,12 @@
 # 车机端电商平台 PRD
 
-> 版本：v0.5 · 日期：2026-05-29 · 状态：Draft
-> 取代：v0.4（v0.1 ~ v0.4 保留在 git 历史中）
+> 版本：v0.6 · 日期：2026-06-01 · 状态：Draft
+> 取代：v0.5（v0.1 ~ v0.5 保留在 git 历史中）
 > 沟通语言：中文 · 协作铁律见 `CLAUDE.md`
 >
-> **v0.5 变更（本次）：新增「后台管理（admin）」整端范围**——
+> **v0.6 变更（本次）：按「唯一真相」原则拆分 §Implementation Decisions**——技术细节迁移到 [architecture.md](./architecture.md)（模块 / 目录 / 流程合约）、[backend-spec.md](./backend-spec.md)（数据模型 / 鉴权 / 端口 / 环境变量）、[api-contracts.md](./api-contracts.md)（接口契约 / 联调），PRD 对应段落缩为指针。PRD 回归"为什么 + 用户要什么"，不再承载实现细节。
+>
+> **v0.5 变更：新增「后台管理（admin）」整端范围**——
 > - 新增 §I 后台管理 User Stories（US-40 ~ US-58）
 > - **删除原 Out-of-Scope #8「后台运营系统不在 Demo 范围」**（该条作废，admin 进入范围）
 > - 配套新增 [`docs/scope.md`](./scope.md)、ADR-0010~0012（admin 形态 / RBAC / UI 基准）
@@ -159,243 +161,27 @@
 
 ## Implementation Decisions
 
+> **本节技术细节已按「唯一真相」原则迁移归位**（v0.6 · 2026-06-01）。PRD 只保留产品意图，实现细节见下游文档：
+
 ### 模块拆分（深模块优先）
 
-> **命名约定**：本节列的是「业务领域深模块」（cart / order / payment 等长生命周期、跨多页面、独立测试的领域逻辑）。
-> 与 [`docs/feature-spec.md §三 跨页面模块 M-01~M-13`](./feature-spec.md) **不是同一层概念** —— 后者是 UI 壳层 / 基础设施模块（顶栏、底栏、主题、JS Bridge 等），更接近"全局组件"。
-> 仅 **M-12 DrivingContext** 同时出现在两边，因为它既是业务关键深模块也是 UI 壳层基座。
-
-按"深模块 = 复杂内部 + 简单稳定接口 + 可独立测试"的原则识别，**已确认的核心模块**：
-
-#### 前端（车机 H5）
-
-- **DrivingContext（驾驶上下文模块，深模块⭐）**
-  - 对外接口：`useDrivingMode()` → `{ mode: 'driving' | 'parked', restrictions: { allowKeyboard, allowVideo, allowComplexForm, ... } }`
-  - 内部封装：车速/档位传感器适配、阈值与防抖、传感器缺失时的降级（Demo 环境用 mock）、状态变更广播
-  - 关键价值：把"行车/停车"这件事压成一个简单状态，所有 UI 组件只读它的接口，不关心数据来源
-
-- **CatalogStore（商品域）**
-  - 商品列表、详情、分类、搜索，分页 + 缓存
-  - 接口：查询型，无副作用，易测
-
-- **CartStore（购物车域，深模块⭐）**
-  - 对外接口：`addItem / removeItem / setQuantity / checkout`
-  - 内部封装：本地存储 + 服务端同步 + 登录前后合并、冲突解决、弱网降级
-  - 关键价值：状态机清晰，跨场景（未登录→登录、断网→联网）行为一致
-
-- **OrderStateMachine（订单状态机，深模块⭐）**
-  - 纯函数：`transition(state, event) => newState`
-  - 状态：未付款 / 已付款 / 备货 / 配送 / 已送达 / 已完成 / 已取消 / 售后中
-  - 易于单测，前后端共用同一份状态定义
-
-- **PaymentSession（支付会话域，深模块⭐）**
-  - 对外接口：`create(orderId) → session`、`session.status$` 状态流
-  - 内部封装：二维码生成、手机端轮询、超时、幂等重试、回调处理
-  - 关键价值：把"扫码支付"复杂时序压成响应式状态流
-
-- **AccountModule（账号域）**
-  - 登录（手机号验证码 / 车机扫码 / 车厂账号预留）、地址簿、个人信息
-
-- **IVIShell（车机适配壳层）**
-  - 深色主题切换、横屏布局栅格、大字号/大点击区 design token、安全策略约束
-  - 是 UI 层的"地基"，不是业务模块
-
-#### 后端
-
-- `catalog-service`（商品服务）
-- `order-service`（订单服务，含状态机）
-- `payment-service`（支付服务，Demo 阶段 mock，对接二维码/免密接口）
-- `user-service`（账号服务）
-- `fulfillment-service`（履约 / 自提点 / 物流轨迹）
-- `api-gateway`（鉴权、限流、风控统一入口）
-
-#### 横切
-
-- 设计系统（Design Tokens + 组件库，车机优先尺寸）
-- 埋点与可观测（前端 PV/UV/漏斗 + 后端链路追踪）
-- 配置中心（行车态阈值、降级开关）
+> 已迁移到 [architecture.md §二 前端深模块 / §三 后端模块 / §四 横切 / §五 模块间流程合约](./architecture.md)。
+> 「业务深模块」与 UI 壳层模块（M-01~M-13）的区别见 [feature-spec.md](./feature-spec.md)；仅 DrivingContext 同属两边。
 
 ### 仓库与目录规划
 
-**决策**：
+> 已迁移到 [architecture.md §六 仓库与目录结构](./architecture.md)（含目录骨架 + `@jdo/` 命名约定）。
 
-- **单仓库 monorepo**：Demo 阶段团队规模小，monorepo 切换成本低；模块边界清晰后想拆 polyrepo 也容易
-- **包管理**：`pnpm` + workspaces（性能好、磁盘省、社区采纳广）
-- **任务编排**：`turbo`（可选，加速增量构建与并行）
-- **后端形态**：Demo 阶段做 **modular monolith**（单进程、按 domain 模块化），**不上微服务**；接口边界按未来拆分预留好，避免初期过度设计
-- **前后端共享**：类型、订单状态机、API 契约统一放 `packages/`，单一真相
+### 关键技术决策（已 ADR 化）
 
-**目录骨架**（开干前的总图）：
-
-```
-JDOTEST/
-├── apps/
-│   └── h5/                         # 车机端 H5（生产入口；同源跑手机/PC 演示）
-│       ├── src/
-│       │   ├── modules/            # 业务模块（命名与后端 domain 对齐）
-│       │   │   ├── catalog/        # 商品域
-│       │   │   ├── cart/           # 购物车域（深模块）
-│       │   │   ├── order/          # 订单域
-│       │   │   ├── payment/        # 支付域（深模块）
-│       │   │   ├── account/        # 账号域
-│       │   │   └── fulfillment/    # 履约 / 自提点
-│       │   ├── platform/           # 车机平台层（车机专属）
-│       │   │   ├── driving-context/  # 行车/停车感知（深模块）
-│       │   │   ├── ivi-shell/        # 主题、横屏布局、安全策略
-│       │   │   └── bridge/           # JS Bridge 抽象（mock + 真实车厂）
-│       │   ├── components/         # 通用 UI 组件
-│       │   ├── pages/              # 路由页面
-│       │   ├── api/                # 后端接口客户端（由 OpenAPI 生成）
-│       │   ├── stores/             # 全局状态
-│       │   └── main.tsx
-│       ├── public/
-│       ├── vite.config.ts
-│       └── package.json
-│
-├── services/
-│   └── api/                        # 后端单体（modular monolith）
-│       ├── src/
-│       │   ├── modules/            # 业务模块（边界即未来拆分点）
-│       │   │   ├── catalog/        # controller / service / repository / routes
-│       │   │   ├── order/
-│       │   │   ├── payment/
-│       │   │   ├── cart/
-│       │   │   ├── user/
-│       │   │   └── fulfillment/
-│       │   ├── gateway/            # 路由聚合、鉴权、限流、CORS、错误统一
-│       │   ├── db/                 # PG 客户端 + 迁移
-│       │   ├── cache/              # Redis 客户端
-│       │   ├── observability/      # 日志、追踪、指标
-│       │   ├── config/             # 配置加载与校验
-│       │   └── main.ts
-│       ├── prisma/                 # schema + migrations（或 drizzle，待 ADR）
-│       └── package.json
-│
-├── packages/
-│   ├── shared-types/               # 前后端共享 TS 类型（DTO、Entity）
-│   ├── order-state-machine/        # 订单状态机（纯函数，前后端共用）
-│   ├── design-tokens/              # 颜色、字号、间距、栅格（车机优先尺寸）
-│   ├── ui-components/              # 车机 UI 组件库（按需抽取）
-│   ├── api-contracts/              # openapi.yaml + 自动生成的 client/server 类型
-│   └── eslint-config/              # 统一 lint / format / tsconfig 基线
-│
-├── tools/
-│   ├── seed/                       # 种子数据脚本（商品 / 用户 / 订单）
-│   ├── mock-server/                # 独立 mock 服务（前端先行阶段可用）
-│   └── e2e/                        # E2E 测试（Playwright，覆盖主链路）
-│
-├── infra/
-│   ├── docker-compose.yml          # 本地 PG + Redis
-│   └── Dockerfile.api              # 后端生产镜像
-│
-├── docs/                           # 协作铁律入口
-│   ├── INDEX.md                    # 全部文档索引
-│   ├── PRD.md                      # 当前文件
-│   ├── architecture/               # 架构图、系统总览
-│   ├── decisions/                  # ADR
-│   └── research/                   # 调研报告
-├── diagrams/                       # excalidraw / svg 源文件
-│
-├── .github/
-│   └── workflows/                  # CI: lint + test + build
-│
-├── .gitignore
-├── CLAUDE.md
-├── README.md                       # 起手指南（指向 PRD + INDEX）
-├── package.json                    # 根 workspace
-├── pnpm-workspace.yaml
-├── turbo.json
-└── tsconfig.base.json
-```
-
-**命名约定**：
-
-- 包名前缀统一 `@jdo/`（如 `@jdo/h5`、`@jdo/api`、`@jdo/shared-types`）
-- 模块文件夹用 kebab-case，TS 类型用 PascalCase，函数/变量 camelCase
-- 测试文件与被测文件同目录，命名 `*.test.ts` / `*.spec.ts`
-
-### 关键技术决策（待后续 ADR 化）
-
-1. **前端框架**：暂定 React（生态/H5 支持/团队熟悉度综合最优），待 ADR-0001 正式裁定
-2. **状态管理**：DrivingContext 用 React Context + 事件总线，业务态用 Zustand/Redux（待 ADR）
-3. **API 风格**：REST + JSON，Demo 阶段不上 GraphQL
-4. **后端语言**：暂定 Node.js（与前端同栈，全栈视角友好），待 ADR
-5. **数据库**：暂定 PostgreSQL（电商主数据） + Redis（购物车 / 会话），待 ADR
-6. **部署**：Demo 阶段前端 Vercel，后端容器化部署到云厂商，CI/CD 待定
-7. **车速数据源**：Demo 阶段提供 mock URL 参数（`?speed=20`）模拟，真实接入靠车厂 JS Bridge
+> PRD v0.3 列的"暂定"决策已全部收敛到 Accepted ADR（前端 / 后端 / 数据库 / 行车态 / 部署 / monorepo / UI / IA / admin）。汇总见 [architecture.md §七](./architecture.md) 与 [INDEX §ADR 表](./INDEX.md)。
 
 ### 后端接入方案
 
-#### 接口契约
-- **协议**：REST + JSON over HTTPS
-- **契约源**：`packages/api-contracts/openapi.yaml` 作为唯一真相
-- **代码生成**：
-  - 前端 client 由 `openapi-typescript` 自动生成，禁止手写 fetch
-  - 后端 DTO 校验用 `zod` 或 `class-validator`，校验失败统一走全局错误处理
-- **错误格式**（全局统一）：
-  ```json
-  { "code": "ORDER_NOT_FOUND", "message": "订单不存在", "details": {}, "traceId": "abc-123" }
-  ```
-- **版本管理**：URL 前缀 `/api/v1/`，破坏性变更走 `/api/v2/`
-- **分页规范**：cursor 分页优先（`?cursor=&limit=`），列表场景才用 offset
-
-#### 鉴权
-- **方案**：JWT（access token 15min + refresh token 7d），HttpOnly Cookie + Authorization Header 双轨
-- **车机扫码登录**（核心场景）：
-  1. 车机 `POST /api/v1/auth/qr-code` → 返回 `{ sessionId, qrUrl, expiresAt }`
-  2. 手机扫码后 `POST /api/v1/auth/qr-confirm` 携带手机端 token
-  3. 车机轮询 `GET /api/v1/auth/qr-status?sessionId=` → `pending` / `confirmed` / `expired`
-  4. `confirmed` 后下发 JWT，车机本地持久化
-- **Demo 阶段简化**：`POST /api/v1/auth/mock-login` 直接获得 demo 账户 JWT，跳过整个二维码流程
-
-#### 联调三阶段
-- **阶段 A · 前端先行**：API 完全 mock（用 `MSW` 拦截 fetch），前端可独立推进
-- **阶段 B · 接真接口**：后端 ready 后关掉 MSW；vite dev server 配 proxy（`/api → http://localhost:3000`），无需改前端代码
-- **阶段 C · 部署演示**：前端构建到 Vercel，API 域名通过环境变量切换到云上后端
-
-#### 共享代码契约
-- 订单状态机定义在 `packages/order-state-machine`，前后端通过 `import { transition, OrderState } from '@jdo/order-state-machine'` 复用
-- DTO 类型定义在 `packages/shared-types`，前端 stores、后端 controllers 都 import 它
-- OpenAPI yaml 是接口的真相之源，CI 检查任何 controller 与 OpenAPI 漂移就报错
-
-#### 关键流程合约（模块间）
-- **DrivingContext → UI**：所有需要降级的 UI 组件通过 `useDrivingMode()` 读取，禁止各组件自行判断车速
-- **Cart → Order**：购物车结算时生成订单草稿（draft order），由 order 模块统一做库存锁定 + 价格再校验，避免前端绕过价格
-- **Order → Payment**：订单创建即同步创建 PaymentSession；订单状态由支付状态机驱动，**禁止前端直接修改订单状态**
-- **支付回调**：第三方支付回调统一进 `payment` 模块的回调 handler，订单状态变更仅在此处发生
-
-#### 数据模型核心实体（preview，详细 schema 见后续 ADR）
-
-```
-User           id, phone, name, avatar, createdAt
-Address        id, userId, name, phone, region, detail, isDefault,
-               kind: home | company | pickup | car
-Product        id, title, categoryId, images[], status, createdAt
-Sku            id, productId, attrs{}, price, stock
-Category       id, parentId, name, sort
-Cart           userId, items: [{ skuId, quantity, selected }]
-Order          id, userId, status, totalAmount, addressId,
-               fulfillmentKind: delivery | pickup, createdAt
-OrderItem      orderId, skuId, quantity, snapshotPrice, snapshotTitle
-Payment        id, orderId, method, status, amount, paidAt, externalRef
-Fulfillment    orderId, kind, trackingNo?, pickupPointId?, status, eta
-PickupPoint    id, name, lat, lng, address, openingHours
-```
-
-#### 本地开发端口约定
-| 服务 | 地址 |
-|---|---|
-| 前端 H5 dev (vite) | `http://localhost:5173` |
-| 后端 API | `http://localhost:3000` |
-| OpenAPI 渲染（Swagger UI） | `http://localhost:3000/docs` |
-| PostgreSQL | `localhost:5432` |
-| Redis | `localhost:6379` |
-
-#### 环境变量分层
-- `.env.local` —— 本地开发（git 不入仓）
-- `.env.development` / `.env.production` —— 模板（入仓，含示例值）
-- 敏感变量（JWT secret、DB 密码）只通过云厂商 secret manager 注入，不进任何 .env 文件
-- 前端只读 `VITE_PUBLIC_*` 前缀变量，避免泄漏
+> 已按唯一真相拆分迁移：
+> - 接口契约 / 错误格式 / 版本 / 分页 / 联调三阶段 / 共享代码契约 → [api-contracts.md](./api-contracts.md)
+> - 鉴权 / 数据模型核心实体 / 端口约定 / 环境变量分层 / 持久化现状 → [backend-spec.md](./backend-spec.md)
+> - 模块间关键流程合约 → [architecture.md §五](./architecture.md)
 
 ## Testing Decisions
 
