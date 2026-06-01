@@ -3,6 +3,7 @@ import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fas
 import { buildApp } from './app.js';
 import { store } from './store.js';
 import * as auth from './admin-auth.js';
+import * as cauth from './consumer-auth.js';
 
 let app: FastifyInstance;
 let superToken = '';
@@ -371,5 +372,70 @@ describe('后台员工鉴权 admin-auth（openspec/specs/admin-auth）', () => {
       last = (await app.inject({ method: 'POST', url: '/api/v1/admin/auth/login', payload: { account: 'admin', password: 'wrong' } })).statusCode;
     }
     expect(last).toBe(429);
+  });
+});
+
+describe('车主登录 · 车机扫码 + mock-login（auth-qr）', () => {
+  const post = (url: string, payload?: unknown): Promise<LightMyRequestResponse> =>
+    app.inject({ method: 'POST', url, payload } as InjectOptions) as Promise<LightMyRequestResponse>;
+  const get = (url: string, token?: string): Promise<LightMyRequestResponse> =>
+    app.inject({ method: 'GET', url, headers: token ? { authorization: `Bearer ${token}` } : {} } as InjectOptions) as Promise<LightMyRequestResponse>;
+
+  it('qr-code → pending 会话（含 sessionId/qrUrl/expiresAt）', async () => {
+    const b = (await post('/api/v1/auth/qr-code')).json();
+    expect(b.sessionId).toMatch(/^qr-/);
+    expect(b.status).toBe('pending');
+    expect(b.qrUrl).toContain(b.sessionId);
+    expect(typeof b.expiresAt).toBe('string');
+  });
+
+  it('未知 sessionId → status expired（不泄漏存在性）', async () => {
+    const s = (await get('/api/v1/auth/qr-status?sessionId=qr-nope')).json();
+    expect(s.status).toBe('expired');
+    expect(s.accessToken).toBeUndefined();
+  });
+
+  it('手机确认 → 车机轮询拿到车主 token + user', async () => {
+    const { sessionId } = (await post('/api/v1/auth/qr-code')).json();
+    expect((await post('/api/v1/auth/qr-confirm', { sessionId, userId: 'u-1001' })).statusCode).toBe(200);
+    const s = (await get(`/api/v1/auth/qr-status?sessionId=${sessionId}`)).json();
+    expect(s.status).toBe('confirmed');
+    expect(s.accessToken).toBeTruthy();
+    expect(s.refreshToken).toBeTruthy();
+    expect(s.user.id).toBe('u-1001');
+  });
+
+  it('已封禁车主确认 → 403，会话不 confirmed', async () => {
+    const { sessionId } = (await post('/api/v1/auth/qr-code')).json();
+    expect((await post('/api/v1/auth/qr-confirm', { sessionId, userId: 'u-1003' })).statusCode).toBe(403); // u-1003 banned
+    expect((await get(`/api/v1/auth/qr-status?sessionId=${sessionId}`)).json().status).toBe('pending');
+  });
+
+  it('TTL 超时 → expired（单元级，注入 now）', () => {
+    const { sessionId } = cauth.createSession(1_000_000);
+    expect(cauth.getSession(sessionId, 1_000_000).status).toBe('pending');
+    expect(cauth.getSession(sessionId, 1_000_000 + (cauth.QR_TTL + 1) * 1000).status).toBe('expired');
+  });
+
+  it('mock-login 直接拿车主 token，/me 返回同一车主', async () => {
+    const b = (await post('/api/v1/auth/mock-login')).json();
+    expect(b.accessToken).toBeTruthy();
+    expect(b.user.id).toBe('u-1001');
+    const me = (await get('/api/v1/auth/me', b.accessToken)).json();
+    expect(me.id).toBe('u-1001');
+  });
+
+  it('无 token 调 /me → 401', async () => {
+    expect((await get('/api/v1/auth/me')).statusCode).toBe(401);
+  });
+
+  it('车主 token 不能访问后台 /api/v1/admin/* → 401（与 admin 隔离）', async () => {
+    const { accessToken } = (await post('/api/v1/auth/mock-login')).json();
+    const r = await get('/api/v1/admin/products', accessToken);
+    expect(r.statusCode).toBe(401);
+  });
+
+  it('admin token 不能当车主 token 用（/me typ 不匹配 → 401）', async () => {
+    expect((await get('/api/v1/auth/me', superToken)).statusCode).toBe(401);
   });
 });

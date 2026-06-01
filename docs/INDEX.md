@@ -16,7 +16,7 @@
 
 | Agent | 工作范围 | 起始 | 涉及文件 | 状态 |
 |---|---|---|---|---|
-| _暂无登记_ | | | | |
+| claude-harness-reconcile | Q12 车主登录：propose→apply→archive `add-qr-login`（车机扫码登录会话 + 手机确认下发车主 JWT + Demo mock-login，复用鉴权基建）| 2026-06-01 | `openspec/changes/add-qr-login/**`, `services/api/src/consumer-auth.ts`, `services/api/src/app.ts`, `services/api/src/app.test.ts`, `openspec/specs/auth-qr/**` | 🔵 in-progress |
 
 ## 🗺 Ownership Zones（目录分工建议）
 

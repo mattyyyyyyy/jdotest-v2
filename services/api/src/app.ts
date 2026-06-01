@@ -6,9 +6,22 @@ import { transition, type OrderState, type OrderEvent } from '@jdo/order-state-m
 import { store } from './store.js';
 import { ADMIN_APP_HTML, ADMIN_APP_JS } from './admin-spa.js';
 import * as auth from './admin-auth.js';
+import * as cauth from './consumer-auth.js';
 
 function errBody(code: string, message: string, details: unknown = {}) {
   return { code, message, details, traceId: 'demo-trace' };
+}
+
+/** 签发车主 token（access+refresh）+ 用户信息。扫码 confirmed 与 mock-login 共用。 */
+function issueUserToken(userId: string) {
+  const user = store.get('users', userId);
+  const now = Math.floor(Date.now() / 1000);
+  const claims = { sub: userId, name: (user?.name as string) ?? '车主' };
+  return {
+    accessToken: cauth.signToken(claims, 'user', cauth.ACCESS_TTL, now),
+    refreshToken: cauth.signToken(claims, 'user-refresh', cauth.REFRESH_TTL, now),
+    user: user ? { id: user.id, name: user.name, phone: user.phone } : { id: userId },
+  };
 }
 
 /** 扩展请求：守卫填入的 admin 身份与审计改前快照 */
@@ -102,6 +115,36 @@ export function buildApp(): FastifyInstance {
     banners: store.activeBanners(),
     heroRecs: store.activeHeroRecs(),
   }));
+
+  // ============ 车主登录 /api/v1/auth/*（openspec/specs/auth-qr）============
+  // 车机出码 → 手机确认 → 车机轮询拿车主 JWT；与 admin token 物理隔离（typ='user'）。
+  app.post('/api/v1/auth/qr-code', async () => cauth.createSession());
+
+  app.post('/api/v1/auth/qr-confirm', async (req, reply) => {
+    const body = z.object({ sessionId: z.string(), userId: z.string().optional() }).parse(req.body);
+    const userId = body.userId ?? 'u-1001';
+    const user = store.get('users', userId);
+    if (!user) return reply.code(404).send(errBody('USER_NOT_FOUND', '车主不存在', { userId }));
+    if (user.banned === true) return reply.code(403).send(errBody('USER_BANNED', '该车主已被封禁，无法登录', { userId }));
+    if (!cauth.confirmSession(body.sessionId, userId)) return reply.code(410).send(errBody('QR_EXPIRED', '二维码已过期，请重新获取', { sessionId: body.sessionId }));
+    return { ok: true };
+  });
+
+  app.get('/api/v1/auth/qr-status', async (req) => {
+    const q = z.object({ sessionId: z.string() }).parse(req.query);
+    const s = cauth.getSession(q.sessionId);
+    if (s.status !== 'confirmed' || !s.userId) return { status: s.status };
+    return { status: 'confirmed', ...issueUserToken(s.userId) };
+  });
+
+  app.post('/api/v1/auth/mock-login', async () => issueUserToken('u-1001'));
+
+  app.get('/api/v1/auth/me', async (req, reply) => {
+    const p = cauth.verifyToken(cauth.bearer(req.headers.authorization), 'user');
+    if (!p) return reply.code(401).send(errBody('UNAUTHENTICATED', '需要车主登录', {}));
+    const user = store.get('users', p.sub);
+    return user ? { id: user.id, name: user.name, phone: user.phone } : { id: p.sub, name: p.name };
+  });
 
   app.get('/api/v1/categories', async () => ({ items: store.categories() }));
 
