@@ -1,0 +1,43 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/matty/Documents/Codex/2026-05-31/prior-conversation-with-codex-conversation-role/jdotest-v2/.codex/hooks/check-workstream-registered.sh'"
+          },
+          {
+            "type": "command",
+            "command": "'/Users/matty/Documents/Codex/2026-05-31/prior-conversation-with-codex-conversation-role/jdotest-v2/.codex/hooks/scan-secrets.sh'"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/matty/Documents/Codex/2026-05-31/prior-conversation-with-codex-conversation-role/jdotest-v2/.codex/hooks/check-agent-tag.sh'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/matty/Documents/Codex/2026-05-31/prior-conversation-with-codex-conversation-role/jdotest-v2/.codex/hooks/check-index-updated.sh'"
+          },
+          {
+            "type": "command",
+            "command": "'/Users/matty/Documents/Codex/2026-05-31/prior-conversation-with-codex-conversation-role/jdotest-v2/.codex/hooks/openspec-validate.sh'"
+          }
+        ]
+      }
+    ]
+  }
+}

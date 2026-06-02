@@ -2,7 +2,7 @@
 
 > 状态：Draft · 日期：2026-06-01 · 维护者：后端 / 前端 agent（双方对齐）
 > 上游：[architecture.md](./architecture.md) · [backend-spec.md](./backend-spec.md)
-> 下游：`packages/api-contracts/openapi.yaml`（机器可读真相，待落地）· 前端 `apps/h5/src/api/` · 后端 `services/api`
+> 下游：`packages/api-contracts/openapi.yaml`（机器可读真相，待落地）· `apps/android-ivi/`（原生 Android 端）· 后端 `services/api`
 > **迁移说明**：本文内容由 PRD v0.5 §后端接入方案（接口契约 / 联调三阶段 / 共享代码契约）抽离归位，PRD 对应段落已缩为指针。
 > **改 API 字段必须先改这里再改实现，前后端同时对齐。**
 

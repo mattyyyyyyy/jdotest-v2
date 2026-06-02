@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.jdo.ivi.data.Catalog
+import com.jdo.ivi.data.imageModel
 import com.jdo.ivi.ui.components.*
 import com.jdo.ivi.ui.nav.Routes
 import com.jdo.ivi.ui.theme.JdoTheme
@@ -238,7 +239,7 @@ fun MallPointsScreen(nav: (String) -> Unit, back: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     items(Catalog.products.take(8), key = { it.id }) { p ->
                         Column(Modifier.clip(RoundedCornerShape(20.dp)).background(c.bg2.copy(0.5f))) {
-                            AsyncImage(p.img, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().aspectRatio(4f/3f))
+                            AsyncImage(imageModel(p.img), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().aspectRatio(4f/3f))
                             Column(Modifier.padding(14.dp)) {
                                 Text(p.title, color = c.textPrimary, fontSize = 18.sp, maxLines = 2)
                                 Spacer(Modifier.height(6.dp))

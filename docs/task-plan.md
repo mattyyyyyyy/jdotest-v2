@@ -15,7 +15,7 @@
 | `packages/order-state-machine` | ✅ 纯函数状态机 + 20 单测（`c6608ee`）|
 | `services/api` 薄切片 | ✅ Fastify + 7 场景 + 商品/订单接口（内存 store）|
 | 后台管理站 | ✅ `services/api/src/admin-spa.ts` 内嵌站点 + 前后台连通（`7a5b41c`→`3c29141`）|
-| `apps/h5`（消费端正式前端）| ❌ 未建，仍在 `mockups/jdo-pencil-v3` 原型阶段 |
+| `apps/android-ivi`（消费端原生安卓前端）| 🚧 进行中（`apps/android-ivi`，Kotlin + Jetpack Compose）|
 | `apps/admin`（独立后台前端）| ❌ 未建（现为后端内嵌 SPA）|
 | 数据持久化（Prisma + PG）| ❌ 未接，内存态 |
 | admin RBAC + 审计 | ❌ spec 已写，未实施 |
@@ -41,7 +41,7 @@
 - [ ] `.github/workflows/ci.yml`：lint + typecheck + test + build 四件套
 - [ ] `.env.example`（Q3，Phase B 即补）
 - [ ] `infra/docker-compose.yml`（PG + Redis）
-- [ ] `apps/h5` 骨架：把 v3 原型迁到 Vite + TS
+- [ ] `apps/android-ivi` 骨架：原生安卓消费端（Kotlin + Jetpack Compose）
 - [ ] CI 契约检查：controller 与 openapi.yaml 漂移报错
 
 ## 三、参考：PRD 原始 Week 计划（已部分完成）

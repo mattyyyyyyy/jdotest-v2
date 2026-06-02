@@ -19,7 +19,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.jdo.ivi.data.AppState
 import com.jdo.ivi.data.Catalog
+import com.jdo.ivi.data.ShoppingState
+import com.jdo.ivi.data.imageModel
 import com.jdo.ivi.ui.components.*
 import com.jdo.ivi.ui.nav.Routes
 import com.jdo.ivi.ui.theme.JdoTheme
@@ -33,7 +36,7 @@ import com.jdo.ivi.ui.theme.RadiusLg
 @Composable
 fun MallDetailScreen(nav: (String) -> Unit, back: () -> Unit) {
     val c = JdoTheme.colors
-    val p = Catalog.byId("g1")
+    val p = Catalog.byId(AppState.detailId)
     val thumbs = listOf(p.img) + Catalog.byScene(p.scene).filter { it.id != p.id }.take(3).map { it.img }
     var thumb by remember { mutableStateOf(0) }
     var size by remember { mutableStateOf("M") }
@@ -47,14 +50,14 @@ fun MallDetailScreen(nav: (String) -> Unit, back: () -> Unit) {
                 // 左：图
                 Column(Modifier.weight(1.25f)) {
                     AsyncImage(
-                        thumbs[thumb], p.title, contentScale = ContentScale.Crop,
+                        imageModel(thumbs[thumb]), p.title, contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(28.dp)),
                     )
                     Spacer(Modifier.height(18.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         thumbs.forEachIndexed { i, src ->
                             AsyncImage(
-                                src, null, contentScale = ContentScale.Crop,
+                                imageModel(src), null, contentScale = ContentScale.Crop,
                                 modifier = Modifier.size(120.dp).clip(RoundedCornerShape(18.dp))
                                     .border(if (thumb == i) 2.dp else 1.dp, if (thumb == i) c.mint else c.borderDefault, RoundedCornerShape(18.dp))
                                     .clickable { thumb = i },
@@ -103,8 +106,12 @@ fun MallDetailScreen(nav: (String) -> Unit, back: () -> Unit) {
                         modifier = Modifier.clickable { nav(Routes.MallReviews) })
                     // CTA
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        OutlineButton("加入购物车", Modifier.weight(1f)) { nav(Routes.MallCart) }
-                        PrimaryButton("立即购买", Modifier.weight(1f)) { nav(Routes.MallCheckout) }
+                        OutlineButton("加入购物车", Modifier.weight(1f)) {
+                            ShoppingState.addCartItem(p.id, qty, size) { nav(Routes.MallCart) }
+                        }
+                        PrimaryButton("立即购买", Modifier.weight(1f)) {
+                            ShoppingState.addCartItem(p.id, qty, size) { nav(Routes.MallCheckout) }
+                        }
                     }
                 }
             }

@@ -1,7 +1,7 @@
 # 系统架构 Architecture
 
 > 状态：Draft · 日期：2026-06-01 · 维护者：架构 agent
-> 上游：[PRD.md](./PRD.md)（产品意图）· [scope.md](./scope.md)（边界）· ADR-0001~0012
+> 上游：[PRD.md](./PRD.md)（产品意图）· [scope.md](./scope.md)（边界）· ADR-0001~0013
 > 下游：[backend-spec.md](./backend-spec.md)（数据模型 / 后端细节）· [api-contracts.md](./api-contracts.md)（接口契约）· `openspec/specs/`（feature 行为）
 > **迁移说明**：本文内容由 PRD v0.5 §Implementation Decisions 抽离归位（唯一真相原则），PRD 对应段落已缩为指针。
 
@@ -11,7 +11,7 @@
 
 | 单元 | 形态 | 依据 |
 |---|---|---|
-| 消费端 | 车机内嵌 H5 / WebView（横屏，行车态降级），同源跑手机 / PC 演示 | 锁定结论 · ADR-0001 |
+| 消费端 | 原生安卓 App（Kotlin + Jetpack Compose，横屏，行车态降级），普通安卓车机/平板（per ADR-0013）| 锁定结论 · ADR-0013 |
 | 后台端 | 标准桌面 Web（PC 浏览器，不受 88px 触控 / 行车态约束）| ADR-0010 / 0012 |
 | 后端 | **modular monolith**（单进程、按 domain 模块化，不上微服务），边界即未来拆分点 | ADR-0002 |
 | 共享 | 类型 / 订单状态机 / API 契约统一放 `packages/`，单一真相 | ADR-0006 |
@@ -57,10 +57,8 @@
 
 ```
 JDOTEST/
-├── apps/h5/                    # 车机端 H5（生产入口；同源跑手机/PC 演示）
-│   └── src/{modules/{catalog,cart,order,payment,account,fulfillment},
-│            platform/{driving-context,ivi-shell,bridge},
-│            components,pages,api,stores,main.tsx}
+├── apps/android-ivi/               # 消费端原生安卓（Kotlin + Jetpack Compose，横屏，行车态降级）
+│   └── app/src/main/java/com/jdo/ivi/{data,ui,screens,components}
 ├── apps/admin/                 # 后台管理前端（桌面 Web，ADR-0010；待落地）
 ├── services/api/               # 后端单体（modular monolith）
 │   └── src/{modules/{catalog,order,payment,cart,user,fulfillment},
@@ -72,10 +70,10 @@ JDOTEST/
 ├── docs/  diagrams/  mockups/  openspec/
 ```
 
-> 当前实际落地：`packages/order-state-machine` + `services/api`（薄切片）。`apps/h5` / `apps/admin` 尚未建（消费端仍在 `mockups/jdo-pencil-v3` 原型阶段；后台已有 `services/api/src/admin-spa.ts` 内嵌站点）。差距追踪见 [design/consistency-plan.md](./design/consistency-plan.md)。
+> 当前实际落地：`packages/order-state-machine` + `services/api`（薄切片）。`apps/android-ivi` 已启动原生开发（Kotlin + Jetpack Compose）；`apps/admin` 尚未建（后台已有 `services/api/src/admin-spa.ts` 内嵌站点）。差距追踪见 [design/consistency-plan.md](./design/consistency-plan.md)。
 
-**命名约定**：包名前缀 `@jdo/`（`@jdo/h5` / `@jdo/api` / `@jdo/shared-types`）；模块文件夹 kebab-case，TS 类型 PascalCase，函数 / 变量 camelCase；测试与被测同目录 `*.test.ts` / `*.spec.ts`。
+**命名约定**：包名前缀 `@jdo/`（`@jdo/android-ivi` / `@jdo/api` / `@jdo/shared-types`）；模块文件夹 kebab-case，TS 类型 PascalCase，函数 / 变量 camelCase；测试与被测同目录 `*.test.ts` / `*.spec.ts`。
 
 ## 七、关键技术决策（已 ADR 化）
 
-PRD v0.3 列的"暂定"技术决策已全部收敛到 Accepted ADR：前端框架（ADR-0001）· 后端运行时（ADR-0002）· 数据库 + ORM（ADR-0003）· 行车态数据源（ADR-0004）· 部署（ADR-0005）· monorepo（ADR-0006）· UI / 设计系统（ADR-0007）· IA（ADR-0009）· admin 形态 / RBAC / UI（ADR-0010~0012）。依赖顺序：0006 → 0001/0002/0003 → 0007 → 0004 → 0005。
+PRD v0.3 列的"暂定"技术决策已全部收敛到 Accepted ADR：前端框架（ADR-0001，消费端已 supersede 为 ADR-0013）· 后端运行时（ADR-0002）· 数据库 + ORM（ADR-0003）· 行车态数据源（ADR-0004）· 部署（ADR-0005）· monorepo（ADR-0006）· UI / 设计系统（ADR-0007）· IA（ADR-0009）· admin 形态 / RBAC / UI（ADR-0010~0012）· 消费端原生安卓（ADR-0013）。依赖顺序：0006 → 0001/0002/0003 → 0007 → 0004 → 0005。

@@ -20,8 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.jdo.ivi.data.Catalog
-import com.jdo.ivi.data.Product
+import com.jdo.ivi.data.ShoppingState
+import com.jdo.ivi.data.imageModel
 import com.jdo.ivi.ui.components.*
 import com.jdo.ivi.ui.nav.Routes
 import com.jdo.ivi.ui.theme.JdoTheme
@@ -31,23 +31,13 @@ import com.jdo.ivi.ui.theme.MonoNumber
    06 购物车 · 07 确认订单 · 08 扫码支付
    ============================================================ */
 
-private data class CartLine(val p: Product, val qty: Int, val spec: String, val checked: Boolean = true)
-
 @Composable
 fun MallCartScreen(nav: (String) -> Unit, back: () -> Unit) {
     val c = JdoTheme.colors
-    var lines by remember {
-        mutableStateOf(listOf(
-            CartLine(Catalog.byId("g1"), 2, "木质香调"),
-            CartLine(Catalog.byId("e4"), 1, "6 瓶 / 箱"),
-            CartLine(Catalog.byId("g5"), 1, "岩石黑 · M"),
-            CartLine(Catalog.byId("f5"), 3, "30 包 / 箱", checked = false),
-        ))
-    }
-    val selected = lines.filter { it.checked }
-    val subtotal = selected.sumOf { it.p.price * it.qty }
-    val discount = (subtotal * 0.06)
-    val total = subtotal - discount
+    val lines = ShoppingState.cartItems
+    LaunchedEffect(Unit) { ShoppingState.loadCart() }
+    val selected = lines.filter { it.selected }
+    val subtotal = selected.sumOf { it.priceFen * it.qty } / 100.0
 
     MallBg {
         Column(Modifier.fillMaxSize()) {
@@ -62,21 +52,21 @@ fun MallCartScreen(nav: (String) -> Unit, back: () -> Unit) {
                                 .border(1.dp, c.borderDefault, RoundedCornerShape(22.dp)).padding(20.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Checkbox(ln.checked) { lines = lines.toMutableList().also { it[i] = ln.copy(checked = !ln.checked) } }
+                            Checkbox(ln.selected) { ShoppingState.updateCartItem(ln.id, selected = !ln.selected) }
                             Spacer(Modifier.width(16.dp))
-                            AsyncImage(ln.p.img, null, contentScale = ContentScale.Crop,
+                            AsyncImage(imageModel(ln.img), null, contentScale = ContentScale.Crop,
                                 modifier = Modifier.size(140.dp).clip(RoundedCornerShape(18.dp)))
                             Spacer(Modifier.width(20.dp))
                             Column(Modifier.weight(1f)) {
-                                Text(ln.p.title, color = c.textPrimary, fontSize = 22.sp, maxLines = 2)
+                                Text(ln.title, color = c.textPrimary, fontSize = 22.sp, maxLines = 2)
                                 Spacer(Modifier.height(6.dp))
                                 Text("规格 · ${ln.spec} · 自营", color = c.textMuted, fontSize = 16.sp)
                                 Spacer(Modifier.height(8.dp))
-                                Text("¥${fmtPrice(ln.p.price)}", color = c.error, fontSize = 26.sp, style = MonoNumber)
+                                Text("¥${fmtPrice(ln.priceFen / 100.0)}", color = c.error, fontSize = 26.sp, style = MonoNumber)
                             }
                             QtyStepper(ln.qty,
-                                onMinus = { if (ln.qty > 1) lines = lines.toMutableList().also { it[i] = ln.copy(qty = ln.qty - 1) } },
-                                onPlus = { lines = lines.toMutableList().also { it[i] = ln.copy(qty = ln.qty + 1) } })
+                                onMinus = { if (ln.qty > 1) ShoppingState.updateCartItem(ln.id, qty = ln.qty - 1) },
+                                onPlus = { ShoppingState.updateCartItem(ln.id, qty = ln.qty + 1) })
                         }
                     }
                 }
@@ -87,14 +77,16 @@ fun MallCartScreen(nav: (String) -> Unit, back: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(18.dp),
                 ) {
                     SummaryRow("商品金额", "¥ ${"%.2f".format(subtotal)}")
-                    SummaryRow("车主权益直降", "− ¥ ${"%.2f".format(discount)}", c.success)
                     SummaryRow("运费", "免运费")
                     Divider()
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text("合计", color = c.textSecondary, fontSize = 22.sp, modifier = Modifier.weight(1f))
-                        Text("¥ ${"%.2f".format(total)}", color = c.error, fontSize = 40.sp, fontWeight = FontWeight.SemiBold, style = MonoNumber)
+                        Text("¥ ${"%.2f".format(subtotal)}", color = c.error, fontSize = 40.sp, fontWeight = FontWeight.SemiBold, style = MonoNumber)
                     }
-                    PrimaryButton("去结算 · ${selected.sumOf { it.qty }} 件", Modifier.fillMaxWidth()) { nav(Routes.MallCheckout) }
+                    ShoppingState.lastError?.let { Text(it, color = c.error, fontSize = 16.sp) }
+                    PrimaryButton("去结算 · ${selected.sumOf { it.qty }} 件", Modifier.fillMaxWidth()) {
+                        if (selected.isNotEmpty()) nav(Routes.MallCheckout)
+                    }
                 }
             }
         }
@@ -144,10 +136,11 @@ fun SummaryRow(label: String, value: String, valueColor: Color? = null) {
 @Composable
 fun MallCheckoutScreen(nav: (String) -> Unit, back: () -> Unit) {
     val c = JdoTheme.colors
-    val items = listOf(Catalog.byId("g1"), Catalog.byId("e4"), Catalog.byId("g5"))
+    val items = ShoppingState.cartItems.filter { it.selected }
+    LaunchedEffect(Unit) { ShoppingState.loadCart() }
     var ship by remember { mutableStateOf("pickup") }
     var pay by remember { mutableStateOf("qrcode") }
-    val total = items.sumOf { it.price } * 0.94
+    val total = items.sumOf { it.priceFen * it.qty } / 100.0
 
     MallBg {
         Column(Modifier.fillMaxSize()) {
@@ -187,10 +180,10 @@ fun MallCheckoutScreen(nav: (String) -> Unit, back: () -> Unit) {
                     Text("商品清单 · ${items.size} 件", color = c.textPrimary, fontSize = 22.sp)
                     items.forEach { p ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            AsyncImage(p.img, null, contentScale = ContentScale.Crop, modifier = Modifier.size(72.dp).clip(RoundedCornerShape(12.dp)))
+                            AsyncImage(imageModel(p.img), null, contentScale = ContentScale.Crop, modifier = Modifier.size(72.dp).clip(RoundedCornerShape(12.dp)))
                             Spacer(Modifier.width(14.dp))
                             Text(p.title, color = c.textPrimary, fontSize = 18.sp, maxLines = 2, modifier = Modifier.weight(1f))
-                            Text("¥${fmtPrice(p.price)}", color = c.textPrimary, fontSize = 20.sp, style = MonoNumber)
+                            Text("¥${fmtPrice(p.priceFen * p.qty / 100.0)}", color = c.textPrimary, fontSize = 20.sp, style = MonoNumber)
                         }
                     }
                     Divider()
@@ -198,7 +191,12 @@ fun MallCheckoutScreen(nav: (String) -> Unit, back: () -> Unit) {
                         Text("实付", color = c.textSecondary, fontSize = 22.sp, modifier = Modifier.weight(1f))
                         Text("¥ ${"%.2f".format(total)}", color = c.error, fontSize = 40.sp, fontWeight = FontWeight.SemiBold, style = MonoNumber)
                     }
-                    PrimaryButton("提交订单", Modifier.fillMaxWidth()) { nav(Routes.MallPay) }
+                    ShoppingState.lastError?.let { Text(it, color = c.error, fontSize = 16.sp) }
+                    PrimaryButton("提交订单", Modifier.fillMaxWidth()) {
+                        if (items.isNotEmpty()) {
+                            ShoppingState.checkoutSelectedAsync { nav(Routes.MallPay) }
+                        }
+                    }
                 }
             }
         }
@@ -232,6 +230,7 @@ fun OptRow(icon: String, name: String, desc: String, selected: Boolean, onClick:
 @Composable
 fun MallPayScreen(nav: (String) -> Unit, back: () -> Unit) {
     val c = JdoTheme.colors
+    val amount = ShoppingState.lastCheckoutTotalFen / 100.0
     MallBg {
         Column(Modifier.fillMaxSize()) {
             StatusBar()
@@ -250,10 +249,10 @@ fun MallPayScreen(nav: (String) -> Unit, back: () -> Unit) {
                         }
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                        Text("订单号 · JDO20260526887462", color = c.textSecondary, fontSize = 20.sp)
+                        Text("订单号 · ${ShoppingState.lastOrderId ?: "正在生成订单"}", color = c.textSecondary, fontSize = 20.sp)
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text("¥", color = c.textSecondary, fontSize = 40.sp, style = MonoNumber)
-                            Text("234.78", color = c.textPrimary, fontSize = 80.sp, fontWeight = FontWeight.SemiBold, style = MonoNumber)
+                            Text("%.2f".format(amount), color = c.textPrimary, fontSize = 80.sp, fontWeight = FontWeight.SemiBold, style = MonoNumber)
                         }
                         Row(
                             Modifier.clip(RoundedCornerShape(9999.dp)).background(c.driving.copy(0.15f))
@@ -266,8 +265,11 @@ fun MallPayScreen(nav: (String) -> Unit, back: () -> Unit) {
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                             OutlineButton("取消支付", Modifier.weight(1f)) { back() }
-                            PrimaryButton("我已支付", Modifier.weight(1f)) { nav(Routes.MallOrders) }
+                            PrimaryButton("我已支付", Modifier.weight(1f)) {
+                                ShoppingState.confirmLastPaymentAsync { nav(Routes.MallOrders) }
+                            }
                         }
+                        ShoppingState.lastError?.let { Text(it, color = c.error, fontSize = 16.sp) }
                     }
                 }
             }

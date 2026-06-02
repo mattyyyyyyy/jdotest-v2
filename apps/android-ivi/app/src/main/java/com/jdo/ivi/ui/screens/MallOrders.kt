@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.jdo.ivi.data.Catalog
+import com.jdo.ivi.data.ShoppingState
+import com.jdo.ivi.data.imageModel
 import com.jdo.ivi.ui.components.*
 import com.jdo.ivi.ui.nav.Routes
 import com.jdo.ivi.ui.theme.JdoTheme
@@ -30,27 +32,62 @@ import com.jdo.ivi.ui.theme.MonoNumber
    09 我的订单 · 18 物流详情 · 17 售后
    ============================================================ */
 
-private data class Order(val id: String, val status: String, val statusColor: Color, val itemIds: List<String>, val total: Double, val time: String)
+private data class Order(val id: String, val rawStatus: String, val status: String, val statusColor: Color, val itemTitles: List<String>, val total: Double, val time: String)
 
 @Composable
 fun MallOrdersScreen(nav: (String) -> Unit, back: () -> Unit) {
     val c = JdoTheme.colors
-    val orders = listOf(
-        Order("JDO...887462", "待发货", c.driving, listOf("g1","e4","g5"), 234.78, "今天 09:24"),
-        Order("JDO...331205", "配送中", c.brand, listOf("f5","f7"), 168.0, "昨天 18:02"),
-        Order("JDO...118207", "待自提", c.driving, listOf("e5"), 79.0, "5/24 14:15"),
-        Order("JDO...772091", "已完成", c.success, listOf("x4","x5"), 249.8, "5/20 21:48"),
+    LaunchedEffect(Unit) { ShoppingState.loadOrders() }
+    fun statusLabel(status: String) = when (status) {
+        "PENDING_PAYMENT" -> "待付款"
+        "PAID" -> "待发货"
+        "SHIPPING" -> "配送中"
+        "PICKUP_READY" -> "待自提"
+        "DELIVERED", "COMPLETED" -> "已完成"
+        "CANCELED", "CANCELLED" -> "已取消"
+        else -> status
+    }
+    fun statusColor(status: String) = when (status) {
+        "SHIPPING" -> c.brand
+        "DELIVERED", "COMPLETED" -> c.success
+        "CANCELED", "CANCELLED" -> c.textMuted
+        else -> c.driving
+    }
+    val sampleOrders = listOf(
+        Order("JDO...887462", "PAID", "待发货", c.driving, listOf("车载香薰", "玻璃水", "主动降噪蓝牙耳机"), 234.78, "今天 09:24"),
+        Order("JDO...331205", "SHIPPING", "配送中", c.brand, listOf("每日坚果", "原产地咖啡豆"), 168.0, "昨天 18:02"),
+        Order("JDO...118207", "PICKUP_READY", "待自提", c.driving, listOf("PD 100W 车载快充"), 79.0, "5/24 14:15"),
+        Order("JDO...772091", "COMPLETED", "已完成", c.success, listOf("声波电动牙刷", "氨基酸洗发水"), 249.8, "5/20 21:48"),
     )
+    val allOrders = ShoppingState.orders.map {
+        Order(it.id, it.status, statusLabel(it.status), statusColor(it.status), it.itemTitles, it.totalFen / 100.0, it.createdAt)
+    }.ifEmpty { sampleOrders }
+    var tab by remember { mutableStateOf("all") }
+    val orders = when (tab) {
+        "unpaid" -> allOrders.filter { it.rawStatus == "PENDING_PAYMENT" }
+        "paid" -> allOrders.filter { it.rawStatus == "PAID" }
+        "shipping" -> allOrders.filter { it.rawStatus == "SHIPPING" || it.rawStatus == "PICKUP_READY" }
+        "review" -> allOrders.filter { it.rawStatus == "DELIVERED" || it.rawStatus == "COMPLETED" }
+        else -> allOrders
+    }
     var active by remember { mutableStateOf(0) }
-    val cur = orders[active]
-    val tl = listOf("下单成功" to true, "付款完成" to true, "商家备货" to true, "配送 / 自提" to false, "完成" to false)
+    LaunchedEffect(tab, orders.size) { active = 0 }
+    val cur = orders.getOrNull(active.coerceAtMost(orders.lastIndex))
+    fun timeline(status: String) = when (status) {
+        "PENDING_PAYMENT" -> listOf(true, false, false, false, false)
+        "PAID" -> listOf(true, true, false, false, false)
+        "SHIPPING", "PICKUP_READY" -> listOf(true, true, true, false, false)
+        "DELIVERED", "COMPLETED" -> listOf(true, true, true, true, true)
+        else -> listOf(true, false, false, false, false)
+    }.zip(listOf("下单成功", "付款完成", "商家备货", "配送 / 自提", "完成")).map { (done, label) -> label to done }
 
     MallBg {
         Column(Modifier.fillMaxSize()) {
             StatusBar()
             SubBar("我的订单", back) { IconBtn("search") {} }
             Row(Modifier.padding(horizontal = 36.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                listOf("全部","待付款","待发货","待收货","待评价").forEachIndexed { i, t -> Chip(t, i == 0) {} }
+                listOf("all" to "全部", "unpaid" to "待付款", "paid" to "待发货", "shipping" to "待收货", "review" to "待评价")
+                    .forEach { (id, label) -> Chip(label, tab == id) { tab = id } }
             }
             Row(Modifier.weight(1f).padding(horizontal = 36.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 // 列表
@@ -67,11 +104,12 @@ fun MallOrdersScreen(nav: (String) -> Unit, back: () -> Unit) {
                                 Text(o.status, color = o.statusColor, fontSize = 22.sp)
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                o.itemIds.forEach { id ->
-                                    AsyncImage(Catalog.byId(id).img, null, contentScale = ContentScale.Crop,
+                                o.itemTitles.take(3).forEachIndexed { index, title ->
+                                    AsyncImage(imageModel(Catalog.products[index % Catalog.products.size].img), title, contentScale = ContentScale.Crop,
                                         modifier = Modifier.size(88.dp).clip(RoundedCornerShape(14.dp)))
                                 }
                             }
+                            Text(o.itemTitles.joinToString(" · "), color = c.textSecondary, fontSize = 16.sp, maxLines = 1)
                             Row(verticalAlignment = Alignment.Bottom) {
                                 Text("${o.time}", color = c.textMuted, fontSize = 18.sp, modifier = Modifier.weight(1f))
                                 Text("¥ ${"%.2f".format(o.total)}", color = c.textPrimary, fontSize = 26.sp, style = MonoNumber)
@@ -80,28 +118,46 @@ fun MallOrdersScreen(nav: (String) -> Unit, back: () -> Unit) {
                     }
                 }
                 // 详情
-                Column(
-                    Modifier.weight(1f).clip(RoundedCornerShape(28.dp)).background(c.bg2.copy(0.6f))
-                        .border(1.dp, c.borderDefault, RoundedCornerShape(28.dp)).padding(28.dp).verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
-                ) {
-                    Text(cur.status, color = cur.statusColor, fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
-                    Text("订单号 ${cur.id}", color = c.textMuted, fontSize = 18.sp, style = MonoNumber)
-                    // 时间线
-                    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                        tl.forEach { (label, done) ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(Modifier.size(18.dp).clip(CircleShape).background(if (done) c.mint else c.borderStrong))
-                                Spacer(Modifier.width(16.dp))
-                                Text(label, color = if (done) c.textPrimary else c.textMuted, fontSize = 22.sp)
+                if (cur == null) {
+                    Box(
+                        Modifier.weight(1f).clip(RoundedCornerShape(28.dp)).background(c.bg2.copy(0.6f))
+                            .border(1.dp, c.borderDefault, RoundedCornerShape(28.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("暂无该状态订单", color = c.textMuted, fontSize = 24.sp) }
+                } else {
+                    Column(
+                        Modifier.weight(1f).clip(RoundedCornerShape(28.dp)).background(c.bg2.copy(0.6f))
+                            .border(1.dp, c.borderDefault, RoundedCornerShape(28.dp)).padding(28.dp).verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                    ) {
+                        Text(cur.status, color = cur.statusColor, fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
+                        Text("订单号 ${cur.id}", color = c.textMuted, fontSize = 18.sp, style = MonoNumber)
+                        // 时间线
+                        Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                            timeline(cur.rawStatus).forEach { (label, done) ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(Modifier.size(18.dp).clip(CircleShape).background(if (done) c.mint else c.borderStrong))
+                                    Spacer(Modifier.width(16.dp))
+                                    Text(label, color = if (done) c.textPrimary else c.textMuted, fontSize = 22.sp)
+                                }
                             }
                         }
-                    }
-                    Divider()
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlineButton("申请售后", Modifier.weight(1f)) { nav(Routes.MallAftersale) }
-                        if (cur.status == "配送中") PrimaryButton("查看物流", Modifier.weight(1f)) { nav(Routes.MallTracking) }
-                        else PrimaryButton("再买一次", Modifier.weight(1f)) { nav(Routes.MallHome) }
+                        Divider()
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            when (cur.rawStatus) {
+                                "PENDING_PAYMENT" -> PrimaryButton("继续支付", Modifier.weight(1f)) {
+                                    ShoppingState.selectOrderForPayment(cur.id, (cur.total * 100).toInt())
+                                    nav(Routes.MallPay)
+                                }
+                                "PAID" -> OutlineButton("催发货", Modifier.weight(1f)) {}
+                                "SHIPPING", "PICKUP_READY" -> PrimaryButton("查看物流", Modifier.weight(1f)) { nav(Routes.MallTracking) }
+                                "DELIVERED", "COMPLETED" -> {
+                                    OutlineButton("申请售后", Modifier.weight(1f)) { nav(Routes.MallAftersale) }
+                                    PrimaryButton("再买一次", Modifier.weight(1f)) { nav(Routes.MallHome) }
+                                }
+                                else -> PrimaryButton("返回商城", Modifier.weight(1f)) { nav(Routes.MallHome) }
+                            }
+                        }
                     }
                 }
             }
@@ -202,7 +258,7 @@ fun MallAftersaleScreen(nav: (String) -> Unit, back: () -> Unit) {
                 }
                 GlassCard(Modifier.fillMaxWidth(), corner = 20.dp) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        AsyncImage(Catalog.byId("e5").img, null, contentScale = ContentScale.Crop, modifier = Modifier.size(88.dp).clip(RoundedCornerShape(14.dp)))
+                        AsyncImage(imageModel(Catalog.byId("e5").img), null, contentScale = ContentScale.Crop, modifier = Modifier.size(88.dp).clip(RoundedCornerShape(14.dp)))
                         Spacer(Modifier.width(16.dp))
                         Column(Modifier.weight(1f)) {
                             Text(Catalog.byId("e5").title, color = c.textPrimary, fontSize = 22.sp)

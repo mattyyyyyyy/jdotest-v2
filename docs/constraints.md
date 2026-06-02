@@ -1,7 +1,7 @@
 # 约束 Constraints
 
 > 状态：Draft · 日期：2026-06-01 · 维护者：架构 / 产品 agent
-> 上游：[PRD.md](./PRD.md)（User Story F/G + 成功标准）· [scope.md](./scope.md)（边界）· ADR-0001~0012
+> 上游：[PRD.md](./PRD.md)（User Story F/G + 成功标准）· [scope.md](./scope.md)（边界）· ADR-0001~0013
 > 下游：`.claude/settings.json`（must 级走 hook）· [testing-strategy（待补）] · 实现代码
 > **分级**：`must` 不可妥协（须有 hook/CI 兜底）· `should` 推荐默认 · `optional` 可选增强 · `out` 明确不做。
 

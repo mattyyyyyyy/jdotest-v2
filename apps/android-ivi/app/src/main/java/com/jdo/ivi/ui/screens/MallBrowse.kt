@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jdo.ivi.data.AppState
 import com.jdo.ivi.data.Catalog
 import com.jdo.ivi.ui.components.*
 import com.jdo.ivi.ui.nav.Routes
@@ -101,7 +102,13 @@ fun MallSearchScreen(nav: (String) -> Unit, back: () -> Unit) {
                     sugg.forEach { p ->
                         GlassCard(Modifier.fillMaxWidth().padding(bottom = 10.dp), corner = 16.dp,
                             padding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                Modifier.fillMaxWidth().clickable {
+                                    AppState.detailId = p.id
+                                    nav(Routes.MallDetail)
+                                },
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
                                 Text(p.title, color = c.textPrimary, fontSize = 20.sp, modifier = Modifier.weight(1f))
                                 Text("¥${fmtPrice(p.price)}", color = c.mint, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                             }

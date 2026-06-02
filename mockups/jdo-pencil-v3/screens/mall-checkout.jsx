@@ -23,7 +23,7 @@ function MallCheckout({ onNav }) {
   const total = subtotal - discount + freight;
 
   // 提交订单：调 /api/v1/cart/checkout —— 后端取购物车已选项建单（走状态机）并移出购物车。
-  // 后台订单管理立刻同步看到。接不通 API（离线）时直接跳支付页，不阻塞演示。
+  // 后台订单管理立刻同步看到。记录订单号，供支付页模拟 payment 回调。
   const placeOrder = () => {
     fetch('/api/v1/cart/checkout', {
       method: 'POST',
@@ -31,7 +31,10 @@ function MallCheckout({ onNav }) {
       body: JSON.stringify({ channel: 'car' }),
     })
       .then((r) => r.json())
-      .then((d) => { if (window.console) console.log('[JDO] 已下单，订单号 ' + (d.order && d.order.id)); })
+      .then((d) => {
+        if (d.order && d.order.id) sessionStorage.setItem('jdo:last-order-id', d.order.id);
+        if (window.console) console.log('[JDO] 已下单，订单号 ' + (d.order && d.order.id));
+      })
       .catch(() => {})
       .finally(() => onNav('mall-pay'));
   };

@@ -3,6 +3,7 @@ package com.jdo.ivi.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -14,17 +15,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jdo.ivi.R
 import com.jdo.ivi.data.Catalog
 import com.jdo.ivi.ui.components.AvatarBadge
 import com.jdo.ivi.ui.components.jdoIcon
 import com.jdo.ivi.ui.nav.Routes
 import com.jdo.ivi.ui.theme.JdoTheme
 import com.jdo.ivi.ui.theme.RadiusPill
+import com.jdo.ivi.ui.theme.blurBackground
 
 /* ============================================================
    商城公共骨架：顶栏 / 导航 rail / 二级标题栏 / 图标按钮
@@ -33,14 +39,13 @@ import com.jdo.ivi.ui.theme.RadiusPill
 @Composable
 fun MallTopBar(nav: (String) -> Unit, activeTab: String = "mall") {
     val c = JdoTheme.colors
-    Row(
+    Box(
         Modifier.fillMaxWidth().height(96.dp)
             .border(1.dp, c.borderSubtle).padding(horizontal = 36.dp),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
         // 搜索框（胶囊）
         Row(
-            Modifier.width(560.dp).height(60.dp).clip(RoundedCornerShape(RadiusPill))
+            Modifier.align(Alignment.CenterStart).width(500.dp).height(60.dp).clip(RoundedCornerShape(RadiusPill))
                 .background(c.bg2.copy(0.5f)).border(1.dp, c.borderDefault, RoundedCornerShape(RadiusPill))
                 .clickable { nav(Routes.MallSearch) }.padding(horizontal = 22.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -50,14 +55,16 @@ fun MallTopBar(nav: (String) -> Unit, activeTab: String = "mall") {
             Text("试试说\"我要买玻璃水\"", color = c.textSecondary, fontSize = 18.sp, modifier = Modifier.weight(1f))
             Icon(jdoIcon("search"), null, tint = c.textSecondary, modifier = Modifier.size(24.dp))
         }
-        Spacer(Modifier.weight(1f))
-        Tab("商城", activeTab == "mall") {}
-        Spacer(Modifier.width(28.dp))
-        Tab("我的", activeTab == "mine") { nav(Routes.MallProfile) }
-        Spacer(Modifier.weight(1f))
-        IconBtn("cart", badge = "3") { nav(Routes.MallCart) }
-        Spacer(Modifier.width(16.dp))
-        IconBtn("settings") { nav(Routes.MallSettings) }
+        Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically) {
+            Tab("商城", activeTab == "mall") {}
+            Spacer(Modifier.width(28.dp))
+            Tab("我的", activeTab == "mine") { nav(Routes.MallProfile) }
+        }
+        Row(Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
+            IconBtn("cart", badge = "3") { nav(Routes.MallCart) }
+            Spacer(Modifier.width(16.dp))
+            IconBtn("settings") { nav(Routes.MallSettings) }
+        }
     }
 }
 
@@ -96,22 +103,25 @@ fun IconBtn(name: String, badge: String? = null, onClick: () -> Unit) {
 fun NavRail(active: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
     val c = JdoTheme.colors
     Column(
-        modifier.width(180.dp).fillMaxHeight().verticalScroll(rememberScrollState())
-            .border(1.dp, c.borderSubtle),
+        modifier.width(196.dp).fillMaxHeight().verticalScroll(rememberScrollState())
+            .border(1.dp, c.borderSubtle).padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Catalog.scenes.forEach { s ->
             val sel = s.id == active
-            Column(
-                Modifier.fillMaxWidth().clickable { onSelect(s.id) }.padding(vertical = 18.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+            Row(
+                Modifier.fillMaxWidth().height(62.dp).clip(RoundedCornerShape(18.dp))
+                    .background(if (sel) c.mint.copy(0.12f) else Color.Transparent)
+                    .clickable { onSelect(s.id) }.padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
-                    Modifier.width(96.dp).height(52.dp).clip(RoundedCornerShape(RadiusPill))
-                        .background(if (sel) c.mint.copy(0.15f) else Color.Transparent),
+                    Modifier.size(42.dp).clip(RoundedCornerShape(14.dp))
+                        .background(if (sel) c.mint.copy(0.14f) else c.bg2.copy(0.35f)),
                     contentAlignment = Alignment.Center,
-                ) { Icon(jdoIcon(s.icon), s.name, tint = if (sel) c.mint else c.textSecondary, modifier = Modifier.size(30.dp)) }
-                Spacer(Modifier.height(6.dp))
-                Text(s.name, color = if (sel) c.textPrimary else c.textSecondary, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                ) { Icon(jdoIcon(s.icon), s.name, tint = if (sel) c.mint else c.textSecondary, modifier = Modifier.size(22.dp)) }
+                Spacer(Modifier.width(10.dp))
+                Text(s.name, color = if (sel) c.textPrimary else c.textSecondary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
             }
         }
     }
@@ -133,8 +143,28 @@ fun SubBar(title: String, onBack: () -> Unit, actions: @Composable RowScope.() -
     }
 }
 
-/** 简易页脚标语（保留品牌一致性） */
+/** 商城公共背景：与 IVI 首页同源壁纸，模糊后透出车型与极光。 */
 @Composable
 fun MallBg(content: @Composable BoxScope.() -> Unit) {
-    Box(Modifier.fillMaxSize().background(JdoTheme.colors.bg0), content = content)
+    val c = JdoTheme.colors
+    Box(Modifier.fillMaxSize().background(c.bg0)) {
+        Image(
+            painter = painterResource(R.drawable.ivi_wallpaper_dark),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize().scale(1.06f).blurBackground(20.dp),
+        )
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    listOf(
+                        c.bg0.copy(alpha = 0.64f),
+                        c.bg0.copy(alpha = 0.54f),
+                        c.bg0.copy(alpha = 0.72f),
+                    )
+                )
+            )
+        )
+        content()
+    }
 }

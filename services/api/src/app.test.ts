@@ -166,6 +166,34 @@ describe('双向同步 · 前→后：消费端下单 → 后台看到', () => {
     expect(adminOrders.length).toBe(before + 1);
     expect(adminOrders.some((o: { id: string }) => o.id === order.id)).toBe(true);
   });
+
+  it('支付确认回调持久化 PAID，消费端与后台同步可见，重复回调幂等', async () => {
+    const created = (await inj({
+      method: 'POST',
+      url: '/api/v1/orders',
+      payload: { items: [{ title: '玻璃水', price: 2990, qty: 1 }], channel: 'car' },
+    })).json().order;
+    expect(created.status).toBe('PENDING_PAYMENT');
+
+    const paid = await inj({ method: 'POST', url: `/api/v1/payments/${created.id}/confirm` });
+    expect(paid.statusCode).toBe(200);
+    expect(paid.json().order.status).toBe('PAID');
+
+    const consumer = (await inj({ method: 'GET', url: '/api/v1/orders' })).json().items;
+    const admin = (await inj({ method: 'GET', url: '/api/v1/admin/orders' })).json().items;
+    expect(consumer.find((o: { id: string }) => o.id === created.id).status).toBe('PAID');
+    expect(admin.find((o: { id: string }) => o.id === created.id).status).toBe('PAID');
+
+    const again = await inj({ method: 'POST', url: `/api/v1/payments/${created.id}/confirm` });
+    expect(again.statusCode).toBe(200);
+    expect(again.json().idempotent).toBe(true);
+  });
+
+  it('已完成订单不能重新确认支付', async () => {
+    const res = await inj({ method: 'POST', url: '/api/v1/payments/o-20004/confirm' });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().code).toBe('INVALID_TRANSITION');
+  });
 });
 
 describe('双向同步 · 后→前：后台加商品（无图）→ 前台拿到默认图，不黑块', () => {

@@ -8,6 +8,7 @@
         android:largeHeap="true"
         android:hardwareAccelerated="true"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:theme="@style/Theme.JdoIvi">
         <activity
             android:name=".MainActivity"

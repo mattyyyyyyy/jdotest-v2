@@ -51,7 +51,7 @@ AuditLog       id, adminUserId, action, target, before, after, at  # 后台写�
 
 | 服务 | 地址 |
 |---|---|
-| 前端 H5 dev (vite) | `http://localhost:5173` |
+| 前端 dev（原生 Android 直连）| `http://localhost:5173` |
 | 后端 API | `http://localhost:3000` |
 | OpenAPI 渲染（Swagger UI）| `http://localhost:3000/docs` |
 | PostgreSQL | `localhost:5432` |

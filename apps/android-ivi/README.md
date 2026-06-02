@@ -4,20 +4,42 @@
 > 目标平台：**普通安卓车机 / 平板**（非 AAOS）· 设计基准：`mockups/jdo-pencil-v3`（视觉/交互参照）
 > 后端不变：复用 `services/api` 的 `/api/v1/*`
 
-## 现状（首个纵向切片）
+## 当前进度
 
-- ✅ **设计 token → Compose 主题**（`ui/theme/{Color,Dimens,Type,Theme}.kt`）：颜色/字号/间距/圆角/触控 **1:1 移植自 `mockups/jdo-pencil-v3/styles/tokens.css`**。这是"界面和现在一样"的地基。
-- ⬜ 屏幕：IVI 首页（状态栏 + 车型壁纸 + 4 玻璃卡 + Dock）→ 商城 20 屏，按 `docs/design/page-spec.md` 逐屏 Compose 复刻。
+- ✅ **设计 token → Compose 主题**：颜色、字号、间距、圆角、触控已从 `mockups/jdo-pencil-v3/styles/tokens.css` 移植。
+- ✅ **21 屏 Compose 原生页面**：IVI 首页 + 商城 20 屏已按用户交付的原生参考包落地；商城首页保留仓库既有的 V3 定制还原。
+- ✅ **真实后端闭环**：启动加载 `/bootstrap`；商品卡和详情页写入 `/cart/items`；购物车读写 `/cart`；结算调用 `/cart/checkout`；支付确认写入 `/payments/:orderId/confirm`；订单页回读 `/orders`。
+- ✅ **图片兜底**：CDN 图片直接加载；后端 `data:image/*` 内联占位图映射到本地 `product_placeholder.xml`，避免 Coil 2 渲染空块。
 
-## ⚠️ 构建说明（重要）
+## 构建说明
 
-本仓库的开发沙箱**没有 Android SDK / Gradle / 模拟器**，原生代码无法在此编译/运行/预览。请在 **Android Studio**（本机）构建：
+2026-06-02 已在本机 Android SDK 36、Android Studio JBR 21、Gradle 8.14.3 和 `emulator-5554` 上验证：
 
-1. Android Studio → New Project → **Empty Activity（Compose）**，包名 `com.jdo.ivi`，最低 API 26+。
-2. 把本目录 `app/src/main/java/com/jdo/ivi/ui/theme/*.kt` 拷进工程对应包路径（或直接以本目录为 app module）。
-3. 在 `MainActivity` 用 `JdoTheme { ... }` 包裹根 Composable。
-4. API 基址指向后端：模拟器用 `http://10.0.2.2:3000/api/v1`，真机用局域网 IP；接口同 web（`/bootstrap`、`/products`、`/auth/qr-code`…）。
-5. 行车态车速：普通安卓平板无车速信号时用 mock；真车机接 Android Car API（`CarPropertyManager`，见 ADR-0013 §后续 #5）。
+```bash
+ANDROID_HOME="$HOME/Library/Android/sdk" \
+JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
+"$HOME/.local/gradle-8.14.3/bin/gradle" --no-daemon :app:assembleDebug
+```
+
+APK 输出：`app/build/outputs/apk/debug/app-debug.apk`。
+
+API 基址在 `app/build.gradle.kts` 的 `API_BASE`。cloudflared 隧道重启后需要更新地址并重新打包。行车态车速目前仍为 mock；真车机接 Android Car API（`CarPropertyManager`，见 ADR-0013 §后续 #5）。
+
+## 持续回归
+
+静态检查 21 条路由、运行 API 测试和 Android debug 构建：
+
+```bash
+apps/android-ivi/scripts/regression-check.sh
+```
+
+追加模拟器真实点击 `商城 → 购物车 → 结算 → 支付 → 待发货`：
+
+```bash
+apps/android-ivi/scripts/regression-check.sh --emulator
+```
+
+次级页面与 V3 Web 的对齐矩阵见 [`docs/research/android-native-v3-regression-audit.md`](../../docs/research/android-native-v3-regression-audit.md)。
 
 > Gradle/Manifest 由 Android Studio 按你的 SDK 版本生成，避免版本漂移——故本仓库只提供与设计强相关、可复用的主题与屏幕 Kotlin 源，不手写 Gradle 脚手架。
 
@@ -31,7 +53,11 @@
 ```
 apps/android-ivi/
   app/src/main/java/com/jdo/ivi/
-    ui/theme/{Color,Dimens,Type,Theme}.kt   # ✅ 设计 token 主题（已落地）
-    ui/screens/                              # ⬜ 各屏 Composable（待逐屏迁移）
+    data/                                    # Catalog + NetworkClient + ShoppingState
+    ui/theme/                                # 设计 token 主题
+    ui/components/                           # 通用组件
+    ui/nav/                                  # 21 屏导航
+    ui/screens/                              # IVI 首页 + 商城 20 屏
+  scripts/                                   # 静态契约 + 模拟器支付闭环回归
   README.md
 ```

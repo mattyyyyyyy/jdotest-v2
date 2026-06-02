@@ -1,5 +1,6 @@
 # ADR-0001: 前端框架选型
 
+- ⚠️ Superseded for consumer app by ADR-0013（原生安卓）。本 ADR 仅保留供历史参考及后台 admin 端（仍用 React）的技术选型依据。
 - 状态：Accepted
 - 日期：2026-05-25
 - 决策者：用户 + Claude

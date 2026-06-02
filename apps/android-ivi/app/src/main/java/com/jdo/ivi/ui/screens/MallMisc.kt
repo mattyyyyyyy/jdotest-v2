@@ -22,10 +22,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.jdo.ivi.data.Catalog
+import com.jdo.ivi.data.ShoppingState
+import com.jdo.ivi.data.imageModel
 import com.jdo.ivi.ui.components.*
 import com.jdo.ivi.ui.nav.Routes
 import com.jdo.ivi.ui.theme.JdoTheme
 import com.jdo.ivi.ui.theme.MonoNumber
+import kotlin.math.roundToInt
 
 /* ============================================================
    11 收货地址 · 21 设置 · 13 登录 · 14 行车态首页
@@ -310,10 +313,12 @@ private fun RepeatCard(p: com.jdo.ivi.data.Product, modifier: Modifier, nav: (St
     val c = JdoTheme.colors
     Row(
         modifier.clip(RoundedCornerShape(28.dp)).background(c.bg2.copy(0.65f))
-            .border(1.5.dp, c.borderDefault, RoundedCornerShape(28.dp)).clickable { nav(Routes.MallPay) },
+            .border(1.5.dp, c.borderDefault, RoundedCornerShape(28.dp)).clickable {
+                ShoppingState.placeOrderAsync(p.title, (p.price * 100).roundToInt()) { nav(Routes.MallPay) }
+            },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AsyncImage(p.img, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxHeight().width(160.dp))
+        AsyncImage(imageModel(p.img), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxHeight().width(160.dp))
         Column(Modifier.weight(1f).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(p.title, color = c.textPrimary, fontSize = 26.sp, maxLines = 2)
             Row(

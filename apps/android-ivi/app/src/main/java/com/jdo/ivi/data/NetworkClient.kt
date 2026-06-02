@@ -12,8 +12,13 @@ data class ApiProduct(
     val cat: String, val tag: String, val sold: Double, val star: Double, val img: String,
 )
 data class ApiCategory(val id: String, val name: String, val icon: String)
-data class ApiBanner(val title: String, val sub: String, val tone: String, val img: String)
-data class ApiHero(val title: String, val sub: String, val tone: String, val cta: String)
+data class ApiBanner(val id: String, val title: String, val sub: String, val tone: String, val img: String)
+data class ApiHero(
+    val id: String, val kind: String, val icon: String, val tag: String,
+    val title: String, val sub: String,
+    val statValue: String, val statLabel: String,
+    val itemIds: List<String>, val cta: String, val tone: String, val navScene: String,
+)
 data class Bootstrap(val categories: List<ApiCategory>, val products: List<ApiProduct>, val banners: List<ApiBanner>, val heroRecs: List<ApiHero>)
 /** 购物车行（price 单位「分」）。 */
 data class CartItem(val id: String, val productId: String, val title: String, val img: String, val priceFen: Int, val qty: Int, val selected: Boolean, val spec: String)
@@ -55,13 +60,27 @@ object NetworkClient {
         return Bootstrap(
             categories = root.getJSONArray("categories").map { ApiCategory(it.optString("id"), it.optString("name"), it.optString("icon")) },
             products = root.getJSONArray("products").map { productOf(it) },
-            banners = root.getJSONArray("banners").map { ApiBanner(it.optString("title"), it.optString("sub"), it.optString("tone"), it.optString("img")) },
-            heroRecs = (root.optJSONArray("heroRecs") ?: org.json.JSONArray()).map { ApiHero(it.optString("title"), it.optString("sub"), it.optString("tone"), it.optString("cta")) },
+            banners = root.getJSONArray("banners").map { ApiBanner(it.optString("id", ""), it.optString("title"), it.optString("sub"), it.optString("tone"), it.optString("img")) },
+            heroRecs = (root.optJSONArray("heroRecs") ?: org.json.JSONArray()).map {
+                val stat = it.optJSONObject("stat")
+                val itemsArr = it.optJSONArray("items") ?: org.json.JSONArray()
+                val items = (0 until itemsArr.length()).map { i -> itemsArr.optString(i) }
+                ApiHero(
+                    id = it.optString("id"), kind = it.optString("kind", ""),
+                    icon = it.optString("icon", ""), tag = it.optString("tag", ""),
+                    title = it.optString("title"), sub = it.optString("sub"),
+                    statValue = stat?.optString("v", "") ?: "",
+                    statLabel = stat?.optString("l", "") ?: "",
+                    itemIds = items, cta = it.optString("cta", ""),
+                    tone = it.optString("tone", ""), navScene = it.optString("navScene", ""),
+                )
+            },
         )
     }
 
-    fun fetchProduct(id: String): ApiProduct? =
-        JSONObject(get("/products")).getJSONArray("items").map { productOf(it) }.find { it.id == id }
+    fun fetchProduct(id: String): ApiProduct? = try {
+        productOf(JSONObject(get("/products/$id")))
+    } catch (_: Exception) { null }
 
     // ---------- 购物车 ----------
     private fun cartOf(json: String): List<CartItem> =
@@ -74,13 +93,14 @@ object NetworkClient {
             )
         }
 
-    fun fetchOrders(): List<ApiOrder> = JSONObject(get("/orders")).getJSONArray("items").map {
+    private fun orderOf(it: JSONObject) =
         ApiOrder(
             id = it.optString("id"), status = it.optString("status"), totalFen = it.optInt("totalAmount"),
             itemTitles = (it.optJSONArray("itemTitles") ?: org.json.JSONArray()).let { a -> (0 until a.length()).map { i -> a.optString(i) } },
             channel = it.optString("channel"), createdAt = it.optString("createdAt"),
         )
-    }
+
+    fun fetchOrders(): List<ApiOrder> = JSONObject(get("/orders")).getJSONArray("items").map(::orderOf)
 
     fun getCart(): List<CartItem> = cartOf(get("/cart"))
     fun addCartItem(productId: String, qty: Int, spec: String): Boolean = try {
@@ -103,6 +123,10 @@ object NetworkClient {
         )
         JSONObject(send("POST", "/orders", body)).optJSONObject("order")?.optString("id")
     } catch (e: Exception) { null }
+
+    /** Demo 支付回调确认：后端通过状态机持久化 PENDING_PAYMENT -> PAID。 */
+    fun confirmPayment(orderId: String): ApiOrder =
+        orderOf(JSONObject(send("POST", "/payments/$orderId/confirm", JSONObject())).getJSONObject("order"))
 }
 
 private inline fun <T> JSONArray.map(f: (JSONObject) -> T): List<T> {

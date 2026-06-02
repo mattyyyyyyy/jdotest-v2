@@ -199,6 +199,23 @@ export function buildApp(): FastifyInstance {
     return { state: r.state };
   });
 
+  // Demo 支付回调：消费端「我已支付」模拟支付渠道确认。
+  // 只接受 paid 事件并走共享状态机；不允许前端直接 set 订单状态。
+  app.post('/api/v1/payments/:orderId/confirm', async (req, reply) => {
+    const { orderId } = z.object({ orderId: z.string() }).parse(req.params);
+    const order = store.get('orders', orderId);
+    if (!order) return reply.code(404).send(errBody('ORDER_NOT_FOUND', '订单不存在', { orderId }));
+    const from = order.status as OrderState;
+    // 支付渠道可能重复回调；PAID 视作幂等成功。
+    if (from === 'PAID') return { ok: true, order, from, to: from, idempotent: true };
+    const result = transition(from, 'paid');
+    if (!result.ok) {
+      return reply.code(409).send(errBody('INVALID_TRANSITION', '当前订单不可确认支付', { from, event: 'paid', allowed: allowedEvents(from) }));
+    }
+    const updated = store.update('orders', orderId, { status: result.state });
+    return { ok: true, order: updated, from, to: result.state };
+  });
+
   // ---------- 购物车（真实数据）----------
   app.get('/api/v1/cart', async () => ({ items: store.cartView() }));
 

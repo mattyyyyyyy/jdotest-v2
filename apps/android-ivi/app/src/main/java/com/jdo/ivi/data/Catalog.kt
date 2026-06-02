@@ -1,12 +1,32 @@
 package com.jdo.ivi.data
 
-import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.jdo.ivi.R
+import kotlin.concurrent.thread
 
 /* ============================================================
-   数据模型 + 示例数据 — 与 data.js 对齐
+   数据模型 + 数据源 — 与 web 同一后端（NetworkClient）对齐
+   · seed 为内置示例（与 data.js 一致），启动即渲染；
+   · Catalog.load() 后台拉 /bootstrap 覆盖为真实后端数据（分→元），
+     与 web 后台完全互通。
    ============================================================ */
 
 enum class TagKind { RED, MINT, GOLD, CYAN }
+
+/** Coil 2 对后端内联 SVG 的 data URI 支持不稳定；使用本地占位图保证卡片可见。 */
+fun imageModel(source: String): Any =
+    if (source.startsWith("data:image/")) {
+        R.drawable.product_placeholder
+    } else {
+        source
+    }
+
+/** 跨屏轻量状态：详情屏展示哪个商品（nav 为单参 String，无法带 arg）。 */
+object AppState {
+    var detailId by mutableStateOf("g1")
+}
 
 data class Product(
     val id: String,
@@ -38,10 +58,19 @@ data class HeroRec(
     val navScene: String,
 )
 
+/** 顶部轮播 banner */
+data class Banner(
+    val id: String,
+    val tone: String,
+    val title: String,
+    val sub: String,
+    val img: String,
+)
+
 object Catalog {
 
-    // ── 7 大场景（左侧导航 rail）──
-    val scenes = listOf(
+    // ── 7 大场景（左侧导航 rail，seed → API 覆盖）──
+    private val seedScenes = listOf(
         Scene("energy", "能量补给", "bolt"),
         Scene("care",   "爱车养护", "wrench"),
         Scene("eat",    "一路吃喝", "cookie"),
@@ -50,11 +79,14 @@ object Catalog {
         Scene("sos",    "24h 救援", "phone"),
         Scene("select", "严选好物", "sparkles"),
     )
+    /** 启动即渲染；load() 后 API 覆盖。 */
+    var scenes by mutableStateOf(seedScenes)
+        private set
 
     private fun img(id: String) =
         "https://images.unsplash.com/$id?auto=format&fit=crop&w=600&q=70"
 
-    val products = listOf(
+    private val seed = listOf(
         // 能量补给
         Product("e1","energy",img("photo-1545459720-aac8509eb02c"),"中石化 95# 加油 ¥100 油卡",97.0,100.0,"车主直降 3%",TagKind.MINT,24.6,4.9),
         Product("e2","energy",img("photo-1593941707882-a5bba14938c7"),"特来电充电桩 月度无限卡",88.0,168.0,"充电 95 折",TagKind.MINT,5.2,4.8),
@@ -95,10 +127,50 @@ object Catalog {
         Product("x5","select",img("photo-1556228720-195a672e8a03"),"氨基酸洗发水 控油蓬松 500ml",49.9,99.0,"回购",TagKind.GOLD,3.8,4.8),
     )
 
+    // 后端拉取后覆盖（可观察）；初值为 seed，启动即渲染。声明在 seed 之后避免前向引用。
+    var products by mutableStateOf(seed)
+        private set
+
     fun byId(id: String): Product = products.firstOrNull { it.id == id } ?: products.first()
     fun byScene(scene: String): List<Product> = products.filter { it.scene == scene }
 
-    val heroRecs = listOf(
+    /** 启动时后台拉真实后端数据（分→元），覆盖全部 seed。失败静默（仍显示 seed）。 */
+    fun load() = thread {
+        try {
+            val bootstrap = NetworkClient.fetchBootstrap()
+            val realProducts = bootstrap.products.map { it.toProduct() }
+            if (realProducts.isNotEmpty()) products = realProducts
+            val realCats = bootstrap.categories.map { Scene(it.id, it.name, it.icon) }
+            if (realCats.isNotEmpty()) scenes = realCats
+            val realHeros = bootstrap.heroRecs.map { it.toHeroRec() }
+            if (realHeros.isNotEmpty()) heroRecs = realHeros
+            banners = bootstrap.banners.map { Banner(it.id, it.tone, it.title, it.sub, it.img) }
+        } catch (_: Exception) { /* 离线/隧道未起：保留 seed */ }
+    }
+
+    private fun ApiProduct.toProduct() = Product(
+        id = id, scene = cat, img = img, title = title,
+        price = priceFen / 100.0,
+        ori = if (oriFen > priceFen) oriFen / 100.0 else null,
+        tag = tag.ifBlank { null },
+        tagKind = tagKindOf(tag),
+        sold = sold, star = star,
+    )
+
+    private fun ApiHero.toHeroRec() = HeroRec(
+        id = id, icon = icon, tag = tag, title = title, sub = sub,
+        statValue = statValue, statLabel = statLabel,
+        itemIds = itemIds, cta = cta, tone = tone, navScene = navScene,
+    )
+
+    private fun tagKindOf(tag: String): TagKind = when {
+        tag.contains("秒杀") || tag.contains("限时") || tag.contains("直降") || tag.contains("特价") || tag.contains("抢") -> TagKind.RED
+        tag.contains("热销") || tag.contains("会员") || tag.contains("黑科技") || tag.contains("年度") -> TagKind.GOLD
+        tag.contains("新品") || tag.contains("联名") || tag.contains("通用") || tag.contains("配套") -> TagKind.CYAN
+        else -> TagKind.MINT
+    }
+
+    private val seedHeroRecs = listOf(
         HeroRec("rec-svc-area","location","前方 3 km · 服务区","张江服务区 · 8 家可自提",
             "继续直行 · 预计 4 分钟可达 · 充电桩可用 4 / 6","4 / 6","充电桩 · 实时",
             listOf("e2","f2","t4","e5"),"导航前往","mint","energy"),
@@ -112,4 +184,11 @@ object Catalog {
             "日历提示 · 明日 09:00 北京会议 · 同城已订","¥ 488","起 / 晚",
             listOf("t1","t2","t4","t5"),"看 12 家酒店","blue","trip"),
     )
+    /** 启动即渲染；load() 后 API 覆盖。 */
+    var heroRecs by mutableStateOf(seedHeroRecs)
+        private set
+
+    /** 顶部 banner（API 返回后覆盖；初始为空，不影响 seed 产品展示）。 */
+    var banners by mutableStateOf(emptyList<Banner>())
+        private set
 }

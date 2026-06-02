@@ -6,9 +6,10 @@
 - 依赖：ADR-0007（design tokens / 设计系统）· ADR-0004（车速数据源 JS Bridge → 改为原生 Car API）
 - Supersedes：CLAUDE.md §锁定结论「消费端运行形态 = 车机内嵌 H5 / WebView」；并改写 ADR-0001（React+Vite 仅适用于 H5）在消费端的适用范围
 
-> **🔄 修订（2026-06-02，实施中变更）**：实现路线由「纯原生 Compose」改为「**原生壳 + WebView 直载 V3 网页**」（即下文替代方案 **A**）。
-> 原因：手写 Compose 难以逐像素还原 web 的毛玻璃(backdrop-filter)、图片尺寸、banner 布局等 CSS 效果（实测多处对不上）。WebView 直接复用 web 代码 → 界面 100% 一致、21 屏全功能、连同一后端、工作量极小。
-> 平台决定（普通安卓平板）不变。`apps/android-ivi`：MainActivity 用 WebView 加载后端 `/app` 的 V3 网页（`useWideViewPort=false` 让网页 autofit 正确适配）。已写的 Compose 屏暂留仓库未引用（待清理或保留为"纯原生"分支备选）。
+> **✅ 实施现状（2026-06-02）**：最终实现为**纯原生 Jetpack Compose**（方案 C），所有 21 屏均已用 Compose 重写。
+> `apps/android-ivi` MainActivity 使用 `ComponentActivity` + `JdoNavHost` 纯 Compose 导航，无 WebView。
+> 设计通过 Compose 主题 token（`Color.kt` / `Type.kt` / `Theme.kt`）移植自 `design-system.md` + `mockups/jdo-pencil-v3/styles/tokens.css`。
+> V3 网页原型保留为视觉/交互参照基准。
 
 ## 背景 Context
 
@@ -16,7 +17,7 @@
 
 关键前提（已与用户确认）：
 - **目标平台 = 普通安卓车机 / 平板**（非 AAOS）。这点决定可行性：普通安卓**无 AAOS 的 car app library 模板化 / 分心限制**，允许自绘整套电商 UI；若为 AAOS 则纯原生自绘会受限。
-- **实现路线 = 纯原生 Kotlin + Jetpack Compose**（最彻底）。
+- **实现路线 = 纯原生 Kotlin + Jetpack Compose**（已落地）。
 
 ## 决策 Decision
 
@@ -50,10 +51,10 @@
 - 行车态车速源从 ADR-0004 的 URL 参数 mock 改为 Android Car API（`CarPropertyManager` 车速/档位）+ mock 兜底；需新增"原生 Car 信号适配"决策（后续 ADR）。
 
 **后续需要做的事（下游 sync 清单）：**
-1. 更新 CLAUDE.md §锁定结论：消费端运行形态指向本 ADR（H5 改原生）。
-2. 新建 `apps/android-ivi/`（Gradle + Compose）；落 **设计 token → Compose 主题**（`Color/Type/Dimens.kt`）作为"设计 1:1"的地基（**首个纵向切片**）。
-3. 首个参照屏：IVI 首页（状态栏 + 车型壁纸 + 4 玻璃卡 + Dock）用 Compose 1:1 复刻，对照现 web 截图验收。
-4. 按 page-spec 逐屏迁移商城 20 屏；行车态降级用 Compose 状态驱动（对应 interaction-patterns）。
-5. 车速源适配：Android Car API + mock；可能升 ADR-0004 或新增 ADR-0014。
-6. PRD §Solution「车机内嵌 H5」表述更新为"原生安卓 App"。
-7. `mockups/jdo-pencil-v3` 标注为"视觉/交互参照基准（原生实装据此）"，保留不删。
+1. ✅ 更新 CLAUDE.md §锁定结论：消费端运行形态指向本 ADR（H5 改原生）。
+2. ✅ 新建 `apps/android-ivi/`（Gradle + Compose）；落 **设计 token → Compose 主题**（`Color/Type/Dimens.kt`）作为"设计 1:1"的地基。
+3. ✅ 首个参照屏：IVI 首页用 Compose 1:1 复刻。
+4. ✅ 按 page-spec 逐屏迁移商城 20 屏；行车态降级用 Compose 状态驱动。
+5. 🔲 车速源适配：Android Car API + mock；可能升 ADR-0004 或新增 ADR-0014。
+6. ✅ PRD / architecture / scope / constraints 等文档已同步为原生安卓表述。
+7. ✅ `mockups/jdo-pencil-v3` 标注为"视觉/交互参照基准（原生实装据此）"，保留不删。

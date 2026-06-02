@@ -17,7 +17,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.jdo.ivi.data.AppState
 import com.jdo.ivi.data.Product
+import com.jdo.ivi.data.ShoppingState
+import com.jdo.ivi.data.imageModel
 import com.jdo.ivi.ui.theme.JdoTheme
 import com.jdo.ivi.ui.theme.MonoNumber
 import com.jdo.ivi.ui.theme.RadiusLg
@@ -26,18 +29,21 @@ import com.jdo.ivi.ui.theme.RadiusLg
    商品卡 — 与原型 .prod-card 一致
    ============================================================ */
 @Composable
-fun ProductCard(p: Product, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
+fun ProductCard(p: Product, modifier: Modifier = Modifier, onAdd: (() -> Unit)? = null, onClick: () -> Unit = {}) {
     val c = JdoTheme.colors
     val shape = RoundedCornerShape(RadiusLg)
     Column(
         modifier
             .clip(shape)
             .background(c.bg2.copy(0.5f))
-            .clickable(onClick = onClick),
+            .clickable {
+                AppState.detailId = p.id
+                onClick()
+            },
     ) {
         Box {
             AsyncImage(
-                model = p.img, contentDescription = p.title, contentScale = ContentScale.Crop,
+                model = imageModel(p.img), contentDescription = p.title, contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxWidth().aspectRatio(1f),
             )
             // 角标
@@ -52,7 +58,7 @@ fun ProductCard(p: Product, modifier: Modifier = Modifier, onClick: () -> Unit =
             Box(
                 Modifier.align(Alignment.BottomEnd).padding(12.dp)
                     .size(52.dp).clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xBF0F172A)).clickable {},
+                    .background(Color(0xBF0F172A)).clickable { (onAdd ?: { ShoppingState.addCartItem(p.id) })() },
                 contentAlignment = Alignment.Center,
             ) { Icon(jdoIcon("plus"), "加入购物车", tint = Color.White, modifier = Modifier.size(26.dp)) }
         }

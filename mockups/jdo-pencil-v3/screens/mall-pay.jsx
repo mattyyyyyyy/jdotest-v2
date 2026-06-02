@@ -5,6 +5,7 @@ const { useState: useStatePay, useEffect: useEffectPay } = React;
 function MallPay({ onNav }) {
   const [method, setMethod] = useStatePay('qrcode');
   const [seconds, setSeconds] = useStatePay(180);
+  const [error, setError] = useStatePay('');
 
   useEffectPay(() => {
     if (method !== 'qrcode') return;
@@ -14,6 +15,17 @@ function MallPay({ onNav }) {
 
   const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
   const ss = String(seconds % 60).padStart(2, '0');
+  const confirmPayment = () => {
+    const orderId = sessionStorage.getItem('jdo:last-order-id');
+    if (!orderId) return onNav('mall-orders');
+    fetch('/api/v1/payments/' + orderId + '/confirm', { method: 'POST' })
+      .then((r) => {
+        if (!r.ok) throw new Error('支付确认失败');
+        return r.json();
+      })
+      .then(() => onNav('mall-orders'))
+      .catch(() => setError('支付确认失败，请稍后重试'));
+  };
 
   const methods = [
     { id: 'qrcode',  name: '车机扫码',     glyph: 'QR', g: 'linear-gradient(135deg,#06b6d4,#1e3a8a)' },
@@ -89,10 +101,11 @@ function MallPay({ onNav }) {
 
               <div style={{ display: 'flex', gap: 14, marginTop: 6 }}>
                 <button className="btn-big outline" style={{ flex: 1 }} onClick={() => onNav('mall-checkout')}>取消支付</button>
-                <button className="btn-big primary" style={{ flex: 1, background: 'linear-gradient(135deg, #06b6d4, #2563eb)', boxShadow: '0 8px 20px rgba(6,182,212,0.35)' }} onClick={() => onNav('mall-orders')}>
+                <button className="btn-big primary" style={{ flex: 1, background: 'linear-gradient(135deg, #06b6d4, #2563eb)', boxShadow: '0 8px 20px rgba(6,182,212,0.35)' }} onClick={confirmPayment}>
                   我已支付 →
                 </button>
               </div>
+              {error && <div style={{ color: 'var(--color-error)', fontSize: 18 }}>{error}</div>}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--color-text-muted)', fontSize: 18, marginTop: 4 }}>
                 <Icon name="settings" size={18} sw={1.5} />
