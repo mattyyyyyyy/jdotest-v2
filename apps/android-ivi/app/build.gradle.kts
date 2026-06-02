@@ -46,4 +46,6 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
+    // 网络图片（商品图 Unsplash https / data-uri），Coil 2
+    implementation("io.coil-kt:coil-compose:2.7.0")
 }
