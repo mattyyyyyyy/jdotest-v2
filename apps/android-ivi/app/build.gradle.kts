@@ -14,10 +14,14 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1"
+        // 后端基址：cloudflared 公网隧道 → 本机 services/api（与 web 后台同一后端）。
+        // 隧道重启地址会变，改这里重打包即可；或后续做成运行时可配置。
+        buildConfigField("String", "API_BASE", "\"https://bristol-advantage-favourites-helen.trycloudflare.com/api/v1\"")
     }
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {
