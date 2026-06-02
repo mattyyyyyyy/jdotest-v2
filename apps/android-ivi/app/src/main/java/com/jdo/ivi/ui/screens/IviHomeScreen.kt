@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,7 +43,7 @@ import com.jdo.ivi.ui.theme.JdoDimens
  * 视觉值全部来自 JdoColors / JdoDimens（design token，ADR-0013）。
  */
 @Composable
-fun IviHomeScreen() {
+fun IviHomeScreen(onOpenMall: () -> Unit = {}) {
     Box(modifier = Modifier.fillMaxSize().background(JdoColors.Bg0)) {
         // 壁纸（暗夜极光 + Porsche Cayenne）铺满
         Image(
@@ -57,7 +58,7 @@ fun IviHomeScreen() {
             Spacer(Modifier.weight(1f))
             CardsRow()
             Spacer(Modifier.height(JdoDimens.Space4))
-            Dock()
+            Dock(onOpenMall = onOpenMall)
         }
     }
 }
@@ -158,7 +159,10 @@ private fun CardsRow() {
 
 @Composable
 private fun QuickAction(glyph: String, label: String, tint: Color = JdoColors.TextPrimary) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clip(RoundedCornerShape(JdoDimens.RadiusMd)).clickable { }.padding(JdoDimens.Space2),
+    ) {
         Text(glyph, fontSize = 24.sp, color = tint)
         Spacer(Modifier.height(6.dp))
         Text(label, color = JdoColors.TextSecondary, fontSize = 14.sp)
@@ -180,7 +184,7 @@ private fun Ring(progress: Float) {
 }
 
 @Composable
-private fun Dock() {
+private fun Dock(onOpenMall: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(JdoDimens.RadiusLg)).background(JdoColors.SurfaceGlass)
             .border(1.dp, JdoColors.BorderSubtle, RoundedCornerShape(JdoDimens.RadiusLg)).padding(horizontal = JdoDimens.Space5, vertical = 12.dp),
@@ -188,7 +192,7 @@ private fun Dock() {
     ) {
         Text("🏠   🚗   🧭", color = JdoColors.TextSecondary, fontSize = 22.sp)
         Spacer(Modifier.weight(1f))
-        DockApp("🛒", JdoColors.Brand500) // 商城
+        DockApp("🛒", JdoColors.Brand500, onClick = onOpenMall) // 商城（可点进入）
         Spacer(Modifier.width(JdoDimens.Space3))
         DockApp("📍", JdoColors.Accent)
         Spacer(Modifier.width(JdoDimens.Space3))
@@ -201,9 +205,9 @@ private fun Dock() {
 }
 
 @Composable
-private fun DockApp(glyph: String, bg: Color) {
+private fun DockApp(glyph: String, bg: Color, onClick: () -> Unit = {}) {
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(52.dp).clip(RoundedCornerShape(JdoDimens.RadiusMd)).background(bg),
+        modifier = Modifier.size(52.dp).clip(RoundedCornerShape(JdoDimens.RadiusMd)).background(bg).clickable { onClick() },
     ) { Text(glyph, fontSize = 24.sp) }
 }
