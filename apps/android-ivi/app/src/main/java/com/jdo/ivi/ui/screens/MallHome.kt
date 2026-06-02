@@ -56,6 +56,8 @@ private const val MALL_HOME_UI_SCALE = 0.9f
 @Composable
 fun MallHomeScreen(nav: (String) -> Unit) {
     val c = JdoTheme.colors
+    // 每次进商城首页都重新拉后端数据 → 后台改商品/banner 后，退回再进商城即可看到最新（无需重启 App）
+    LaunchedEffect(Unit) { Catalog.load() }
     var scene by remember { mutableStateOf("energy") }
     val feed = Catalog.byScene(scene)
     val sceneName = Catalog.scenes.first { it.id == scene }.name
