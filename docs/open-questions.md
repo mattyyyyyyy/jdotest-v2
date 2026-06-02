@@ -13,7 +13,7 @@
 | Q2 | **数据全内存、重启丢失**：`services/api/src/store.ts` 未接库 | 内存 store，接口语义同 Prisma | 演示数据不持久；多人协作易丢 | 后端 agent（consistency-plan P2#10 / ADR-0003）|
 | Q11 | **`_templates/` 是 skill 的 vendored 副本，已与上游分叉**：本轮修了 `../ai-project-bootstrapper-skill` 的 hook schema / validate 命令 / 双轨措辞，但 `jdotest-v2/_templates/` 那份快照未同步（Ownership Zone 标只读不改）| 副本仍含旧错（扁平 hook schema、`validate --strict` 空跑命令）| 读 _templates 的人会拿到过期信息 | 维护者 · 从 skill repo 重新 vendoring（不手改）|
 | Q10 | ✅ **已解决（2026-06-02）· OpenSpec 全域补齐**：所有已实现域均沉淀 spec——本轮回填 7 后台域（admin-catalog/order/analytics/user/marketing/content/fulfillment）+ 3 消费端域（catalog/cart/payment）共 10 个 change→archive；未实现域（auth-login/user/fulfillment）写成 forward change 留 `changes/`。`validate --all --strict` 18/18 绿 | 15 specs + 3 forward changes | spec 覆盖率达成 | — |
-| Q12 | **消费端登录仅剩手机验证码（实现）**：✅ 车机扫码 `auth-qr` 已 archive（`consumer-auth.ts`，9 测试）；✅ 手机号+验证码 `auth-login` 的 **spec 已起草为 forward change**（`changes/add-auth-login`，validate 绿）；🔴 仍待**实现**后 archive | auth-qr 的 token/会话套路可直接复用；spec 已就绪可直接 apply | 手机验证码登录链路缺实现 | 实施 agent · 按 `add-auth-login/tasks.md` 实现 → archive |
+| Q12 | ✅ **已解决（2026-06-02）· 消费端登录两条入口齐备**：车机扫码 `auth-qr`（archive，9 测试）+ 手机号验证码 `auth-login`（**已实现 + archive**：`consumer-auth.ts` issueSmsCode/verifySmsCode + `/api/v1/auth/sms-code`/`sms-login`，TTL/频控/一次性 + 封禁拦截 + 首登建号 + 与 admin 隔离，7 测试）| 复用 auth-qr token 套路 + issueUserToken | 登录链路完整 | — |
 
 ## ⚪ 业务方待拍板（Demo 已 mock，上线前需解决）
 

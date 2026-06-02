@@ -79,7 +79,34 @@ export function getSession(sessionId: string, now = Date.now()): { status: QrSta
   return s.userId === undefined ? { status: s.status } : { status: s.status, userId: s.userId };
 }
 
-/** 测试用：清空会话 */
+// ---------- 手机号 + 短信验证码登录（add-auth-login）----------
+// Demo：内存验证码表 + 频控；生产换真实短信渠道 + Redis(TTL)，接口不变。
+export const SMS_CODE_TTL = 5 * 60; // 验证码有效期（秒）
+const SMS_REQ_WINDOW_MS = 60_000; // 同号 60s 内最多请求一次
+interface SmsEntry { code: string; expiresAt: number; lastSentAt: number } // epoch ms
+const smsCodes = new Map<string, SmsEntry>();
+
+/** 下发验证码。返回 code（Demo 直出，便于联调；生产改为只发短信不回传）。频控触发返回 null。 */
+export function issueSmsCode(phone: string, now = Date.now()): { code: string; expiresAt: number } | null {
+  const prev = smsCodes.get(phone);
+  if (prev && now - prev.lastSentAt < SMS_REQ_WINDOW_MS) return null; // 频控：60s 一次
+  const code = (crypto.randomInt(0, 1_000_000)).toString().padStart(6, '0');
+  const expiresAt = now + SMS_CODE_TTL * 1000;
+  smsCodes.set(phone, { code, expiresAt, lastSentAt: now });
+  return { code, expiresAt };
+}
+
+/** 校验验证码：成功即消费（一次性），错误/过期/无记录返回 false。 */
+export function verifySmsCode(phone: string, code: string, now = Date.now()): boolean {
+  const e = smsCodes.get(phone);
+  if (!e || now > e.expiresAt) return false;
+  if (e.code !== code) return false;
+  smsCodes.delete(phone); // 一次性消费，防重放
+  return true;
+}
+
+/** 测试用：清空会话 + 验证码 */
 export function __reset(): void {
   sessions.clear();
+  smsCodes.clear();
 }

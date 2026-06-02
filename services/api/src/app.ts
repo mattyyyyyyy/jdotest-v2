@@ -139,11 +139,115 @@ export function buildApp(): FastifyInstance {
 
   app.post('/api/v1/auth/mock-login', async () => issueUserToken('u-1001'));
 
+  // 手机号 + 验证码登录（openspec/specs/auth-login）。与 auth-qr 并列，下发等价车主 token。
+  app.post('/api/v1/auth/sms-code', async (req, reply) => {
+    const body = z.object({ phone: z.string().min(1) }).parse(req.body);
+    const issued = cauth.issueSmsCode(body.phone);
+    if (!issued) return reply.code(429).send(errBody('SMS_RATE_LIMITED', '验证码请求过于频繁，请稍后再试', { phone: body.phone }));
+    // Demo：直接回传验证码便于联调；生产应只发短信不回传。
+    return { ok: true, code: issued.code, expiresAt: new Date(issued.expiresAt).toISOString() };
+  });
+
+  app.post('/api/v1/auth/sms-login', async (req, reply) => {
+    const body = z.object({ phone: z.string().min(1), code: z.string().min(1) }).parse(req.body);
+    if (!cauth.verifySmsCode(body.phone, body.code)) {
+      return reply.code(401).send(errBody('SMS_CODE_INVALID', '验证码错误或已过期', {}));
+    }
+    // 首次登录自动建号；已存在则复用
+    const existing = store.userByPhone(body.phone);
+    const user = existing ?? store.createUser({ phone: body.phone });
+    if (user.banned === true) return reply.code(403).send(errBody('USER_BANNED', '该车主已被封禁，无法登录', { userId: user.id }));
+    return issueUserToken(user.id as string);
+  });
+
   app.get('/api/v1/auth/me', async (req, reply) => {
     const p = cauth.verifyToken(cauth.bearer(req.headers.authorization), 'user');
     if (!p) return reply.code(401).send(errBody('UNAUTHENTICATED', '需要车主登录', {}));
     const user = store.get('users', p.sub);
     return user ? { id: user.id, name: user.name, phone: user.phone } : { id: p.sub, name: p.name };
+  });
+
+  // 车主鉴权小工具：取车主身份，无则发 401（供 /me、地址簿、订单物流复用）。
+  function requireUser(req: FastifyRequest, reply: import('fastify').FastifyReply): cauth.UserToken | null {
+    const p = cauth.verifyToken(cauth.bearer(req.headers.authorization), 'user');
+    if (!p) {
+      reply.code(401).send(errBody('UNAUTHENTICATED', '需要车主登录', {}));
+      return null;
+    }
+    return p;
+  }
+
+  // ============ 消费端个人中心 /api/v1/me/*（openspec/specs/user）============
+  app.get('/api/v1/me', async (req, reply) => {
+    const p = requireUser(req, reply);
+    if (!p) return reply;
+    const profile = store.userProfile(p.sub);
+    return profile ?? { id: p.sub, name: p.name };
+  });
+
+  app.patch('/api/v1/me', async (req, reply) => {
+    const p = requireUser(req, reply);
+    if (!p) return reply;
+    const body = z.object({ name: z.string().min(1) }).parse(req.body); // 仅昵称可改；手机号是登录标识
+    store.updateUserName(p.sub, body.name);
+    return store.userProfile(p.sub) ?? { id: p.sub, name: body.name };
+  });
+
+  app.get('/api/v1/me/wallet', async (req, reply) => {
+    const p = requireUser(req, reply);
+    if (!p) return reply;
+    const profile = store.userProfile(p.sub);
+    return { points: (profile?.points as number) ?? 0, balance: (profile?.balance as number) ?? 0 };
+  });
+
+  app.get('/api/v1/me/addresses', async (req, reply) => {
+    const p = requireUser(req, reply);
+    if (!p) return reply;
+    return { items: store.addressesByUser(p.sub) };
+  });
+
+  app.post('/api/v1/me/addresses', async (req, reply) => {
+    const p = requireUser(req, reply);
+    if (!p) return reply;
+    const body = z.object({ receiver: z.string().min(1), phone: z.string().min(1), addr: z.string().min(1), isDefault: z.boolean().optional() }).parse(req.body);
+    const item = store.addressAdd(p.sub, body);
+    return reply.code(201).send({ ok: true, item, items: store.addressesByUser(p.sub) });
+  });
+
+  app.patch('/api/v1/me/addresses/:id', async (req, reply) => {
+    const p = requireUser(req, reply);
+    if (!p) return reply;
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const patch = z.object({ receiver: z.string().optional(), phone: z.string().optional(), addr: z.string().optional(), isDefault: z.boolean().optional() }).parse(req.body ?? {});
+    const a = store.addressUpdate(p.sub, id, patch);
+    if (!a) return reply.code(404).send(errBody('ADDRESS_NOT_FOUND', '地址不存在', { id }));
+    return { ok: true, items: store.addressesByUser(p.sub) };
+  });
+
+  app.delete('/api/v1/me/addresses/:id', async (req, reply) => {
+    const p = requireUser(req, reply);
+    if (!p) return reply;
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    if (!store.addressRemove(p.sub, id)) return reply.code(404).send(errBody('ADDRESS_NOT_FOUND', '地址不存在', { id }));
+    return { ok: true, items: store.addressesByUser(p.sub) };
+  });
+
+  // ============ 消费端履约 /api/v1/fulfillment/*（openspec/specs/fulfillment）============
+  // 自提点 / 物流轨迹读取，数据源与后台 admin-fulfillment 同源。
+  app.get('/api/v1/fulfillment/pickup-points', async (req) => {
+    const q = z.object({ lat: z.coerce.number().optional(), lng: z.coerce.number().optional(), limit: z.coerce.number().int().positive().optional() }).parse(req.query);
+    return { items: store.nearbyPickupPoints(q.lat, q.lng, q.limit ?? 5) };
+  });
+
+  // 订单物流：仅本人订单可查；他人/不存在统一 404（不泄漏订单存在性）。
+  app.get('/api/v1/orders/:id/shipping', async (req, reply) => {
+    const p = requireUser(req, reply);
+    if (!p) return reply;
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const order = store.get('orders', id);
+    if (!order || order.userId !== p.sub) return reply.code(404).send(errBody('ORDER_NOT_FOUND', '订单不存在', { id }));
+    const track = store.shippingByOrder(id);
+    return track ?? { orderId: id, trackingNo: null, status: null, nodes: [] }; // 无物流记录返回空轨迹
   });
 
   app.get('/api/v1/categories', async () => ({ items: store.categories() }));

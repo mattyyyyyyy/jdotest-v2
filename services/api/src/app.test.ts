@@ -26,6 +26,7 @@ beforeAll(async () => {
 beforeEach(() => {
   store.reset();
   auth.__resetRateLimit();
+  cauth.__reset(); // 清扫码会话 + 短信验证码（避免 sms 频控跨用例干扰）
 });
 afterAll(async () => {
   await app.close();
@@ -519,5 +520,173 @@ describe('admin-catalog · 商品/库存/分类', () => {
     const created = (await inj({ method: 'POST', url: '/api/v1/admin/products', payload: { title: '无图测试品', cat: 'gear', price: 1000 } })).json();
     expect(typeof created.img).toBe('string');
     expect((created.img as string).length).toBeGreaterThan(0);
+  });
+});
+
+// ===== forward change 实现：消费端账号 / 履约 / 验证码登录 =====
+describe('auth-login · 手机号 + 验证码登录（openspec/specs/auth-login）', () => {
+  const post = (url: string, payload?: unknown): Promise<LightMyRequestResponse> =>
+    app.inject({ method: 'POST', url, payload } as InjectOptions) as Promise<LightMyRequestResponse>;
+  const get = (url: string, token?: string): Promise<LightMyRequestResponse> =>
+    app.inject({ method: 'GET', url, headers: token ? { authorization: `Bearer ${token}` } : {} } as InjectOptions) as Promise<LightMyRequestResponse>;
+
+  it('请求验证码 → 下发 code（Demo 直出）', async () => {
+    const b = (await post('/api/v1/auth/sms-code', { phone: '13900000088' })).json();
+    expect(b.ok).toBe(true);
+    expect(b.code).toMatch(/^\d{6}$/);
+  });
+
+  it('同号 60s 内重复请求 → 429 频控', async () => {
+    await post('/api/v1/auth/sms-code', { phone: '13900000077' });
+    expect((await post('/api/v1/auth/sms-code', { phone: '13900000077' })).statusCode).toBe(429);
+  });
+
+  it('正确验证码 → 下发车主 token + 首次自动建号', async () => {
+    const phone = '13900001234';
+    const { code } = (await post('/api/v1/auth/sms-code', { phone })).json();
+    const r = await post('/api/v1/auth/sms-login', { phone, code });
+    expect(r.statusCode).toBe(200);
+    const b = r.json();
+    expect(b.accessToken).toBeTruthy();
+    expect(b.user.phone).toBe(phone);
+    // 该 token 能取自己的资料
+    const me = (await get('/api/v1/me', b.accessToken)).json();
+    expect(me.phone).toBe(phone);
+  });
+
+  it('错误/过期验证码 → 401', async () => {
+    await post('/api/v1/auth/sms-code', { phone: '13900005678' });
+    expect((await post('/api/v1/auth/sms-login', { phone: '13900005678', code: '000000' })).statusCode).toBe(401);
+  });
+
+  it('封禁车主验证码登录 → 403 USER_BANNED', async () => {
+    const phone = '137****0003'; // u-1003 已封禁（admin-seed）
+    const { code } = (await post('/api/v1/auth/sms-code', { phone })).json();
+    expect((await post('/api/v1/auth/sms-login', { phone, code })).statusCode).toBe(403);
+  });
+
+  it('验证码一次性：登录成功后同码再用 → 401', async () => {
+    const phone = '13900009999';
+    const { code } = (await post('/api/v1/auth/sms-code', { phone })).json();
+    expect((await post('/api/v1/auth/sms-login', { phone, code })).statusCode).toBe(200);
+    expect((await post('/api/v1/auth/sms-login', { phone, code })).statusCode).toBe(401);
+  });
+
+  it('验证码登录得到的车主 token 不能访问后台 → 401（与 admin 隔离）', async () => {
+    const phone = '13900002222';
+    const { code } = (await post('/api/v1/auth/sms-code', { phone })).json();
+    const { accessToken } = (await post('/api/v1/auth/sms-login', { phone, code })).json();
+    expect((await get('/api/v1/admin/products', accessToken)).statusCode).toBe(401);
+  });
+});
+
+describe('user · 个人资料 / 地址簿 / 钱包（openspec/specs/user）', () => {
+  const post = (url: string, payload?: unknown, token?: string): Promise<LightMyRequestResponse> =>
+    app.inject({ method: 'POST', url, payload, headers: token ? { authorization: `Bearer ${token}` } : {} } as InjectOptions) as Promise<LightMyRequestResponse>;
+  const get = (url: string, token?: string): Promise<LightMyRequestResponse> =>
+    app.inject({ method: 'GET', url, headers: token ? { authorization: `Bearer ${token}` } : {} } as InjectOptions) as Promise<LightMyRequestResponse>;
+  const patch = (url: string, payload: unknown, token?: string): Promise<LightMyRequestResponse> =>
+    app.inject({ method: 'PATCH', url, payload, headers: token ? { authorization: `Bearer ${token}` } : {} } as InjectOptions) as Promise<LightMyRequestResponse>;
+  const del = (url: string, token?: string): Promise<LightMyRequestResponse> =>
+    app.inject({ method: 'DELETE', url, headers: token ? { authorization: `Bearer ${token}` } : {} } as InjectOptions) as Promise<LightMyRequestResponse>;
+  // 取 u-1001 的车主 token
+  const u1001 = async (): Promise<string> => (await app.inject({ method: 'POST', url: '/api/v1/auth/mock-login' } as InjectOptions)).json().accessToken as string;
+  // 用验证码登录造另一个车主
+  const otherUser = async (phone: string): Promise<string> => {
+    const { code } = (await app.inject({ method: 'POST', url: '/api/v1/auth/sms-code', payload: { phone } } as InjectOptions)).json();
+    return (await app.inject({ method: 'POST', url: '/api/v1/auth/sms-login', payload: { phone, code } } as InjectOptions)).json().accessToken as string;
+  };
+
+  it('无 token 调 /me → 401', async () => {
+    expect((await get('/api/v1/me')).statusCode).toBe(401);
+  });
+
+  it('/me 返回资料 + 积分余额（u-1001）', async () => {
+    const t = await u1001();
+    const me = (await get('/api/v1/me', t)).json();
+    expect(me.id).toBe('u-1001');
+    expect(me.points).toBe(1200);
+    expect(me.balance).toBe(5000);
+  });
+
+  it('PATCH /me 只改昵称', async () => {
+    const t = await u1001();
+    const me = (await patch('/api/v1/me', { name: '李师傅' }, t)).json();
+    expect(me.name).toBe('李师傅');
+    expect(me.phone).toBe('138****0001'); // 手机号不变
+  });
+
+  it('/me/wallet 返回积分余额', async () => {
+    const t = await u1001();
+    const w = (await get('/api/v1/me/wallet', t)).json();
+    expect(w.points).toBe(1200);
+    expect(w.balance).toBe(5000);
+  });
+
+  it('地址簿：新增设为默认 → 默认互斥', async () => {
+    const t = await u1001();
+    const before = (await get('/api/v1/me/addresses', t)).json().items;
+    expect(before.length).toBe(2);
+    const r = await post('/api/v1/me/addresses', { receiver: '王五', phone: '13800000000', addr: '北京朝阳', isDefault: true }, t);
+    expect(r.statusCode).toBe(201);
+    const items = r.json().items as Array<{ isDefault: boolean }>;
+    expect(items.filter((a) => a.isDefault).length).toBe(1); // 只有一个默认
+  });
+
+  it('地址簿：删除地址（404 不存在）', async () => {
+    const t = await u1001();
+    expect((await del('/api/v1/me/addresses/addr-2', t)).statusCode).toBe(200);
+    expect((await del('/api/v1/me/addresses/addr-nope', t)).statusCode).toBe(404);
+  });
+
+  it('越权隔离：B 车主看不到 / 改不动 A 的地址', async () => {
+    const tA = await u1001();
+    const idA = (await get('/api/v1/me/addresses', tA)).json().items[0].id;
+    const tB = await otherUser('13900000042');
+    expect((await get('/api/v1/me/addresses', tB)).json().items.length).toBe(0); // B 无地址
+    expect((await patch('/api/v1/me/addresses/' + idA, { addr: '改你的' }, tB)).statusCode).toBe(404); // 改不动 A 的
+    expect((await del('/api/v1/me/addresses/' + idA, tB)).statusCode).toBe(404);
+  });
+});
+
+describe('fulfillment · 消费端自提点 / 物流（openspec/specs/fulfillment）', () => {
+  const get = (url: string, token?: string): Promise<LightMyRequestResponse> =>
+    app.inject({ method: 'GET', url, headers: token ? { authorization: `Bearer ${token}` } : {} } as InjectOptions) as Promise<LightMyRequestResponse>;
+  const u1001 = async (): Promise<string> => (await app.inject({ method: 'POST', url: '/api/v1/auth/mock-login' } as InjectOptions)).json().accessToken as string;
+
+  it('自提点：只返回营业中的（pp-3 停业被过滤）', async () => {
+    const { items } = (await get('/api/v1/fulfillment/pickup-points')).json();
+    expect(items.every((p: { open: boolean }) => p.open === true)).toBe(true);
+    expect(items.find((p: { id: string }) => p.id === 'pp-3')).toBeUndefined();
+  });
+
+  it('自提点：含坐标按距离排序 + limit 生效', async () => {
+    const { items } = (await get('/api/v1/fulfillment/pickup-points?lat=31.21&lng=121.59&limit=1')).json();
+    expect(items.length).toBe(1);
+  });
+
+  it('订单物流：本人订单返回轨迹（节点倒序，最新在前）', async () => {
+    const t = await u1001();
+    const r = await get('/api/v1/orders/o-20002/shipping', t); // o-20002 属 u-1001 且有物流
+    expect(r.statusCode).toBe(200);
+    const b = r.json();
+    expect(b.trackingNo).toBe('SF1234567890');
+    expect(b.nodes[0]).toBe('运输中'); // 倒序后最新节点在前
+  });
+
+  it('订单物流：本人订单无物流记录 → 空轨迹（非错误）', async () => {
+    const t = await u1001();
+    const b = (await get('/api/v1/orders/o-20001/shipping', t)).json(); // o-20001 属 u-1001 但无 shipping
+    expect(b.nodes).toEqual([]);
+    expect(b.trackingNo).toBeNull();
+  });
+
+  it('订单物流：他人订单 → 404（不泄漏存在性）', async () => {
+    const t = await u1001();
+    expect((await get('/api/v1/orders/o-20003/shipping', t)).statusCode).toBe(404); // o-20003 属 u-1002
+  });
+
+  it('订单物流：无 token → 401', async () => {
+    expect((await get('/api/v1/orders/o-20002/shipping')).statusCode).toBe(401);
   });
 });

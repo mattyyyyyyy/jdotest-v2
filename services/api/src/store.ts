@@ -43,6 +43,18 @@ let config: Record<string, unknown> = {};
 interface CartItem { id: string; productId: string; qty: number; selected: boolean; spec: string }
 let cart: CartItem[] = [];
 let cartCounter = 1;
+
+// 收货地址（按 userId 归属；Demo 内存，持久化待 Q2）。
+interface Address { id: string; userId: string; receiver: string; phone: string; addr: string; isDefault: boolean }
+let addresses: Address[] = [];
+let addressCounter = 1;
+function seedAddresses(): void {
+  addresses = [
+    { id: 'addr-1', userId: 'u-1001', receiver: '车主小李', phone: '138****0001', addr: '上海市浦东新区张江路 88 号', isDefault: true },
+    { id: 'addr-2', userId: 'u-1001', receiver: '李太太', phone: '138****8888', addr: '上海市闵行区虹桥枢纽 B2', isDefault: false },
+  ];
+  addressCounter = 3;
+}
 function seedCart(): void {
   cart = [
     { id: 'ci-1', productId: 'g1', qty: 2, selected: true, spec: '木质香调' },
@@ -80,6 +92,7 @@ function seedAll(): void {
   }
   config = { ...seed.config };
   seedCart();
+  seedAddresses();
 }
 
 seedAll();
@@ -212,10 +225,87 @@ export const store = {
     return { items, removed: sel.length };
   },
 
+  // ---------- 消费端账号 / 地址簿（add-user）----------
+  userByPhone(phone: string): Row | undefined {
+    return res('users').rows.find((u) => u.phone === phone);
+  },
+  /** 首次手机登录自动建号（默认未封禁、零积分余额）。 */
+  createUser(data: { phone: string; name?: string }): Row {
+    return this.create('users', {
+      phone: data.phone,
+      name: data.name ?? '新车主',
+      points: 0,
+      balance: 0,
+      banned: false,
+      createdAt: new Date().toISOString().slice(0, 10),
+    });
+  },
+  /** 个人资料只读视图（车主自己）。 */
+  userProfile(userId: string): Row | undefined {
+    const u = res('users').rows.find((x) => x.id === userId);
+    if (!u) return undefined;
+    return { id: u.id, name: u.name, phone: u.phone, points: u.points ?? 0, balance: u.balance ?? 0 } as Row;
+  },
+  /** 改资料：仅允许改昵称（手机号是登录标识，不可由此改）。 */
+  updateUserName(userId: string, name: string): Row | undefined {
+    return this.update('users', userId, { name });
+  },
+  addressesByUser(userId: string): Address[] {
+    return addresses.filter((a) => a.userId === userId);
+  },
+  addressAdd(userId: string, data: { receiver: string; phone: string; addr: string; isDefault?: boolean | undefined }): Address {
+    const first = addresses.filter((a) => a.userId === userId).length === 0;
+    const isDefault = data.isDefault === true || first; // 首个地址自动默认
+    if (isDefault) addresses.forEach((a) => { if (a.userId === userId) a.isDefault = false; });
+    const item: Address = { id: `addr-${addressCounter++}`, userId, receiver: data.receiver, phone: data.phone, addr: data.addr, isDefault };
+    addresses.unshift(item);
+    return item;
+  },
+  addressUpdate(userId: string, id: string, patch: { receiver?: string | undefined; phone?: string | undefined; addr?: string | undefined; isDefault?: boolean | undefined }): Address | undefined {
+    const a = addresses.find((x) => x.id === id && x.userId === userId); // 按 userId 隔离
+    if (!a) return undefined;
+    if (patch.isDefault === true) addresses.forEach((x) => { if (x.userId === userId) x.isDefault = false; }); // 默认互斥
+    if (patch.receiver !== undefined) a.receiver = patch.receiver;
+    if (patch.phone !== undefined) a.phone = patch.phone;
+    if (patch.addr !== undefined) a.addr = patch.addr;
+    if (patch.isDefault !== undefined) a.isDefault = patch.isDefault;
+    return a;
+  },
+  addressRemove(userId: string, id: string): boolean {
+    const i = addresses.findIndex((x) => x.id === id && x.userId === userId);
+    if (i < 0) return false;
+    addresses.splice(i, 1);
+    return true;
+  },
+
+  // ---------- 消费端履约读取（add-fulfillment；读后台 admin-fulfillment 同源数据）----------
+  /** 附近自提点：仅营业，含坐标时按距离升序，最多 limit 个。 */
+  nearbyPickupPoints(lat?: number, lng?: number, limit = 5): Row[] {
+    let open = res('pickupPoints').rows.filter((p) => p.open === true);
+    if (typeof lat === 'number' && typeof lng === 'number') {
+      open = [...open].sort((a, b) => dist2(a, lat, lng) - dist2(b, lat, lng));
+    }
+    return open.slice(0, limit);
+  },
+  /** 订单物流轨迹（节点按时间倒序展示）。无记录返回 null。 */
+  shippingByOrder(orderId: string): Row | undefined {
+    const s = res('shipping').rows.find((x) => x.id === orderId);
+    if (!s) return undefined;
+    const nodes = Array.isArray(s.nodes) ? [...(s.nodes as string[])].reverse() : [];
+    return { id: orderId, orderId, trackingNo: s.trackingNo, status: s.status, nodes } as Row;
+  },
+
   reset(): void {
     seedAll();
   },
 };
+
+/** 平方欧氏距离（Demo 排序够用，不必精确 haversine）。 */
+function dist2(p: Row, lat: number, lng: number): number {
+  const dy = (p.lat as number) - lat;
+  const dx = (p.lng as number) - lng;
+  return dy * dy + dx * dx;
+}
 
 /** 后台新增/缺字段的商品补默认值，避免前台渲染成黑块（无图）或报错 */
 const PLACEHOLDER_IMG =

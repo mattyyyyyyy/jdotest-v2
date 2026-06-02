@@ -120,7 +120,7 @@
 ## 路由 → OpenSpec domain 映射
 
 > spec 主体在 `openspec/specs/<domain>/spec.md`；本表只做导航。改 spec 走 `/opsx:propose`，不直接编辑 specs/。
-> **spec 状态**（2026-06-02 全域补齐后）：✅=`specs/` 已有当前真相；🟡 forward=未实现，spec 在 `changes/<id>/` 待实现后 archive。
+> **spec 状态**（2026-06-02 全域补齐 + forward 实现后）：✅=`specs/` 已有当前真相。**18 域全部 ✅，无 forward 待实现。**
 
 | 路由（消费端 / 后台） | Domain | spec 状态 |
 |---|---|---|
@@ -128,11 +128,11 @@
 | `/cart` | `cart` | ✅ |
 | `/checkout`, `/orders`, `/orders/:oid` | `order` | ✅ |
 | `/pay/:orderId` | `payment` | ✅ |
-| `/login`（手机号） | `auth-login` | 🟡 forward（`changes/add-auth-login`）|
+| `/login`（手机号） | `auth-login` | ✅（`/api/v1/auth/sms-code` + `sms-login`）|
 | `/login`（扫码）, `/driving` 扫码 | `auth-qr` | ✅ |
-| `/me`, `/me/addresses` | `user` | 🟡 forward（`changes/add-user`）|
+| `/me`, `/me/addresses` | `user` | ✅（`/api/v1/me` + `/me/addresses` + `/me/wallet`）|
 | `/driving`, 全局行车态降级 | `driving-mode` | ✅ |
-| 自提点 / 物流轨迹（消费端展示） | `fulfillment` | 🟡 forward（`changes/add-fulfillment`）|
+| 自提点 / 物流轨迹（消费端展示） | `fulfillment` | ✅（`/api/v1/fulfillment/pickup-points` + `/orders/:id/shipping`）|
 | `/admin/login`, `/admin/system` | `admin-auth` | ✅ |
 | `/admin/products`, `/admin/categories` | `admin-catalog` | ✅ |
 | `/admin/orders` | `admin-order` | ✅ |
