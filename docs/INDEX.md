@@ -17,8 +17,7 @@
 | Agent | 工作范围 | 起始 | 涉及文件 | 状态 |
 |---|---|---|---|---|
 | claude-android-proto-refactor | 用用户新交付的原生原型重构除商城首页外的全部屏（采用其 theme/components/nav/screens 为基线，保留我的商城首页+接真实后端） | 2026-06-02 | `apps/android-ivi/**` | 进行中 |
-| claude-fix-drift | ADR-0013对齐+文档H5→Android同步+ShoppingState线程安全+cleartext HTTP+banner横滑 | 2026-06-02 | `docs/**` `apps/android-ivi/**` | 进行中 |
-| claude-fix-api-sync | 修复前后台数据断路：Catalog.load() 解析 categories/heroRecs/banners + ApiHero 补字段 + fetchProduct 改用 /products/:id | 2026-06-02 | `apps/android-ivi/**` | 进行中 |
+| claude-fix-api-sync | 修复前后台数据断路：Catalog.load() 解析 categories/heroRecs/banners + ApiHero 补字段 + fetchProduct 改用 /products/:id | 2026-06-02 | `apps/android-ivi/**` | 待提交 |
 
 ## 🗺 Ownership Zones（目录分工建议）
 
@@ -57,11 +56,12 @@
 
 | 日期 | Agent | 完成项 | 关键 commit |
 |---|---|---|---|
-| 2026-06-02 | codex-android-regression | **Android 次级页面审计 + 交易闭环回归**：审计 19 个非首页页面并落矩阵；新增 payment 确认回调，通过共享状态机持久化 `PENDING_PAYMENT → PAID`，原生与 V3 Web 对照页均接入；修复结算 / 立即购买 / 行车态再买异步竞态、订单 tab / 时间线 / 动作、搜索建议详情跳转；新增持续回归脚本（21 路由装配、Web 支付契约、API、typecheck、Android 构建、可选 emulator 点击链路）。OpenSpec `close-android-commerce-loop` 已 archive；API `56/56` 绿；Android debug build 绿；emulator 实测 `商城 → 购物车 → 结算 → 支付 → 待发货`，后端最新订单 `o-5=PAID` 且无 crash。连续 emulator 重跑因桌面外部执行额度限制未完成，脚本已补逐页轮询重试并通过 bash 语法检查 | 未提交（当前工作区） |
-| 2026-06-02 | codex-android-mall-scale | **商城首页比例与滚动交互收敛**：首页以 `90%` Compose 密度呈现，卡片 / 字号 / 间距同步收紧且保持真实点击区域；搜索框由 `560dp` 收至 `500dp`；顶部「商城 / 我的」改为屏幕中心绝对居中；banner 收起恢复从列表位置推断改为直接监听用户上下滑方向，消除收起后位置重算导致的回弹。Android debug APK 构建通过，emulator 验证展开 → 上滑收起 → 下滑恢复且无 crash | 未提交（当前工作区） |
-| 2026-06-02 | codex-android-mall-wallpaper | **商城公共背景恢复壁纸透出**：`MallBg` 从纯色背景改为 IVI 同源车型壁纸；背景层放大并套高斯模糊，叠深色渐变遮罩保证商品文字可读；所有商城子页统一继承。Android debug APK 构建通过，emulator 真机验证壁纸透出且无 crash | 未提交（当前工作区） |
-| 2026-06-02 | codex-android-ui-tune | **原生横屏视觉收敛**：恢复 IVI 暗夜极光车型壁纸；底部玻璃卡从 `220dp` 缩至 `168dp` 并为 Dock 留空；商城 banner 从 `300dp` 收敛至 `220dp`、字号降档；商品列表上滑时 banner 向上渐隐收起、下滑恢复；7 场景目录改为图标左置横向条目。Android debug APK 构建通过，emulator 真机验证展开 / 收起 / 恢复且无 crash | 未提交（当前工作区） |
-| 2026-06-02 | codex-android-proto-refactor | **接续 21 屏 Compose 原生参考包，打通除商城首页外的真实消费链路**：保留现有 V3 商城首页；商品卡记忆详情选品 + 快捷加购；详情页真实加购；新增 `ShoppingState` 同步 `/cart`、`/cart/checkout`、`/orders`；购物车 / 结算 / 支付 / 订单页改读真实后端；后端内联图片增加本地占位资源兜底。Android debug APK 构建通过，emulator 真机验证 `首页→详情→加购→结算→订单 o-5→订单回读`，API 54 测试绿 | 未提交（当前工作区） |
+| 2026-06-02 | claude-fix-drift | **项目全面修复 + 文档 drift 清理**：ADR-0013 对齐纯 Compose 实际（移除 WebView 修订）；8 个文档 H5→Android 同步（PRD/architecture/scope/constraints/task-plan/backend-spec/api-contracts/ADR-0001）；ShoppingState 线程安全修复（所有 mutableStateOf 写操作 post 到主线程 + isLoading + clearError）；AndroidManifest `usesCleartextTraffic=true`；banner 从定时器自动轮播改为 HorizontalPager 左右横滑 | `863a75f` |
+| 2026-06-02 | codex-android-regression | **Android 次级页面审计 + 交易闭环回归**：审计 19 个非首页页面并落矩阵；新增 payment 确认回调，通过共享状态机持久化 `PENDING_PAYMENT → PAID`，原生与 V3 Web 对照页均接入；修复结算 / 立即购买 / 行车态再买异步竞态、订单 tab / 时间线 / 动作、搜索建议详情跳转；新增持续回归脚本（21 路由装配、Web 支付契约、API、typecheck、Android 构建、可选 emulator 点击链路）。OpenSpec `close-android-commerce-loop` 已 archive；API `56/56` 绿；Android debug build 绿；emulator 实测 `商城 → 购物车 → 结算 → 支付 → 待发货`，后端最新订单 `o-5=PAID` 且无 crash | `863a75f` |
+| 2026-06-02 | codex-android-mall-scale | **商城首页比例与滚动交互收敛**：首页以 `90%` Compose 密度呈现，卡片 / 字号 / 间距同步收紧且保持真实点击区域；搜索框由 `560dp` 收至 `500dp`；顶部「商城 / 我的」改为屏幕中心绝对居中；banner 收起恢复从列表位置推断改为直接监听用户上下滑方向，消除收起后位置重算导致的回弹 | `863a75f` |
+| 2026-06-02 | codex-android-mall-wallpaper | **商城公共背景恢复壁纸透出**：`MallBg` 从纯色背景改为 IVI 同源车型壁纸；背景层放大并套高斯模糊，叠深色渐变遮罩保证商品文字可读；所有商城子页统一继承 | `863a75f` |
+| 2026-06-02 | codex-android-ui-tune | **原生横屏视觉收敛**：恢复 IVI 暗夜极光车型壁纸；底部玻璃卡从 `220dp` 缩至 `168dp` 并为 Dock 留空；商城 banner 从 `300dp` 收敛至 `220dp`、字号降档；商品列表上滑时 banner 向上渐隐收起、下滑恢复；7 场景目录改为图标左置横向条目 | `863a75f` |
+| 2026-06-02 | codex-android-proto-refactor | **接续 21 屏 Compose 原生参考包，打通除商城首页外的真实消费链路**：保留现有 V3 商城首页；商品卡记忆详情选品 + 快捷加购；详情页真实加购；新增 `ShoppingState` 同步 `/cart`、`/cart/checkout`、`/orders`；购物车 / 结算 / 支付 / 订单页改读真实后端；后端内联图片增加本地占位资源兜底 | `863a75f` |
 | 2026-06-02 | claude-android-mall-polish | **回退 WebView → 纯 Compose 逐像素还原商城首页**（接续上一行 ADR-0013，用户决定弃 WebView）：壁纸柔焦背景 + haze 真毛玻璃面板 + Material Outlined 线框图标；**banner 自动轮播**(SlideSlot 交叉淡入：左营销 3 张/6s + 右 heroRec 各 2 张/4.5s·5.5s)，文案硬编码对齐 web `mall-home.jsx`(officialSlides/heroRecs：kicker/标题/副标/¥返现 chips/stat/CTA)；评分·已售移到价格行右；列表上滑 banner 渐隐收起·回顶重现；**修进店卡顿**(商品卡按 design-system §4.1 去 blur + 修 `fillMaxHeight→weight` 布局 bug + hero/分类即时渲染)。真机(emulator)验证无跳帧、与同一后端读写互通(67 商品) | `dc98ac9`→`325b525` `df7413c` |
 | 2026-06-02 | claude-harness-reconcile | **消费端原生安卓落地（ADR-0013）**：本机装 Node20/Gradle/Android SDK + emulator 真机验证；后端经 cloudflared 公网隧道；先纯 Compose 复刻购物链路(10 屏)+真实后端互通(read/write 实测)，因毛玻璃/图片/banner 难逐像素还原 → **改方案 A：WebView 直载 V3 网页**（界面 100% 复用 web、21 屏全功能、连同一后端）。配套 admin 订单状态机端点 + 后台 SPA 鉴权修复 | `33aea9a` `914fd32` `e6af031` `fac2ba8` |
 | 2026-06-01 | claude-harness-reconcile | **实现车主端登录（车机扫码）+ 第二个 OpenSpec 生命周期**：propose→apply→archive `add-qr-login`——`consumer-auth.ts`（车主 token typ=user 独立 secret + 扫码会话 TTL/banned）+ 5 路由（qr-code/qr-confirm/qr-status/mock-login/me）+ 9 测试（含车主↔admin 双向越权隔离）；archive 生成 `specs/auth-qr/`。关 Q12 | `f591cee` + archive |
