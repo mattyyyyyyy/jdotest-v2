@@ -325,7 +325,17 @@ export function buildApp(): FastifyInstance {
 
   app.post('/api/v1/cart/items', async (req, reply) => {
     const body = z.object({ productId: z.string(), qty: z.number().int().positive().default(1), spec: z.string().optional() }).parse(req.body);
-    const item = store.cartAdd(body.productId, body.qty, body.spec ?? '默认规格');
+    const spec = body.spec ?? '默认规格';
+    // 库存/上架校验（add-inventory-guard）：下架→409；累计超库存→409
+    const product = store.get('products', body.productId);
+    if (!product || product.onShelf !== true) {
+      return reply.code(409).send(errBody('PRODUCT_UNAVAILABLE', '商品不存在或已下架', { productId: body.productId }));
+    }
+    const available = store.productStock(body.productId);
+    if (store.cartQty(body.productId, spec) + body.qty > available) {
+      return reply.code(409).send(errBody('INSUFFICIENT_STOCK', '库存不足', { productId: body.productId, available }));
+    }
+    const item = store.cartAdd(body.productId, body.qty, spec);
     return reply.code(201).send({ ok: true, item, items: store.cartView() });
   });
 
@@ -346,8 +356,15 @@ export function buildApp(): FastifyInstance {
   // 从购物车结算：取已选项 → 创建订单（走状态机）→ 移出购物车
   app.post('/api/v1/cart/checkout', async (req, reply) => {
     const body = z.object({ channel: z.enum(['car', 'phone']).optional() }).parse(req.body ?? {});
-    const { items, removed } = store.cartCheckout();
-    if (removed === 0) return reply.code(400).send(errBody('EMPTY_SELECTION', '没有选中的商品', {}));
+    // 先判空选，再库存校验（全有或全无），最后扣减+结算（add-inventory-guard）
+    if (store.cartView().filter((c) => c.selected).length === 0) {
+      return reply.code(400).send(errBody('EMPTY_SELECTION', '没有选中的商品', {}));
+    }
+    const checkout = store.cartCheckoutWithStock();
+    if (!checkout.ok) {
+      return reply.code(409).send(errBody('INSUFFICIENT_STOCK', '部分商品库存不足，订单未创建', { insufficient: checkout.insufficient }));
+    }
+    const { items } = checkout;
     const submitted = transition('DRAFT', 'submit');
     const status = submitted.ok ? submitted.state : 'PENDING_PAYMENT';
     const totalAmount = items.reduce((s, it) => s + it.price * it.qty, 0);

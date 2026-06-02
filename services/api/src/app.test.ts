@@ -267,6 +267,42 @@ describe('购物车真实数据（加购→购物车→结算）', () => {
   });
 });
 
+describe('库存校验（add-inventory-guard · P2#9 硬伤）', () => {
+  it('下架商品加购 → 409 PRODUCT_UNAVAILABLE', async () => {
+    await inj({ method: 'PATCH', url: '/api/v1/admin/products/e1', payload: { onShelf: false } });
+    const r = await inj({ method: 'POST', url: '/api/v1/cart/items', payload: { productId: 'e1', qty: 1 } });
+    expect(r.statusCode).toBe(409);
+    expect(r.json().code).toBe('PRODUCT_UNAVAILABLE');
+  });
+
+  it('超库存加购 → 409 INSUFFICIENT_STOCK（累计判定）', async () => {
+    await inj({ method: 'PATCH', url: '/api/v1/admin/products/e2', payload: { stock: 1 } });
+    const r = await inj({ method: 'POST', url: '/api/v1/cart/items', payload: { productId: 'e2', qty: 2 } });
+    expect(r.statusCode).toBe(409);
+    expect(r.json().code).toBe('INSUFFICIENT_STOCK');
+    expect(r.json().details.available).toBe(1);
+  });
+
+  it('结算库存不足 → 整单 409，购物车不变、无新订单（全有或全无）', async () => {
+    await inj({ method: 'PATCH', url: '/api/v1/admin/products/g1', payload: { stock: 1 } }); // 种子购物车 g1 选中 qty=2
+    const cartBefore = (await inj({ method: 'GET', url: '/api/v1/cart' })).json().items.length;
+    const ordersBefore = (await inj({ method: 'GET', url: '/api/v1/admin/orders' })).json().items.length;
+    const r = await inj({ method: 'POST', url: '/api/v1/cart/checkout', payload: {} });
+    expect(r.statusCode).toBe(409);
+    expect(r.json().code).toBe('INSUFFICIENT_STOCK');
+    expect((await inj({ method: 'GET', url: '/api/v1/cart' })).json().items.length).toBe(cartBefore); // 购物车不变
+    expect((await inj({ method: 'GET', url: '/api/v1/admin/orders' })).json().items.length).toBe(ordersBefore); // 无新订单
+  });
+
+  it('结算成功 → 按下单数量扣减库存', async () => {
+    const before = (await inj({ method: 'GET', url: '/api/v1/admin/products/g1' })).json().stock as number; // 种子选中 qty=2
+    const r = await inj({ method: 'POST', url: '/api/v1/cart/checkout', payload: { channel: 'car' } });
+    expect(r.statusCode).toBe(200);
+    const after = (await inj({ method: 'GET', url: '/api/v1/admin/products/g1' })).json().stock as number;
+    expect(after).toBe(before - 2);
+  });
+});
+
 describe('关联更新 / 级联（QA 审查修复）', () => {
   it('删商品 → 同步清出购物车，无悬挂', async () => {
     // 购物车种子含 g1

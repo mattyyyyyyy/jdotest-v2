@@ -289,6 +289,45 @@ export const store = {
     return { items, removed: sel.length };
   },
 
+  // ---------- 库存（add-inventory-guard）----------
+  /** 商品当前库存（缺失/未知商品视为 0）。 */
+  productStock(id: string): number {
+    const p = res('products').rows.find((x) => x.id === id);
+    return typeof p?.stock === 'number' ? (p.stock as number) : 0;
+  },
+  /** 购物车中某款某规格已有数量（用于加购累计校验）。 */
+  cartQty(productId: string, spec: string): number {
+    return cart.find((c) => c.productId === productId && c.spec === spec)?.qty ?? 0;
+  },
+  /**
+   * 带库存校验的结算（全有或全无）：
+   * 任一选中项 商品缺失/下架/库存<数量 → 返回 { ok:false, insufficient }，不动购物车；
+   * 全部满足 → 扣减库存 + 移出已选 + 返回 { ok:true, items, removed }。
+   */
+  cartCheckoutWithStock():
+    | { ok: true; items: Array<{ title: string; price: number; qty: number }>; removed: number }
+    | { ok: false; insufficient: Array<{ productId: string; want: number; available: number; reason: string }> } {
+    const sel = cart.filter((c) => c.selected);
+    const insufficient: Array<{ productId: string; want: number; available: number; reason: string }> = [];
+    for (const c of sel) {
+      const p = res('products').rows.find((x) => x.id === c.productId);
+      if (!p || p.onShelf !== true) {
+        insufficient.push({ productId: c.productId, want: c.qty, available: 0, reason: 'PRODUCT_UNAVAILABLE' });
+      } else if ((p.stock as number) < c.qty) {
+        insufficient.push({ productId: c.productId, want: c.qty, available: (p.stock as number) || 0, reason: 'INSUFFICIENT_STOCK' });
+      }
+    }
+    if (insufficient.length > 0) return { ok: false, insufficient }; // 全有或全无：不动购物车
+    const items = sel.map((c) => {
+      const p = res('products').rows.find((x) => x.id === c.productId)!;
+      p.stock = (p.stock as number) - c.qty; // 扣减库存（售罄归 0）
+      return { title: p.title as string, price: p.price as number, qty: c.qty };
+    });
+    cart = cart.filter((c) => !c.selected);
+    save();
+    return { ok: true, items, removed: sel.length };
+  },
+
   // ---------- 消费端账号 / 地址簿（add-user）----------
   userByPhone(phone: string): Row | undefined {
     return res('users').rows.find((u) => u.phone === phone);

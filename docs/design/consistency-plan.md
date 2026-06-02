@@ -39,8 +39,8 @@
 | # | 业务点 | 现状 | 统一方案 |
 |---|---|---|---|
 | 8 | **图片来源** | V3 用 Unsplash 远程图 + 油卡用内联 SVG；后台新增用占位 SVG | 统一图片策略：后台支持图片 URL/上传；缺图统一占位（已做占位） |
-| 9 | **库存与上架联动** | 库存为 0 仍可上架/下单 | 统一规则：stock=0 自动判定不可购；下单前服务端校验库存（对接 order-state-machine 的 STOCK_CHANGED） |
-| 10 | **数据持久化** | 全内存 store，重启丢数据 | 统一接 Prisma + PostgreSQL（ADR-0003），store 接口语义不变 |
+| ~~9~~ | ✅ **库存与上架联动**（2026-06-02 · add-inventory-guard）：加购/结算服务端校验库存——下架 409 `PRODUCT_UNAVAILABLE`、超库存 409 `INSUFFICIENT_STOCK`（全有或全无），结算成功扣减库存（4 测试）。spec 见 `openspec/specs/cart` | 已统一 |
+| ~~10~~ | 🟢 **数据持久化**：过渡方案已落地（ADR-0014 JSON 文件快照，重启不丢，4 测试）；🔴 生产 Prisma + PostgreSQL（ADR-0003）仍待接 | 过渡已统一，PG 待接 |
 
 ## 📅 分阶段计划
 
