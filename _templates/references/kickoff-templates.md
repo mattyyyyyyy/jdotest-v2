@@ -557,7 +557,7 @@
 | 密钥不进仓库 | Security | `PreToolUse(Write\|Edit)` hook 扫描 + pre-commit hook |
 | 首屏 FCP ≤ 1.5s（Wi-Fi）/ 2.5s（4G） | Performance | Lighthouse CI 在每次 PR 跑 |
 | Bundle ≤ 300KB gzipped | Performance | Vite build size check |
-| 所有 commit 末尾带 `agent:` 尾标 | Collaboration | `PreToolUse(Bash)` hook 在 git commit 时自动追加 |
+| 所有 commit 末尾带 `agent:` 尾标 | Collaboration | `PreToolUse(Bash)` hook（`check-agent-tag.sh`）校验，缺尾标则拒绝 |
 
 ## Should
 
@@ -2611,37 +2611,26 @@ ENABLE_TWEAKS_PANEL=true
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write",
-        "description": "开工三件套检查：未在 docs/INDEX.md §Active Workstreams 登记 → 拒绝",
-        "command": ".claude/hooks/check-workstream-registered.sh"
-      },
-      {
-        "matcher": "Write|Edit",
-        "description": "密钥扫描：内容匹配密钥模式 → 拒绝",
-        "command": ".claude/hooks/scan-secrets.sh"
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/check-workstream-registered.sh" },
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/scan-secrets.sh" }
+        ]
       },
       {
         "matcher": "Bash",
-        "description": "commit 自报家门：git commit 时自动追加 agent: tail",
-        "command": ".claude/hooks/append-agent-tag.sh"
+        "hooks": [
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/check-agent-tag.sh" }
+        ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "Write|Edit",
-        "description": "文档同步：源码改了但对应 spec / ADR 未改 → 警告",
-        "command": ".claude/hooks/check-doc-sync.sh"
-      },
-      {
-        "matcher": "Write",
-        "description": "INDEX 同步：新增 docs/*.md 必须同步登记 INDEX",
-        "command": ".claude/hooks/check-index-updated.sh"
-      }
-    ],
-    "Stop": [
-      {
-        "description": "测试 gate：会话改了 src/ 但未跑测试 → 阻塞",
-        "command": ".claude/hooks/check-tests-ran.sh"
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/check-index-updated.sh" },
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/openspec-validate.sh" }
+        ]
       }
     ]
   },
@@ -2651,7 +2640,7 @@ ENABLE_TWEAKS_PANEL=true
       "Bash(git status)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
-      "Bash(docker compose:*)"
+      "Bash(openspec:*)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
@@ -2662,35 +2651,30 @@ ENABLE_TWEAKS_PANEL=true
 }
 ```
 
-**hook 脚本骨架**（放 `.claude/hooks/check-workstream-registered.sh`）：
+> ⚠️ **schema 要点（社区高频踩坑，务必照此写）**：Claude Code 的 hook 是**嵌套结构**——每个 `matcher` 下挂 `"hooks": [{ "type": "command", "command": "…" }]`；**不是** `{ "matcher", "command" }` 扁平写法（扁平写法解析不报错但**根本不触发**）。`settings.json` 也**没有** `description` 字段（写了被忽略）。脚本路径用 `$CLAUDE_PROJECT_DIR/.claude/hooks/…`。
+> 本嵌套格式已在参考项目 jdotest-v2 实跑验证（同一会话里 `check-index-updated.sh` 真实拦截过未登记的 `Write`）。各 hook 强制什么用下表说明（描述放文档，不放 JSON）：
+>
+> | 脚本 | 事件 | 强制 |
+> |---|---|---|
+> | `check-workstream-registered.sh` | PreToolUse(Edit/Write) | 开工三件套未登记 → 拒绝（豁免 INDEX/CLAUDE/.claude，否则登记动作被自己拦死）|
+> | `scan-secrets.sh` | PreToolUse(Edit/Write) | 高置信度密钥/私钥 → 拒绝（只用低误报模式，保 hook 可信）|
+> | `check-agent-tag.sh` | PreToolUse(Bash) | `git commit` 缺 `agent:` 尾标 → 拒绝（"拒绝补尾标"比 PreToolUse 改写命令"自动追加"更可靠）|
+> | `check-index-updated.sh` | PostToolUse(Write/Edit) | 新增 `docs/**/*.md` 未登记 INDEX → 反馈（防文档孤儿）|
+> | `openspec-validate.sh` | PostToolUse(Write/Edit) | 改 `openspec/**` 跑 `validate --all --strict`（注意必须带 `--all`，否则空跑；CLI 缺失则优雅跳过）|
+>
+> **文档同步**、**测试 gate** 误报率高，建议先以 `should`（CLAUDE.md 软约束）保留，规则收敛后再 hook 化——噪音会削弱护栏可信度。
+
+**5 个脚本的完整实现是 [`references/hooks/`](hooks/)**（本 skill 内置，可运行，已 `exit 2` 实跑验证）。阶段 4 落地时**逐字复制**到目标项目：
 
 ```bash
-#!/usr/bin/env bash
-# 检查 docs/INDEX.md §Active Workstreams 是否有当前 agent 的登记行
-# 如果没有，输出错误信息并 exit 2（拒绝本次工具调用）
-#
-# 注意：PreToolUse hook 拦截必须用 exit 2，不是 exit 1。
-# exit 1 只是告警不阻塞；exit 2 才让 Claude Code 真正拒绝本次工具调用，
-# 并把 stderr 内容作为反馈喂回 agent。这是社区 #1 实现 bug。
-
-AGENT_ID="${CLAUDE_AGENT_ID:-claude-unknown}"
-INDEX_FILE="docs/INDEX.md"
-
-if [ ! -f "$INDEX_FILE" ]; then
-  echo "ERROR: $INDEX_FILE 不存在。请先创建 docs/INDEX.md。" >&2
-  exit 2
-fi
-
-if ! grep -A 100 "Active Workstreams" "$INDEX_FILE" | grep -q "$AGENT_ID"; then
-  echo "ERROR: 未在 docs/INDEX.md §Active Workstreams 找到 agent-id=$AGENT_ID 的登记行。" >&2
-  echo "请按开工三件套先 append 一行登记你的工作范围。" >&2
-  exit 2
-fi
-
-exit 0
+mkdir -p .claude/hooks
+cp <skill>/references/hooks/*.sh .claude/hooks/
+chmod +x .claude/hooks/*.sh
 ```
 
-每个 hook 配一行注释说明它强制的是哪条约束，指回 `constraints.md` 或 `CLAUDE.md` 的条目。
+不在此处复制脚本正文——脚本的唯一真相在 `references/hooks/`，这里只留挂载方式与上表说明，避免两份正文漂移（违反本 skill 的唯一真相原则）。每个脚本顶部都有一行注释说明它强制哪条约束，指回 `constraints.md` 或 `CLAUDE.md`。
+
+> 实现要点（写脚本时务必照做）：① 拦截用 `exit 2`（`exit 1` 只告警不拦截，社区 #1 bug）；② PreToolUse/PostToolUse 从 stdin 收 JSON，用 `jq` 解析，`file_path` 要兼容 `.file_path // .filePath`；③ 校验登记/孤儿/密钥类 hook 必须豁免协作元文件本身（INDEX/CLAUDE/.claude），否则登记动作被自己拦死；④ 早期靠 `CLAUDE_AGENT_ID` env var 比对登记行不可靠，改为"存在任一真实登记行即放行"更稳。
 
 ---
 

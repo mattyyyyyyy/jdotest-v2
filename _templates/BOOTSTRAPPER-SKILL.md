@@ -32,7 +32,7 @@ description: 将产品想法、需求背景、PRD 草稿或空仓库转成规范
 - AI 协作公约：开工前必读、路径所有权、提交前检查写清楚。落地在 `CLAUDE.md` 或 `AGENTS.md`。
 - 强制执行机制：`must` 级规则在 `.claude/settings.json` 配好 hooks，而不是只靠文档提示。详见"强制执行机制"。
 - 环境与密钥：`.env.example` 完整，密钥来源明确，本地运行依赖（数据库、缓存、第三方 mock）启动方式有文档。
-- 任务切片：第一阶段任务在 `docs/task-plan.md` 或 `docs/specs/<feature>/tasks.md` 里足够小、可回溯、可验证。
+- 任务切片：第一阶段任务在 `docs/task-plan.md`（总索引）或 `openspec/changes/<id>/tasks.md`（feature 级）里足够小、可回溯、可验证。
 - **验证证据落点**：每个 task 跑完后"命令 + 结果 + 失败原因"写哪里要事先定好——PR 描述模板的 `## Verification` 段、或 `docs/verification-log.md`、或 task 描述里直接附 verification 命令。没有落点的"我做完了"不算做完。这是 harness 5 层中的 observability 层。
 
 某项前提暂时无法定，就把它显式写进 `docs/open-questions.md`，标明谁回答、什么时候回答、空档期使用什么假设。不要让缺失隐式存在。
@@ -132,7 +132,8 @@ ADR（按项目类型筛选）：
   docs/design/design-system.md    [有 UI]
   docs/design/page-spec.md        [有页面]
   docs/design/interaction-patterns.md  [跨页面交互复杂]
-  docs/specs/<feature>/           [复杂功能 spec-driven]
+  openspec/specs/<domain>/        [feature 当前真相，走 OpenSpec]
+  openspec/changes/<id>/          [进行中变更：proposal/design/tasks/delta spec]
 ```
 
 用户可以勾减或追加。skill 把最终清单写入待生成队列。
@@ -184,7 +185,7 @@ openspec new change add-driving-mode
 - 每个 `openspec/changes/<id>/` 都有完整的 4 件套（proposal / design / tasks / delta spec）
 - 第一阶段 task 都能回溯到 requirement / scope
 - `.env.example` 覆盖所有外部依赖
-- 跑 `openspec validate --strict` 确保 spec 格式合法（RFC 2119 + scenario 结构，`--strict` 拒绝缺字段）
+- 跑 `openspec validate --all --strict` 确保 spec 格式合法（RFC 2119 + scenario 结构，`--strict` 拒绝缺字段）
 
 ### 阶段 5 · 交接
 
@@ -263,7 +264,7 @@ openspec new change add-driving-mode
 - 每个 `openspec/changes/<id>/` 4 件套完整
 - 每个第一阶段 task 可回溯到 requirement / scope
 - `.env.example` 覆盖所有外部依赖
-- 跑 `openspec validate --strict` 确保 spec 格式合法
+- 跑 `openspec validate --all --strict` 确保 spec 格式合法
 
 ## 何时必须写文档
 
@@ -489,7 +490,7 @@ docs/
 
 职责：第一阶段任务总目录。任务粒度足够小、能回溯到 scope/constraint/ADR、有明确验证方式。
 
-写法：每个任务包含 ID、目标、对应 requirement、验证步骤、依赖任务。复杂功能拆到 `docs/specs/<feature>/tasks.md`，本文件保留指针。
+写法：每个任务包含 ID、目标、对应 requirement、验证步骤、依赖任务。复杂功能拆到 `openspec/changes/<id>/tasks.md`，本文件保留指针。
 
 ### docs/open-questions.md
 
@@ -718,7 +719,7 @@ CI gate 至少包括 lint、typecheck、unit/integration tests、build。发布�
 
 - Always-on instructions：`CLAUDE.md`、`AGENTS.md`、`.github/copilot-instructions.md`、工具 rules，只放短、硬、长期有效的规则。
 - Project facts：`docs/project-brief.md`、`scope.md`、`constraints.md`、`architecture.md`，记录项目事实。
-- Feature specs：`docs/specs/<feature>/requirements.md`、`design.md`、`tasks.md`，驱动具体实现。
+- Feature specs：`openspec/specs/<domain>/spec.md`（当前真相）+ `openspec/changes/<id>/{proposal,design,tasks}.md` + delta spec，驱动具体实现（走 OpenSpec，不另用 `docs/specs/`）。
 - Evidence logs：`docs/verification-log.md` 或 PR 描述，记录 AI 实际运行过什么、结果是什么。
 
 推荐 AI 编码循环：
@@ -761,6 +762,12 @@ Interview / clarify
 
 `CLAUDE.md`、`AGENTS.md`、memory、提示词都是**软约束**，agent 可以忽略、忘记或自己判断是否执行。`must` 级规则必须由 harness 而不是 agent 自己执行，否则不算"强制"。
 
+> **为什么 harness 比模型更值得投入**（2026 harness engineering 共识，见 [awesome-harness-engineering](https://github.com/ai-boost/awesome-harness-engineering)）：**Agent = Model + Harness**——"模型是引擎，harness 是车"（Fowler）。LangChain 仅改 harness（结构化验证回路 + 上下文注入 + loop 检测）就把同一模型的 coding agent 从 Terminal Bench 2.0 第 30 名拉到前 5，**没换模型**。这就是本 skill 把精力花在文档/约束/hook 而不是 prompt 调教上的根据。
+>
+> harness 控制分两类（Böckeler 的 guides + sensors 模型），正好对应本 skill 的 hook 用法：**feedforward 护栏（guides）= `PreToolUse` 事前拦截**；**feedback 传感器（sensors）= `PostToolUse` / `Stop` 事后校验**。两者都该优先用确定性手段（lint / test / grep），LLM-as-judge 是补充。
+>
+> ⚙️ **棘轮原则（Ratchet Principle）——给"must 必落 hook"加的成熟度护栏**：*"每一个 harness 组件都假设模型当前做不到某件事；这些假设会过期。"* 所以 hook 是为**今天**的模型能力补位，不是永久资产。模型变强后，曾经必须拦截的（如"忘记登记 workstream"）可能不再需要——定期复审、该撤的撤，别让护栏越堆越厚反而拖慢协作。这也是本 skill 把"文档同步 / 测试 gate"暂留 `should`、不急于 hook 化的理由：误报的护栏比没有护栏更糟。
+
 2026 业界把 Claude Code 这类 agent 的 harness 抽象成 5 层。下表是每层的物理载体、能管什么、是否可绕过：
 
 | 层 | 载体 | 管什么 | agent 能绕过吗 |
@@ -780,7 +787,7 @@ Interview / clarify
 - `Stop`：agent 想结束回合时拦截，可以打回让它继续工作
 - `UserPromptSubmit`：用户消息提交时注入额外上下文
 
-> Claude Code 2026 已有 32+ 类 hook 事件，上面 4 类覆盖 95% 用例。完整事件参见官方 hooks 文档。
+> Claude Code 已有数十种 hook 事件（官方持续新增），上面 4 类覆盖 95% 用例。完整事件以官方 hooks 文档为准。
 
 典型规则：
 
@@ -810,6 +817,8 @@ Interview / clarify
 ## 多 agent 协作协议
 
 如果项目允许多个 Claude / Codex / 其它 agent 并行推进，光靠"祈使句规则"不够，需要这套协议托底。单 agent 项目可以略过本节，但保留 INDEX.md 仪表盘对跨会话连续性仍有帮助。
+
+> **与会话内编排器的分层**：2026 已有内置/开源编排器——Claude Code 的 **Agent Teams**（team-lead 拆活 + teammates 经共享 task list 协作，实验特性，默认关）、**并行 subagent**（各自独立 context，用 **git worktree** 隔离避免分支冲突）、以及 Claude Flow 等。它们解决的是**单次会话内**的任务路由与并发隔离，生命周期随会话结束而消失。本节这套 `docs/INDEX.md` 仪表盘解决的是**跨会话、跨 agent、可审计的持久协作**——谁在历史上做过什么、路径归谁、孤儿在哪。两者**互补分层**：编排器管"这一轮怎么并发"，INDEX 管"任何新会话进来怎么不撞车、不重复"。并行写同一仓库时优先开 worktree（见 Agent 工具 / `EnterWorktree`）。
 
 **Append-Only 协作区**
 
@@ -850,7 +859,7 @@ commit message 末尾加：
 agent: claude-<short-context>
 ```
 
-非强制，但便于 `git log` 追冲突。可以用 `PreToolUse(Bash)` hook 在匹配 `git commit` 命令时自动追加，从根上保证。
+便于 `git log` 追冲突。用 `PreToolUse(Bash)` hook 在匹配 `git commit` 命令时**校验是否带尾标，缺则拒绝**（`exit 2` + 反馈让 agent 自己补）——比 hook 改写命令"自动追加"更可靠（改写对引号 / 多 `-m` / heredoc 脆弱）。实现见 [references/hooks/check-agent-tag.sh](references/hooks/check-agent-tag.sh)。
 
 **硬规则配 hooks**
 
@@ -859,7 +868,7 @@ agent: claude-<short-context>
 - 开工三件套检查：编辑前未读 INDEX / 未登记 Active Workstreams → 拒绝。
 - append-only 越界：检测到删除/修改了别人 workstream 行 → 拒绝。
 - 路径所有权越界：编辑别人 zone 的文件未协调 → 警告或拒绝。
-- commit 自报家门：未带 `agent:` tail → 自动补。
+- commit 自报家门：未带 `agent:` tail → 拒绝（反馈让 agent 自己补，不靠 hook 改写命令）。
 - 文档同步：源码改了但对应 spec / ADR 未改 → 阻塞 Stop。
 
 ## 参考材料
@@ -872,6 +881,7 @@ agent: claude-<short-context>
 - 需要后台、测试、契约、前后端联调或 CI 方案时，读取 `references/backend-testing-integration.md`。
 - 需要完整 AI Coding 流程、spec-driven development、AI rules、验证证据或 review 闭环时，读取 `references/ai-coding-workflow.md`。
 - 需要 OpenSpec 三阶段生命周期、delta spec、archive 流程时，读取 `references/openspec-integration.md`。
+- 阶段 4 配置 harness 第④层 hooks 时，从 `references/hooks/` **逐字复制** 5 个实战脚本（`exit 2` 实跑验证）到目标项目 `.claude/hooks/`；说明见 `references/hooks/README.md`。
 
 **上游 / 同赛道 skill**（按工作流先后衔接，避免重复访谈）：
 
@@ -882,13 +892,23 @@ agent: claude-<short-context>
 | PRD 已有，要开工 | **本 skill** | PRD/brief → 完整仓库 + ADR + hooks + OpenSpec init。 |
 | 进入实施 | `superpowers/writing-plans` + `executing-plans`，或 BMAD `/sprint-planning` + `/dev-story` | 把 task-plan 拆成可执行 plan 并跑。 |
 
+**技术栈专属 skill（按目标平台委派，本 skill 不教平台细节）**——本 skill 负责"结构、文档、约束、harness"，**平台正确性交给平台 skill**（单一职责）。落地时识别目标平台，建议在目标仓库 `.claude/skills/` 装上对应 skill：
+
+| 目标平台 | 推荐 skill / 工具 | 解决什么 |
+|---|---|---|
+| **原生安卓（Kotlin + Jetpack Compose）** | [`aldefy/compose-skill`](https://github.com/aldefy/compose-skill)（带 androidx 源码"凭证"，纠正 AI 编 Compose"能编过但细节错"：state 原语 / 重组 bug / 弃用导航 API / modifier 顺序）；[`new-silvermoon/awesome-android-agent-skills`](https://github.com/new-silvermoon/awesome-android-agent-skills) | Compose 实装正确性 |
+| **原生安卓的 agent 工具链** | **Google Android CLI 1.0**（I/O '26）+ **Android Skills**（同样是 `SKILL.md` 格式）| 让 agent 不开 Android Studio GUI 就能语义符号解析 / 渲染 Compose 预览 / 跑 UI 测试；官方称比在 IDE 里跑 agent **省 70%+ token、快 3×**。直接对症"沙箱无 SDK、构建难"（jdotest-v2 ADR-0013 踩过的坑）|
+
+> 经验（jdotest-v2 ADR-0013 验证）：消费端从 H5 改原生 Compose 后，逐像素还原既有网页 mockup 成本极高，最终务实回退到 **WebView 直载网页**复用界面。启示：**别为 demo 过度原生化**——先确认"原生"是真需求（性能 / 系统集成 / 离线）还是被"看起来更高级"带偏；纯展示型可 WebView/H5 起步，把原生留给真正需要的模块。这条决策本身要落 ADR（含被否的备选）。
+
 **业界 harness / spec 框架对照**（设计参考）：
 
-- [GitHub Spec Kit](https://github.com/github/spec-kit)：greenfield 友好，社区 star 最大
+- [GitHub Spec Kit](https://github.com/github/spec-kit)：greenfield 友好，社区 star 最大（2026 约 93k★），支持 30+ agent
 - [BMAD-METHOD](https://github.com/bmadcode/BMAD-METHOD)：模拟敏捷团队 9 角色 + 15 命令
-- [OpenSpec](https://openspec.dev/)：本 skill 已原生集成
+- [Kiro](https://kiro.dev/)：agentic IDE，强制"先成文 intent 再写码"的 spec-first 流程
+- [OpenSpec](https://openspec.dev/)：本 skill 已原生集成。**2026 选型共识**：spec 工具分 *living-spec*（随码同步，brownfield 迭代友好）与 *static-spec*（前期结构化、实现漂移后需手动对账）；OpenSpec 属前者、brownfield 首选，这正是本 skill 选它而非 Spec Kit 的理由
 - [Claude Code 官方 hooks 文档](https://code.claude.com/docs/en/hooks)：Layer 4 完整事件清单
-- [awesome-harness-engineering](https://github.com/ai-boost/awesome-harness-engineering)：harness 生态权威清单
+- [awesome-harness-engineering](https://github.com/ai-boost/awesome-harness-engineering)：harness 生态权威清单（Agent=Model+Harness / 棘轮原则 / guides+sensors 的出处）
 
 ## 完成标准
 

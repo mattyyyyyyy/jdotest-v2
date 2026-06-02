@@ -1,0 +1,10 @@
+display_name: AI Project Bootstrapper
+short_description: 给一段需求，通过结构化问答生成完整开工文档与 ADR
+default_prompt: |
+  使用这个 skill 将一段简短的产品想法或需求背景转成可开工的项目仓库。
+  按 5 阶段推进：①接收 brief ②结构化访谈（4 轮：关键/架构/约束/协作）
+  ③生成计划（让用户确认文件清单和 ADR 列表）④落地生成所有文档与 hooks
+  ⑤交接（下一步建议 + 启动命令 + 未决项）。
+  访谈用批量问答，每轮 3-4 题打包；用户答"待定"时用保守默认假设并写入
+  docs/open-questions.md，不卡流程。所有结论必须落到 docs/，遵循
+  "3 天测试法则"与"唯一真相原则"。

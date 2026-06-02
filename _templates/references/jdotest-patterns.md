@@ -4,6 +4,9 @@
 
 下面的模式都可直接套用到新项目，不依赖原案例的领域。
 
+> **诚实说明（避免把样本理想化）**：JDOTEST 是真实项目，也**真实积累过欠账**——早期用别的方式开发，后才用本 skill 反向规范化。2026-06-01 的一次 reconcile pass 才补齐：`.claude` 根本没有 hooks（must 规则全是空话）、INDEX 失同步（6 个文档孤儿 + commit 全是 `(pending)` 占位）、PRD 过载 566 行（违反唯一真相）、缺 constraints/architecture/backend-spec/api-contracts/open-questions/task-plan、无 Observability 层。
+> 教训：**即使"文档先行"做得好的项目也会 drift；价值不在于一次做对，而在于有 reconcile loop 把 drift 收敛**。下面的模式是终态，本节末「反模式」记录的就是这个项目踩过的坑。把它当"长这样才算收敛"的参照，而不是"天生如此"的范本。
+
 ---
 
 ## 文档先行项目做得好的地方

@@ -76,7 +76,8 @@ ai-project-bootstrapper-skill/
 │   ├── openspec-integration.md       # OpenSpec 框架集成（feature 级 spec）
 │   ├── jdotest-patterns.md           # 实战验证过的模式
 │   ├── ai-coding-workflow.md         # AI 编码闭环 + 新旧 spec 对比
-│   └── backend-testing-integration.md  # 后端 / 测试 / 联调 + 代码片段
+│   ├── backend-testing-integration.md  # 后端 / 测试 / 联调 + 代码片段
+│   └── hooks/                        # 5 个实战 hook 脚本（exit 2 实跑验证，可逐字复制）
 └── README.md                         # 本文
 ```
 
@@ -108,6 +109,7 @@ ai-project-bootstrapper-skill/
 | **OpenSpec** | 集成为 feature 级 spec 框架（[openspec.dev](https://openspec.dev/) / [GitHub](https://github.com/Fission-AI/OpenSpec)）|
 | **[obra/superpowers](https://github.com/obra/superpowers)** | 上游：`brainstorming` 出 design；下游：`writing-plans` + `executing-plans` 跑实施 |
 | **[mattpocock/skills](https://github.com/mattpocock/skills)** | 上游：`to-prd` 把对话转 PRD 提到 GitHub issue |
+| **[aldefy/compose-skill](https://github.com/aldefy/compose-skill)** · Google **Android CLI 1.0 / Android Skills** | 平台委派：目标是原生安卓（Compose）时，本 skill 搭结构，Compose 正确性 + agent 构建/预览/UI 测试交给它们 |
 | GitHub Spec Kit | 设计思路参考（greenfield 友好） |
 | BMAD-METHOD | 设计思路参考（模拟敏捷团队 9 角色）|
 | Amazon Kiro | 设计思路参考（specs + steering + 双向同步）|

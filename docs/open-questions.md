@@ -11,7 +11,7 @@
 | # | 问题 | 当前假设 / 现状 | 影响 | Owner / 期限 |
 |---|---|---|---|---|
 | Q2 | ✅ **基本解决（2026-06-03）· 数据持久化接 SQLite 实库**：ADR-0014 由 JSON 快照升级为 **SQLite**（better-sqlite3 同步驱动，`STORE_PERSIST_PATH` 指 `.db`，事务/WAL/按行存储，重启不丢，4 持久化测试 + 95 总测试全绿）。生产 PostgreSQL（ADR-0003）仍是目标，但已是真正的数据库、切 PG 仅换数据源 | SQLite 文件即库、零服务依赖、同步接口零改动 | 演示重启不丢；高并发仍建议 PG | 切 PG 待有 DB 环境时 |
-| Q11 | **`_templates/` 是 skill 的 vendored 副本，已与上游分叉**：本轮修了 `../ai-project-bootstrapper-skill` 的 hook schema / validate 命令 / 双轨措辞，但 `jdotest-v2/_templates/` 那份快照未同步（Ownership Zone 标只读不改）| 副本仍含旧错（扁平 hook schema、`validate --strict` 空跑命令）| 读 _templates 的人会拿到过期信息 | 维护者 · 从 skill repo 重新 vendoring（不手改）|
+| ~~Q11~~ | ✅ **已解决（2026-06-03）· `_templates/` 已从上游重新 vendoring**：按 `../ai-project-bootstrapper-skill` 重拷 references/*.md（含 `validate --all` 修复，本地原 0 处→4 处）+ SKILL/README，并补入此前缺失的 `references/hooks/*`（5 脚本均 exit 2）与 `agents/`。本地与上游已一致 | 上游为真相，本地按上游重拷（不手改）| 文档不再过期 | — |
 | Q10 | ✅ **已解决（2026-06-02）· OpenSpec 全域补齐**：所有已实现域均沉淀 spec——本轮回填 7 后台域（admin-catalog/order/analytics/user/marketing/content/fulfillment）+ 3 消费端域（catalog/cart/payment）共 10 个 change→archive；未实现域（auth-login/user/fulfillment）写成 forward change 留 `changes/`。`validate --all --strict` 18/18 绿 | 15 specs + 3 forward changes | spec 覆盖率达成 | — |
 | Q12 | ✅ **已解决（2026-06-02）· 消费端登录两条入口齐备**：车机扫码 `auth-qr`（archive，9 测试）+ 手机号验证码 `auth-login`（**已实现 + archive**：`consumer-auth.ts` issueSmsCode/verifySmsCode + `/api/v1/auth/sms-code`/`sms-login`，TTL/频控/一次性 + 封禁拦截 + 首登建号 + 与 admin 隔离，7 测试）| 复用 auth-qr token 套路 + issueUserToken | 登录链路完整 | — |
 

@@ -140,7 +140,7 @@ OpenSpec **没有** `openspec propose <id>` 这个 CLI 命令。社区最大的�
 | AI 介入程度 | 全程——AI 读上下文、写 proposal/delta/design/tasks、跑 validate | 只创建空骨架，4 件套内容靠人 / 后续 AI 填 |
 | 适合场景 | 开发者日常迭代、bootstrapper skill 推荐的下一步 | 脚本化、CI、批量初始化、纯命令行环境 |
 | 产出 | 完整可 review 的 change（直接进 Apply 阶段）| 占位文件，需后续编辑 |
-| 失败模式 | AI 可能漏掉上下文 → 跑 `openspec validate --strict` 兜底 | 容易留半成品 → INDEX / task-plan 标 "needs filling" |
+| 失败模式 | AI 可能漏掉上下文 → 跑 `openspec validate --all --strict` 兜底 | 容易留半成品 → INDEX / task-plan 标 "needs filling" |
 
 **两条路径的产物不同**（实测 v1.3.1）：`/opsx:propose` 一次性写满 4 件套；`openspec new change` 只创建 `.openspec.yaml` 标记文件，4 件套靠 `openspec instructions <artifact> --change <id>` 拿指令后逐个写。可以混用——CI 里 `openspec new change` 起骨架，开发者再用 `/opsx:propose <id>` 让 AI 补满内容。
 
@@ -192,7 +192,7 @@ The system MUST <expected behavior>，<additional context>。
 
 ### Delta Spec 四种标记
 
-仅在 `openspec/changes/<id>/specs/<domain>/spec.md` 出现。`openspec validate --strict` 实测认可 4 种 delta header：`## ADDED / MODIFIED / REMOVED / RENAMED Requirements`，且**每个 requirement 必须至少有一个 `#### Scenario:` 块**，否则 validate 报错。
+仅在 `openspec/changes/<id>/specs/<domain>/spec.md` 出现。`openspec validate --all --strict` 实测认可 4 种 delta header：`## ADDED / MODIFIED / REMOVED / RENAMED Requirements`，且**每个 requirement 必须至少有一个 `#### Scenario:` 块**，否则 validate 报错。
 
 ```markdown
 # Delta for <domain>
@@ -708,7 +708,7 @@ openspec init --tools claude --force
 - 创建 `openspec/changes/<id>/` 骨架
 - 读上下文（PRD / scope / constraints / 现有 specs）
 - 填好 proposal.md / delta spec / design.md / tasks.md
-- 跑 `openspec validate --strict` 自检
+- 跑 `openspec validate --all --strict` 自检
 
 skill 在阶段 4 把这一步**作为指令输出给用户**，让用户在新会话里跑（或本会话里继续）。
 
@@ -783,7 +783,7 @@ hook 示例：
 # PreToolUse hook 拦截必须 exit 2（不是 exit 1）才能真正阻塞 git commit
 # --strict 拒绝缺字段，与本 skill 的自检规则保持一致
 if [[ "$CLAUDE_TOOL_INPUT" == *"git commit"* ]]; then
-  npx @fission-ai/openspec validate --strict || {
+  npx @fission-ai/openspec validate --all --strict || {
     echo "ERROR: OpenSpec validation failed (--strict). Fix spec format before commit." >&2
     exit 2
   }

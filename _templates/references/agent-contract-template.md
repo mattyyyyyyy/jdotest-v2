@@ -111,7 +111,7 @@
 agent: claude-<short-context>
 ```
 
-非强制规范，但便于 `git log` 排查冲突。已通过 `PreToolUse(Bash)` hook 在 `git commit` 命令上自动追加。
+便于 `git log` 排查冲突。已通过 `PreToolUse(Bash)` hook（`check-agent-tag.sh`）校验：`git commit` 缺 `agent:` 尾标直接拒绝（`exit 2`），由 agent 自己补——比 hook 改写命令自动追加更可靠。
 
 ---
 
@@ -399,7 +399,7 @@ agent-id 在 INDEX / commit 中区分：
 agent: claude-<short-context>
 ```
 
-已通过 `.claude/hooks/append-agent-tag.sh` 在 `git commit` 命令上自动追加。
+已通过 `.claude/hooks/check-agent-tag.sh`（PreToolUse(Bash)）强制：`git commit` 缺 `agent:` 尾标直接拒绝（`exit 2`）。选"拒绝 + 反馈"而非"自动改写命令追加"——改写命令对引号 / 多 `-m` / heredoc 都脆弱，拒绝让 agent 自己补更可靠。脚本见 [`references/hooks/check-agent-tag.sh`](references/hooks/check-agent-tag.sh)。
 
 ---
 
