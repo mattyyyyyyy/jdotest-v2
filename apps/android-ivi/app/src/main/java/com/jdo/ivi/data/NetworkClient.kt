@@ -32,11 +32,15 @@ data class ApiOrder(val id: String, val status: String, val totalFen: Int, val i
 object NetworkClient {
     private val BASE = BuildConfig.API_BASE
 
+    /** HTTP 错误时抛出包含状态码和响应体的异常。 */
+    class HttpException(val code: Int, val body: String) :
+        RuntimeException("HTTP $code: ${body.take(200)}")
+
     private fun get(path: String): String {
         val c = (URL("$BASE$path").openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"; connectTimeout = 15000; readTimeout = 15000
         }
-        return c.inputStream.use { it.readBytes().decodeToString() }
+        return readResponse(c)
     }
 
     private fun send(method: String, path: String, json: JSONObject?): String {
@@ -45,7 +49,16 @@ object NetworkClient {
             if (json != null) { doOutput = true; setRequestProperty("Content-Type", "application/json") }
         }
         if (json != null) c.outputStream.use { it.write(json.toString().toByteArray()) }
-        return c.inputStream.use { it.readBytes().decodeToString() }
+        return readResponse(c)
+    }
+
+    /** 统一读取响应：2xx 走 inputStream，非 2xx 读 errorStream 并抛 HttpException。 */
+    private fun readResponse(c: HttpURLConnection): String {
+        val code = c.responseCode
+        val stream = if (code in 200..299) c.inputStream else c.errorStream
+        val body = stream?.use { it.readBytes().decodeToString() } ?: ""
+        if (code !in 200..299) throw HttpException(code, body)
+        return body
     }
 
     private fun productOf(o: JSONObject) = ApiProduct(

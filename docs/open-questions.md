@@ -15,14 +15,14 @@
 | Q10 | **OpenSpec 生命周期剩余**：✅ 首个完整环已走通（add-admin-auth propose→apply→archive，`changes/archive/2026-06-01-add-admin-auth/`）。剩：order 已实现但无 change→archive 痕迹（追溯性）；`add-admin-{catalog,order,analytics}` 仍骨架 | CLI 已装并 `validate --all --strict` 3/3 绿 | 其余域尚未走环 | 实施 agent · 逐个 `/opsx:propose` → apply → archive |
 | Q12 | **消费端登录仅剩手机验证码**：✅ 车机扫码 `auth-qr` 已 propose→apply→archive（`consumer-auth.ts`，9 测试）；🔴 手机号+短信验证码 `auth-login` 仍未做 | auth-qr 的 token/会话套路可直接复用 | 手机验证码登录链路缺 | 实施 agent · `/opsx:propose add-phone-login` → apply |
 
-## 🟡 业务方需拍板（来自 PRD 关键风险）
+## ⚪ 业务方待拍板（Demo 已 mock，上线前需解决）
 
-| # | 问题 | 应对 / 当前假设 | Owner |
+| # | 问题 | 应对 / 当前实现 | 状态 |
 |---|---|---|---|
-| Q5 | 支付合规：真实上线需电商 / 支付牌照 | Demo 全 mock，上线前业务方解决资质 | 业务方 |
-| Q6 | 账号体系：是否接车厂账号 / 微信 / 支付宝 | 账号模块设计为可插拔登录器，方式待定 | 业务方 |
-| Q7 | 物流模式：自营 vs 第三方 vs 车厂周边 | 履约模块抽象为多策略，策略后选 | 业务方 |
-| Q8 | 车机适配：不同车厂 WebView 内核 / 字体 / 安全策略各异 | Demo 不解决，阶段二按目标车厂做专项 ADR | — |
+| Q5 | 支付合规：真实上线需电商 / 支付牌照 | Demo 全 mock（`/payments/:id/confirm` 回调 + 状态机），上线前业务方解决资质 | ✅ Demo 就绪 |
+| Q6 | 账号体系：是否接车厂账号 / 微信 / 支付宝 | 已实现可插拔登录器：车机扫码 `auth-qr`（propose→apply→archive，9 测试）+ admin 账号密码；方式可扩展 | ✅ Demo 就绪 |
+| Q7 | 物流模式：自营 vs 第三方 vs 车厂周边 | 履约模块已实现：shipping CRUD + 轨迹节点 + 自提点管理；策略可替换 | ✅ Demo 就绪 |
+| ~~Q8~~ | ~~车机适配：不同车厂 WebView 内核~~ | **已不适用**：消费端已改为原生安卓（ADR-0013），不存在 WebView 适配问题。原生端适配走 ADR-0004 Car API | ✅ 已解决（ADR-0013） |
 
 ## ⚪ 已知妥协（Demo 阶段接受）
 

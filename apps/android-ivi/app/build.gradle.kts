@@ -52,4 +52,12 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     // 导航（原型用 NavHost；21 屏路由）
     implementation("androidx.navigation:navigation-compose:2.9.0")
+
+    // 测试依赖
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2026.05.01"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

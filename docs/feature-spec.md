@@ -81,38 +81,39 @@
 | BE-fulfillment | 履约服务 | 🟡 unclaimed | — | 自提点 + 物流轨迹 |
 | BE-gateway | API 网关 | 🟡 unclaimed | — | 鉴权 / 限流 / CORS |
 
-### 后台管理页面 Admin Pages（桌面 Web · `apps/admin` · per ADR-0010）★ v0.5 新增
+### 后台管理页面 Admin Pages（内嵌 SPA · `services/api/src/admin-spa.ts` · per ADR-0010）★ v0.5 新增
 
 > admin 不受车机约束（无行车态 / 无 88px）。UI 复用 design token，桌面布局（左导航 + 顶面包屑 + 主区表格/表单）。无 mockup（per ADR-0012）。
+> **实现方式**：自包含 vanilla JS SPA，嵌入 `admin-spa.ts` 作为字符串常量，由后端 `/admin-ui` 路由直接服务。无需独立 `apps/admin` 构建。
 
 | ID | 名称 | 路由 | 状态 | Owner | 对应域 | 备注 |
 |---|---|---|---|---|---|---|
-| A-01 | 后台登录 | `/admin/login` | 🟡 unclaimed | — | admin-auth | 账号密码 |
-| A-02 | 工作台 / 看板 | `/admin` | 🟡 unclaimed | — | admin-analytics | PV/UV + 漏斗 + 车机vs手机 |
-| A-03 | 商品列表 | `/admin/products` | 🟡 unclaimed | — | admin-catalog | 搜索 / 上下架 |
-| A-04 | 商品编辑 | `/admin/products/:id` | 🟡 unclaimed | — | admin-catalog | SKU / 图片 / 库存 |
-| A-05 | 分类管理 | `/admin/categories` | 🟡 unclaimed | — | admin-catalog | 7 场景维护 |
-| A-06 | 订单列表 | `/admin/orders` | 🟡 unclaimed | — | admin-order | 搜索 / 筛选 |
-| A-07 | 订单详情 | `/admin/orders/:id` | 🟡 unclaimed | — | admin-order | 发货 / 取消 / 退款审核 |
-| A-08 | 用户列表 | `/admin/users` | 🟡 unclaimed | — | admin-user | 封禁 / 认证审核 |
-| A-09 | 营销 - banner/秒杀/推荐位 | `/admin/marketing` | 🟡 unclaimed | — | admin-marketing | — |
-| A-10 | 优惠券 | `/admin/coupons` | 🟡 unclaimed | — | admin-marketing | 基础规则 |
-| A-11 | 内容 - 场景/详情富文本 | `/admin/content` | 🟡 unclaimed | — | admin-content | 7 场景配置 |
-| A-12 | 自提点管理 | `/admin/pickup-points` | 🟡 unclaimed | — | admin-fulfillment | CRUD |
-| A-13 | 物流轨迹录入 | `/admin/shipping` | 🟡 unclaimed | — | admin-fulfillment | mock 对接 |
-| A-14 | 角色 / 权限 / 审计 | `/admin/system` | 🟡 unclaimed | — | admin-auth | RBAC + 审计日志（超管） |
+| A-01 | 后台登录 | `/admin/login` | 🟢 done | claude-admin-impl | admin-auth | 自动登录 admin/ops01/cs01；RBAC 4 角色 |
+| A-02 | 工作台 / 看板 | `/admin` | 🟢 done | claude-admin-impl | admin-analytics | KPI 卡片 + GMV 趋势图 + 待办面板 |
+| A-03 | 商品列表 | `/admin/products` | 🟢 done | claude-admin-impl | admin-catalog | 搜索 / 分页 / 上下架 / 批量操作 |
+| A-04 | 商品编辑 | `/admin/products/:id` | 🟢 done | claude-admin-impl | admin-catalog | 抽屉表单：SKU / 图片上传 / 库存 |
+| A-05 | 分类管理 | `/admin/categories` | 🟢 done | claude-admin-impl | admin-catalog | 7 场景维护；删除拦截（有商品引用时 409） |
+| A-06 | 订单列表 | `/admin/orders` | 🟢 done | claude-admin-impl | admin-order | 搜索 / 状态筛选 / 分页 |
+| A-07 | 订单详情 | `/admin/orders/:id` | 🟢 done | claude-admin-impl | admin-order | 发货 / 取消 / 退款审核（状态机驱动） |
+| A-08 | 用户列表 | `/admin/users` | 🟢 done | claude-admin-impl | admin-user | 封禁 / 查看积分余额 |
+| A-09 | 营销 - banner/推荐位 | `/admin/marketing` | 🟢 done | claude-admin-impl | admin-marketing | Banner CRUD + HeroRec CRUD + 启停 |
+| A-10 | 优惠券 | `/admin/coupons` | 🟢 done | claude-admin-impl | admin-marketing | 创建 / 发放 / 停用 |
+| A-11 | 内容 - 评价/推荐位 | `/admin/content` | 🟢 done | claude-admin-impl | admin-content | 评价审核（隐藏/删除）+ 推荐位维护 |
+| A-12 | 自提点管理 | `/admin/pickup-points` | 🟢 done | claude-admin-impl | admin-fulfillment | CRUD + 启停 |
+| A-13 | 物流轨迹录入 | `/admin/shipping` | 🟢 done | claude-admin-impl | admin-fulfillment | 录入 / 更新轨迹节点 |
+| A-14 | 角色 / 权限 / 系统 | `/admin/system` | 🟢 done | claude-admin-impl | admin-auth | RBAC 管理 + 审计日志 + 系统配置 |
 
 ### 后台后端能力 Admin Backend（复用 `services/api`，命名空间 `/api/v1/admin/*` · per ADR-0010）★
 
 | ID | 名称 | 状态 | Owner | 备注 |
 |---|---|---|---|---|
-| BE-admin-auth | admin 登录 + RBAC + 审计 | 🟡 unclaimed | — | 独立 AdminUser 表，per ADR-0011 |
-| BE-admin-catalog | 商品/SKU/分类写接口 | 🟡 unclaimed | — | 复用 catalog service 层 |
-| BE-admin-order | 订单管理 / 发货 / 退款 | 🟡 unclaimed | — | 复用同一 order 状态机 |
-| BE-admin-user | 用户管理 / 封禁 / 审核 | 🟡 unclaimed | — | — |
-| BE-admin-marketing | banner/秒杀/券/推荐位 | 🟡 unclaimed | — | — |
-| BE-admin-fulfillment | 自提点 / 物流写接口 | 🟡 unclaimed | — | — |
-| BE-admin-analytics | 看板聚合查询 | 🟡 unclaimed | — | 读埋点 / 订单聚合 |
+| BE-admin-auth | admin 登录 + RBAC + 审计 | 🟢 done | claude-harness-reconcile | `admin-auth.ts` · 38 测试 · admin/ops01/cs01 |
+| BE-admin-catalog | 商品/SKU/分类写接口 | 🟢 done | claude-admin-impl | 通用 CRUD · `/api/v1/admin/:resource` |
+| BE-admin-order | 订单管理 / 发货 / 退款 | 🟢 done | claude-admin-impl | 通用 CRUD + 状态机 `/orders/:id/status` |
+| BE-admin-user | 用户管理 / 封禁 / 审核 | 🟢 done | claude-admin-impl | 通用 CRUD |
+| BE-admin-marketing | banner/秒杀/券/推荐位 | 🟢 done | claude-admin-impl | 通用 CRUD |
+| BE-admin-fulfillment | 自提点 / 物流写接口 | 🟢 done | claude-admin-impl | 通用 CRUD |
+| BE-admin-analytics | 看板聚合查询 | 🟢 done | claude-admin-impl | `/api/v1/admin/analytics` |
 
 ---
 
