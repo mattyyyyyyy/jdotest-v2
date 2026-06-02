@@ -47,7 +47,8 @@ object ShoppingState {
             postLoading(true)
             runCatching {
                 check(NetworkClient.addCartItem(productId, qty, spec))
-                mainHandler.post { cartItems = NetworkClient.getCart(); lastError = null }
+                val items = NetworkClient.getCart() // 必须在后台线程取，避免主线程 NetworkOnMainThreadException
+                mainHandler.post { cartItems = items; lastError = null }
             }.onSuccess { post(onSuccess) }
                 .onFailure { mainHandler.post { lastError = "购物车同步失败，请稍后重试" } }
             postLoading(false)
