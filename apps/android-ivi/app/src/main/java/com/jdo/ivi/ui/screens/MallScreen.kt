@@ -1,5 +1,10 @@
 package com.jdo.ivi.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
@@ -31,11 +37,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -89,6 +97,11 @@ fun MallScreen(onNav: (String, String?) -> Unit, onBack: () -> Unit) {
     var cart by remember { mutableIntStateOf(0) }
     var toast by remember { mutableStateOf<String?>(null) }
     var reloadKey by remember { mutableIntStateOf(0) }
+    val gridState = rememberLazyGridState()
+    // 网格离开顶部即收起 banner（渐隐滑走），回到顶部再出现。稳，不受触底回弹影响。
+    val bannerVisible by remember {
+        derivedStateOf { gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset < 80 }
+    }
 
     LaunchedEffect(reloadKey) {
         loading = true; error = null
@@ -132,8 +145,15 @@ fun MallScreen(onNav: (String, String?) -> Unit, onBack: () -> Unit) {
             }
             val d = data
             // ① banner 通栏在最上（数据未到也先渲染骨架，不显示"加载中"，后台静默拉数据）
-            Box(modifier = Modifier.padding(horizontal = JdoDimens.Space4, vertical = JdoDimens.Space3)) {
-                HeroArea(d?.banners ?: emptyList(), d?.heroRecs ?: emptyList())
+            //    上滑渐隐滑走、下滑再出现
+            AnimatedVisibility(
+                visible = bannerVisible,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Box(modifier = Modifier.padding(horizontal = JdoDimens.Space4, vertical = JdoDimens.Space3)) {
+                    HeroArea(d?.banners ?: emptyList(), d?.heroRecs ?: emptyList())
+                }
             }
             // ② 下面：左目录 + 右列表（mall-body）
             Row(modifier = Modifier.fillMaxSize()) {
@@ -144,6 +164,7 @@ fun MallScreen(onNav: (String, String?) -> Unit, onBack: () -> Unit) {
                     Spacer(Modifier.height(JdoDimens.Space3))
                     val list = d?.products?.filter { it.cat == selectedCat } ?: emptyList()
                     LazyVerticalGrid(
+                        state = gridState,
                         columns = GridCells.Fixed(3),
                         horizontalArrangement = Arrangement.spacedBy(JdoDimens.Space4),
                         verticalArrangement = Arrangement.spacedBy(JdoDimens.Space4),
@@ -245,9 +266,9 @@ private fun ProductCard(haze: HazeState, p: ApiProduct, onOpen: () -> Unit, onAd
                 Spacer(Modifier.width(6.dp))
                 Text(yuan(p.oriFen), color = JdoColors.TextMuted, fontSize = 13.sp)
             }
+            Spacer(Modifier.weight(1f))
+            Text("★${p.star} · 已售${p.sold}k+", color = JdoColors.TextMuted, fontSize = 11.sp)
         }
-        Spacer(Modifier.height(2.dp))
-        Text("★ ${p.star} · 已售 ${p.sold}k+", color = JdoColors.TextMuted, fontSize = 12.sp)
     }
 }
 
