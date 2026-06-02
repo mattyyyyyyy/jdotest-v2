@@ -571,6 +571,7 @@ const RESOURCE_LIST = [
   {
     key: 'banners', label: 'Banner 横幅',
     columns: [
+      { k: 'img', label: '图', type: 'image' },
       { k: 'id', label: 'ID', type: 'text' },
       { k: 'title', label: '主标题', type: 'text' },
       { k: 'sub', label: '副标题', type: 'text' },
@@ -578,10 +579,10 @@ const RESOURCE_LIST = [
       { k: 'active', label: '启用', type: 'bool' },
     ],
     fields: [
+      { k: 'img', label: 'Banner 图片（上传或填 URL）', type: 'image' },
       { k: 'title', label: '主标题', type: 'text' },
       { k: 'sub', label: '副标题', type: 'text' },
       { k: 'tone', label: '配色(blue/emerald)', type: 'text' },
-      { k: 'img', label: '图 URL', type: 'text' },
       { k: 'active', label: '启用', type: 'bool' },
     ],
   },
