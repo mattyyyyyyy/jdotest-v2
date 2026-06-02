@@ -48,6 +48,8 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
+    // 精致线框图标（Material Outlined，替代 emoji）
+    implementation("androidx.compose.material:material-icons-extended")
     // 网络图片（商品图 Unsplash https / data-uri），Coil 2
     implementation("io.coil-kt:coil-compose:2.7.0")
     // 毛玻璃 backdrop blur（还原 web 的 backdrop-filter 玻璃卡）

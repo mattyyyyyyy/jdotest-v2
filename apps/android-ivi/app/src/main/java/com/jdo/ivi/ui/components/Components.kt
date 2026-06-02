@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -54,13 +55,15 @@ fun Modifier.glass(haze: HazeState, shape: Shape, blurRadius: Dp = 24.dp, tint: 
  * 还原 web「整 app 铺壁纸、商城调暗、卡片玻璃透出」的观感。
  */
 @Composable
-fun WallpaperBackdrop(haze: HazeState, dim: Float, content: @Composable BoxScope.() -> Unit) {
+fun WallpaperBackdrop(haze: HazeState, dim: Float, backdropBlur: Dp = 0.dp, content: @Composable BoxScope.() -> Unit) {
     Box(modifier = Modifier.fillMaxSize().background(JdoColors.Bg0)) {
         Image(
             painter = painterResource(R.drawable.ivi_wallpaper_dark),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize().hazeSource(haze),
+            modifier = Modifier.fillMaxSize()
+                .then(if (backdropBlur > 0.dp) Modifier.blur(backdropBlur) else Modifier)
+                .hazeSource(haze),
         )
         if (dim > 0f) Box(modifier = Modifier.fillMaxSize().background(JdoColors.Bg0.copy(alpha = dim)))
         content()

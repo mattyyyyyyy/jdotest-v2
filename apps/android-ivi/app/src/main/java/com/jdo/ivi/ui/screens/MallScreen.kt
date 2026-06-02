@@ -18,8 +18,18 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.DirectionsCar
+import androidx.compose.material.icons.outlined.Luggage
+import androidx.compose.material.icons.outlined.Phone
+import androidx.compose.material.icons.outlined.Restaurant
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -51,8 +61,15 @@ import com.jdo.ivi.ui.theme.JdoDimens
 import dev.chrisbanes.haze.HazeState
 import kotlin.concurrent.thread
 
-private fun catIcon(id: String) = when (id) {
-    "energy" -> "⚡"; "care" -> "🔧"; "eat" -> "🍪"; "trip" -> "🧳"; "gear" -> "🚗"; "sos" -> "📞"; "select" -> "✨"; else -> "•"
+private fun categoryIcon(id: String): ImageVector = when (id) {
+    "energy" -> Icons.Outlined.Bolt
+    "care" -> Icons.Outlined.Build
+    "eat" -> Icons.Outlined.Restaurant
+    "trip" -> Icons.Outlined.Luggage
+    "gear" -> Icons.Outlined.DirectionsCar
+    "sos" -> Icons.Outlined.Phone
+    "select" -> Icons.Outlined.AutoAwesome
+    else -> Icons.Outlined.Bolt
 }
 
 private fun bannerColors(tone: String): List<Color> = when (tone) {
@@ -88,8 +105,8 @@ fun MallScreen(onNav: (String, String?) -> Unit, onBack: () -> Unit) {
         }
     }
 
-    // 商城也铺车型壁纸（调暗）→ 卡片玻璃透出壁纸，还原 web 观感
-    WallpaperBackdrop(haze, dim = 0.5f) {
+    // 商城铺车型壁纸：整体模糊 + 调暗 → 卡片玻璃透出柔焦壁纸，还原 web 观感
+    WallpaperBackdrop(haze, dim = 0.45f, backdropBlur = 22.dp) {
         Column(modifier = Modifier.fillMaxSize()) {
             // 顶栏（玻璃）
             Row(
@@ -161,7 +178,7 @@ private fun Rail(haze: HazeState, cats: List<ApiCategory>, selected: String, onS
                     .background(if (active) JdoColors.SuccessBg else Color.Transparent).clickable { onSelect(c.id) }
                     .padding(horizontal = JdoDimens.Space3, vertical = JdoDimens.Space3),
             ) {
-                Text(catIcon(c.id), fontSize = 20.sp)
+                Icon(categoryIcon(c.id), contentDescription = null, tint = if (active) JdoColors.Mint else JdoColors.TextSecondary, modifier = Modifier.size(22.dp))
                 Spacer(Modifier.width(JdoDimens.Space2))
                 Text(c.name, color = if (active) JdoColors.Mint else JdoColors.TextSecondary, fontSize = 16.sp, fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal)
             }
@@ -173,15 +190,18 @@ private fun Rail(haze: HazeState, cats: List<ApiCategory>, selected: String, onS
 private fun HeroArea(banners: List<ApiBanner>, heroRecs: List<ApiHero>) {
     Row(modifier = Modifier.fillMaxWidth().height(140.dp), horizontalArrangement = Arrangement.spacedBy(JdoDimens.Space4)) {
         val b = banners.firstOrNull()
-        Box(modifier = Modifier.weight(1.5f).fillMaxHeight().clip(RoundedCornerShape(JdoDimens.RadiusLg)).background(Brush.linearGradient(bannerColors(b?.tone ?: "blue"))).padding(JdoDimens.Space5)) {
-            Column {
+        Box(modifier = Modifier.weight(1.5f).fillMaxHeight().clip(RoundedCornerShape(JdoDimens.RadiusLg)).background(Brush.linearGradient(bannerColors(b?.tone ?: "blue")))) {
+            if (b != null && b.img.isNotEmpty()) ProductImage(b.img, Modifier.fillMaxSize())
+            // 横向渐变：左实右透，图片在右侧露出、左侧文字可读
+            Box(modifier = Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xF20A0B0E), Color(0xCC0A0B0E), Color(0x330A0B0E)))))
+            Column(modifier = Modifier.fillMaxSize().padding(JdoDimens.Space5)) {
                 Text("充值返现 · 限时", color = JdoColors.Mint, fontSize = 13.sp)
                 Spacer(Modifier.height(6.dp))
                 Text(b?.title ?: "车主权益日", color = JdoColors.TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
                 Text(b?.sub ?: "", color = JdoColors.TextSecondary, fontSize = 14.sp, maxLines = 1)
             }
-            Box(modifier = Modifier.align(Alignment.BottomEnd).clip(RoundedCornerShape(JdoDimens.RadiusPill)).background(JdoColors.Brand500).padding(horizontal = JdoDimens.Space4, vertical = 8.dp)) {
+            Box(modifier = Modifier.align(Alignment.BottomEnd).padding(JdoDimens.Space4).clip(RoundedCornerShape(JdoDimens.RadiusPill)).background(JdoColors.Brand500).padding(horizontal = JdoDimens.Space4, vertical = 8.dp)) {
                 Text("去充值 ›", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             }
         }
