@@ -56,7 +56,7 @@
 
 | 日期 | Agent | 完成项 | 关键 commit |
 |---|---|---|---|
-| 2026-06-02 | claude-fix-drift | **项目全面修复 + 文档 drift 清理**：ADR-0013 对齐纯 Compose 实际（移除 WebView 修订）；8 个文档 H5→Android 同步（PRD/architecture/scope/constraints/task-plan/backend-spec/api-contracts/ADR-0001）；ShoppingState 线程安全修复（所有 mutableStateOf 写操作 post 到主线程 + isLoading + clearError）；AndroidManifest `usesCleartextTraffic=true`；banner 从定时器自动轮播改为 HorizontalPager 左右横滑 | `863a75f` |
+| 2026-06-02 | claude-fix-drift | **项目全面修复 + 文档 drift 清理 + 待处理项清理**：ADR-0013 对齐纯 Compose；8 文档 H5→Android 同步；ShoppingState 线程安全 + isLoading + clearError；cleartext HTTP；banner 横滑；**NetworkClient HTTP 错误处理**（readResponse 统一 2xx/errorStream）；Android 测试依赖（JUnit/Espresso/Compose Test）；gradlew 标准化（640m JVM）；feature-spec admin 14 页 + 7 后端模块 🟡→🟢；open-questions Q5~Q8 Demo 就绪 + Q8 已解决 | `863a75f` `2105a5a` |
 | 2026-06-02 | codex-android-regression | **Android 次级页面审计 + 交易闭环回归**：审计 19 个非首页页面并落矩阵；新增 payment 确认回调，通过共享状态机持久化 `PENDING_PAYMENT → PAID`，原生与 V3 Web 对照页均接入；修复结算 / 立即购买 / 行车态再买异步竞态、订单 tab / 时间线 / 动作、搜索建议详情跳转；新增持续回归脚本（21 路由装配、Web 支付契约、API、typecheck、Android 构建、可选 emulator 点击链路）。OpenSpec `close-android-commerce-loop` 已 archive；API `56/56` 绿；Android debug build 绿；emulator 实测 `商城 → 购物车 → 结算 → 支付 → 待发货`，后端最新订单 `o-5=PAID` 且无 crash | `863a75f` |
 | 2026-06-02 | codex-android-mall-scale | **商城首页比例与滚动交互收敛**：首页以 `90%` Compose 密度呈现，卡片 / 字号 / 间距同步收紧且保持真实点击区域；搜索框由 `560dp` 收至 `500dp`；顶部「商城 / 我的」改为屏幕中心绝对居中；banner 收起恢复从列表位置推断改为直接监听用户上下滑方向，消除收起后位置重算导致的回弹 | `863a75f` |
 | 2026-06-02 | codex-android-mall-wallpaper | **商城公共背景恢复壁纸透出**：`MallBg` 从纯色背景改为 IVI 同源车型壁纸；背景层放大并套高斯模糊，叠深色渐变遮罩保证商品文字可读；所有商城子页统一继承 | `863a75f` |
