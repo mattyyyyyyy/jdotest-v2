@@ -37,20 +37,20 @@ object ShoppingState {
     fun clearError() { lastError = null }
 
     fun loadCart() = thread(name = "jdo-cart-load") {
-        setLoading(true)
+        postLoading(true)
         refreshCart()
-        setLoading(false)
+        postLoading(false)
     }
 
     fun addCartItem(productId: String, qty: Int = 1, spec: String = "默认规格", onSuccess: (() -> Unit)? = null) =
         thread(name = "jdo-cart-add") {
-            setLoading(true)
+            postLoading(true)
             runCatching {
                 check(NetworkClient.addCartItem(productId, qty, spec))
                 mainHandler.post { cartItems = NetworkClient.getCart(); lastError = null }
             }.onSuccess { post(onSuccess) }
                 .onFailure { mainHandler.post { lastError = "购物车同步失败，请稍后重试" } }
-            setLoading(false)
+            postLoading(false)
         }
 
     fun updateCartItem(id: String, qty: Int? = null, selected: Boolean? = null) =
@@ -71,7 +71,7 @@ object ShoppingState {
             lastCheckoutTotalFen = cartItems.filter { it.selected }.sumOf { it.priceFen * it.qty }
         }
         thread(name = "jdo-cart-checkout") {
-            setLoading(true)
+            postLoading(true)
             runCatching {
                 val orderId = NetworkClient.checkout() ?: error("订单创建失败")
                 mainHandler.post {
@@ -82,14 +82,14 @@ object ShoppingState {
                 refreshOrders()
             }.onSuccess { post(onSuccess) }
                 .onFailure { mainHandler.post { lastError = "提交订单失败，请返回购物车重试" } }
-            setLoading(false)
+            postLoading(false)
         }
     }
 
     fun placeOrderAsync(title: String, priceFen: Int, onSuccess: (() -> Unit)? = null) {
         mainHandler.post { lastCheckoutTotalFen = priceFen }
         thread(name = "jdo-order-create") {
-            setLoading(true)
+            postLoading(true)
             runCatching {
                 val orderId = NetworkClient.placeOrder(title, priceFen) ?: error("订单创建失败")
                 mainHandler.post {
@@ -99,7 +99,7 @@ object ShoppingState {
                 refreshOrders()
             }.onSuccess { post(onSuccess) }
                 .onFailure { mainHandler.post { lastError = "提交订单失败，请稍后重试" } }
-            setLoading(false)
+            postLoading(false)
         }
     }
 
@@ -111,7 +111,7 @@ object ShoppingState {
 
     fun confirmLastPaymentAsync(onSuccess: (() -> Unit)? = null) =
         thread(name = "jdo-payment-confirm") {
-            setLoading(true)
+            postLoading(true)
             runCatching {
                 val orderId = lastOrderId ?: error("订单仍在生成")
                 NetworkClient.confirmPayment(orderId)
@@ -119,13 +119,13 @@ object ShoppingState {
                 refreshOrders()
             }.onSuccess { post(onSuccess) }
                 .onFailure { mainHandler.post { lastError = "支付确认失败，请稍后重试" } }
-            setLoading(false)
+            postLoading(false)
         }
 
     fun loadOrders() = thread(name = "jdo-orders-load") {
-        setLoading(true)
+        postLoading(true)
         refreshOrders()
-        setLoading(false)
+        postLoading(false)
     }
 
     private fun refreshCart() {
@@ -142,7 +142,7 @@ object ShoppingState {
         }.onFailure { mainHandler.post { lastError = "订单同步失败，请稍后重试" } }
     }
 
-    private fun setLoading(value: Boolean) {
+    private fun postLoading(value: Boolean) {
         mainHandler.post { isLoading = value }
     }
 
