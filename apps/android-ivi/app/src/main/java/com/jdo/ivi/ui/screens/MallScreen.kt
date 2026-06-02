@@ -131,34 +131,32 @@ fun MallScreen(onNav: (String, String?) -> Unit, onBack: () -> Unit) {
                 Text(it, color = JdoColors.Success, fontSize = 15.sp, modifier = Modifier.fillMaxWidth().background(JdoColors.SuccessBg).padding(horizontal = JdoDimens.Space5, vertical = 8.dp))
             }
             val d = data
-            when {
-                loading -> Center("加载中… 正在从后端拉数据")
-                error != null -> Center(error!!)
-                d == null -> Center("暂无数据")
-                else -> Row(modifier = Modifier.fillMaxSize()) {
-                    Rail(haze, d.categories, selectedCat) { selectedCat = it }
-                    Column(modifier = Modifier.fillMaxSize().padding(JdoDimens.Space4)) {
-                        HeroArea(d.banners, d.heroRecs)
-                        Spacer(Modifier.height(JdoDimens.Space4))
-                        val name = d.categories.find { it.id == selectedCat }?.name ?: "推荐"
-                        Text("$name · 为你精选", color = JdoColors.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(JdoDimens.Space3))
-                        val list = d.products.filter { it.cat == selectedCat }
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(3),
-                            horizontalArrangement = Arrangement.spacedBy(JdoDimens.Space4),
-                            verticalArrangement = Arrangement.spacedBy(JdoDimens.Space4),
-                            modifier = Modifier.fillMaxSize(),
-                        ) {
-                            items(list) { p ->
-                                ProductCard(haze, p, onOpen = { onNav("mall-detail", p.id) }, onAdd = {
-                                    thread {
-                                        NetworkClient.addCartItem(p.id, 1, "默认规格")
-                                        cart = NetworkClient.getCart().sumOf { it.qty }
-                                        toast = "已加入购物车：${p.title}"
-                                    }
-                                })
-                            }
+            // ① banner 通栏在最上（数据未到也先渲染骨架，不显示"加载中"，后台静默拉数据）
+            Box(modifier = Modifier.padding(horizontal = JdoDimens.Space4, vertical = JdoDimens.Space3)) {
+                HeroArea(d?.banners ?: emptyList(), d?.heroRecs ?: emptyList())
+            }
+            // ② 下面：左目录 + 右列表（mall-body）
+            Row(modifier = Modifier.fillMaxSize()) {
+                Rail(haze, d?.categories ?: emptyList(), selectedCat) { selectedCat = it }
+                Column(modifier = Modifier.fillMaxSize().padding(JdoDimens.Space4)) {
+                    val name = d?.categories?.find { it.id == selectedCat }?.name ?: "推荐"
+                    Text("$name · 为你精选", color = JdoColors.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(JdoDimens.Space3))
+                    val list = d?.products?.filter { it.cat == selectedCat } ?: emptyList()
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        horizontalArrangement = Arrangement.spacedBy(JdoDimens.Space4),
+                        verticalArrangement = Arrangement.spacedBy(JdoDimens.Space4),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(list) { p ->
+                            ProductCard(haze, p, onOpen = { onNav("mall-detail", p.id) }, onAdd = {
+                                thread {
+                                    NetworkClient.addCartItem(p.id, 1, "默认规格")
+                                    cart = NetworkClient.getCart().sumOf { it.qty }
+                                    toast = "已加入购物车：${p.title}"
+                                }
+                            })
                         }
                     }
                 }
