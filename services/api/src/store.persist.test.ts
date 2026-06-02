@@ -1,53 +1,62 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { store } from './store.js';
 
-// 持久化（ADR-0014）：设 STORE_PERSIST_PATH 时，变更落盘 + 重启加载，数据不丢。
-const TMP = path.join(os.tmpdir(), `jdo-store-persist-${process.pid}.json`);
-
-beforeAll(() => {
-  process.env.STORE_PERSIST_PATH = TMP;
-});
-afterEach(() => {
-  if (fs.existsSync(TMP)) fs.unlinkSync(TMP);
-});
+// 持久化（ADR-0014）：设 STORE_PERSIST_PATH(.db) → SQLite 实库落盘 + 重启加载，数据不丢。
+// 每个用例用独立 .db 路径（store 内部缓存连接，复用/删除同名文件会悬挂）。
+let n = 0;
+function freshDbPath(): string {
+  n += 1;
+  return path.join(os.tmpdir(), `jdo-store-${process.pid}-${n}.db`);
+}
+const created: string[] = [];
+function use(p: string): void {
+  process.env.STORE_PERSIST_PATH = p;
+  created.push(p);
+}
 afterAll(() => {
-  delete process.env.STORE_PERSIST_PATH; // 防止泄漏到其它测试文件
-  if (fs.existsSync(TMP)) fs.unlinkSync(TMP);
+  delete process.env.STORE_PERSIST_PATH;
+  for (const p of created) {
+    for (const f of [p, p + '-wal', p + '-shm']) if (fs.existsSync(f)) fs.unlinkSync(f);
+  }
 });
 
-describe('store 持久化 · JSON 文件快照（ADR-0014）', () => {
-  it('首次 reset → 落盘种子快照（文件被创建）', () => {
+describe('store 持久化 · SQLite 实库（better-sqlite3, ADR-0014）', () => {
+  it('首次 reset → 建库并落盘种子（文件创建 + 商品行入库）', () => {
+    use(freshDbPath());
     store.reset();
-    expect(fs.existsSync(TMP)).toBe(true);
-    const snap = JSON.parse(fs.readFileSync(TMP, 'utf8'));
-    expect(snap.resources.products.rows.length).toBeGreaterThan(50);
+    expect(fs.existsSync(process.env.STORE_PERSIST_PATH!)).toBe(true);
+    expect(store.list('products').length).toBeGreaterThan(50);
   });
 
   it('变更后重启（reset 触发重载）→ 新数据存活', () => {
+    use(freshDbPath());
     store.reset();
     const created = store.create('products', { title: '持久化测试品', cat: 'gear', price: 1000, onShelf: true });
     const id = created.id;
-    // 模拟重启：reset() 先重新种子，再从磁盘快照覆盖（含刚写入的新品）
-    store.reset();
-    expect(store.get('products', id)).toBeDefined();
+    store.reset(); // 模拟重启：先重新种子，再从 SQLite 覆盖（含新品）
     expect(store.get('products', id)?.title).toBe('持久化测试品');
   });
 
-  it('购物车/地址变更也持久化', () => {
+  it('购物车/地址/收藏变更也持久化', () => {
+    use(freshDbPath());
     store.reset();
     store.cartAdd('g1', 2, '测试规格');
     store.addressAdd('u-1001', { receiver: '测试', phone: '13900000000', addr: '测试地址' });
+    store.favoriteAdd('u-1001', 'e1');
     store.reset(); // 重启
     expect(store.cartView().some((c) => c.spec === '测试规格')).toBe(true);
     expect(store.addressesByUser('u-1001').some((a) => a.receiver === '测试')).toBe(true);
+    expect(store.favoritesByUser('u-1001').some((f) => f.productId === 'e1')).toBe(true);
   });
 
-  it('快照损坏 → 回退种子，不崩（启动韧性）', () => {
-    fs.writeFileSync(TMP, '{ 这不是合法 JSON');
-    store.reset(); // loadFromDisk 失败 → 回退种子
-    expect(store.list('products').length).toBeGreaterThan(50); // 种子仍在
+  it('库文件损坏 → 回退种子，不崩（启动韧性）', () => {
+    const p = freshDbPath();
+    fs.writeFileSync(p, '这不是合法 SQLite 文件');
+    use(p);
+    store.reset(); // 打开/读取失败 → 回退种子
+    expect(store.list('products').length).toBeGreaterThan(50);
   });
 });

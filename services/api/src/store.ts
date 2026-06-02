@@ -11,6 +11,8 @@
  * 重启不丢数据；不设时纯内存（测试默认）。PG（ADR-0003）仍为生产目标，store 接口不变。
  */
 import fs from 'node:fs';
+import { dirname } from 'node:path';
+import Database from 'better-sqlite3';
 import { loadV3Data } from './data/load-v3.js';
 import * as seed from './data/admin-seed.js';
 
@@ -114,11 +116,38 @@ function seedAll(): void {
   if (!loadFromDisk()) save();
 }
 
-// ---------- 持久化（ADR-0014：JSON 文件快照；PG 仍为目标）----------
-// 路径动态读 env（便于测试注入），不设则纯内存。
+// ---------- 持久化（ADR-0014：SQLite 实库 via better-sqlite3；PostgreSQL/ADR-0003 仍为生产目标）----------
+// 设 STORE_PERSIST_PATH(.db 文件) → SQLite 落盘，重启不丢；不设 → 纯内存(测试默认)。
+// better-sqlite3 是同步驱动，故 store 对外仍全同步、读写逻辑零改动。
+// 每个集合行存为 (coll,id,seq,data) 关系行，写操作在事务内整体重持久化（Demo 量级 ~百行，原子且简单）。
 function persistPath(): string | undefined {
   return process.env.STORE_PERSIST_PATH;
 }
+
+type DB = Database.Database;
+let db: DB | null = null;
+let dbPath: string | null = null;
+function getDb(): DB | null {
+  const p = persistPath();
+  if (!p) return null;
+  if (db && dbPath === p) return db;
+  if (db) { try { db.close(); } catch { /* ignore */ } db = null; dbPath = null; }
+  try {
+    const dir = dirname(p);
+    if (dir && dir !== '.') fs.mkdirSync(dir, { recursive: true });
+    const d = new Database(p);
+    d.pragma('journal_mode = WAL');
+    d.exec(
+      'CREATE TABLE IF NOT EXISTS store_kv (coll TEXT NOT NULL, id TEXT NOT NULL, seq INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY (coll, id));' +
+        'CREATE TABLE IF NOT EXISTS store_meta (k TEXT PRIMARY KEY, v TEXT NOT NULL);',
+    );
+    db = d; dbPath = p;
+    return db;
+  } catch {
+    return null; // 打不开（如损坏文件）→ 回退纯内存种子，不阻断启动
+  }
+}
+
 interface Snapshot {
   resources: Record<string, { prefix: string; rows: Row[]; counter: number }>;
   cart: CartItem[];
@@ -134,36 +163,70 @@ function snapshot(): Snapshot {
   for (const [name, r] of resources) res[name] = { prefix: r.prefix, rows: r.rows, counter: r.counter };
   return { resources: res, cart, cartCounter, addresses, addressCounter, favorites, favoriteCounter, config };
 }
-/** 落盘（best-effort：失败不影响内存读写，仅丢持久化）。无路径时 no-op。 */
+
+/** 落盘到 SQLite（best-effort，事务内整体重写）。无路径时 no-op。 */
 function save(): void {
-  const p = persistPath();
-  if (!p) return;
+  const d = getDb();
+  if (!d) return;
   try {
-    fs.writeFileSync(p, JSON.stringify(snapshot()));
+    const snap = snapshot();
+    const ins = d.prepare('INSERT INTO store_kv (coll, id, seq, data) VALUES (?, ?, ?, ?)');
+    const meta = d.prepare('INSERT INTO store_meta (k, v) VALUES (?, ?)');
+    d.transaction(() => {
+      d.prepare('DELETE FROM store_kv').run();
+      d.prepare('DELETE FROM store_meta').run();
+      for (const [name, r] of Object.entries(snap.resources)) {
+        meta.run('counter:' + name, String(r.counter));
+        meta.run('prefix:' + name, r.prefix);
+        r.rows.forEach((row, i) => ins.run(name, String(row.id), i, JSON.stringify(row)));
+      }
+      snap.cart.forEach((row, i) => ins.run('__cart', row.id, i, JSON.stringify(row)));
+      snap.addresses.forEach((row, i) => ins.run('__addresses', row.id, i, JSON.stringify(row)));
+      snap.favorites.forEach((row, i) => ins.run('__favorites', row.id, i, JSON.stringify(row)));
+      meta.run('cartCounter', String(snap.cartCounter));
+      meta.run('addressCounter', String(snap.addressCounter));
+      meta.run('favoriteCounter', String(snap.favoriteCounter));
+      meta.run('config', JSON.stringify(snap.config));
+    })();
   } catch {
-    /* best-effort：磁盘问题不应让 API 崩 */
+    /* best-effort：磁盘/DB 问题不应让 API 崩 */
   }
 }
-/** 从快照恢复，覆盖当前内存态。返回 false = 无路径/无文件/损坏（调用方回退种子）。 */
+
+/** 从 SQLite 恢复，覆盖内存态。返回 false = 无路径/空库/损坏（调用方回退种子）。 */
 function loadFromDisk(): boolean {
-  const p = persistPath();
-  if (!p || !fs.existsSync(p)) return false;
+  const d = getDb();
+  if (!d) return false;
   try {
-    const data = JSON.parse(fs.readFileSync(p, 'utf8')) as Snapshot;
+    const kvCount = (d.prepare('SELECT COUNT(*) AS c FROM store_kv').get() as { c: number }).c;
+    const metaCount = (d.prepare('SELECT COUNT(*) AS c FROM store_meta').get() as { c: number }).c;
+    if (kvCount === 0 && metaCount === 0) return false; // 空库 → 用种子
+    const metaRows = d.prepare('SELECT k, v FROM store_meta').all() as Array<{ k: string; v: string }>;
+    const meta = new Map(metaRows.map((m) => [m.k, m.v]));
+    const rowsOf = (coll: string): Row[] =>
+      (d.prepare('SELECT data FROM store_kv WHERE coll = ? ORDER BY seq').all(coll) as Array<{ data: string }>)
+        .map((x) => JSON.parse(x.data) as Row);
+
     resources.clear();
-    for (const [name, r] of Object.entries(data.resources)) {
-      resources.set(name, { prefix: r.prefix, rows: r.rows, counter: r.counter });
+    for (const name of RESOURCE_NAMES) {
+      const rows = rowsOf(name);
+      resources.set(name, {
+        prefix: meta.get('prefix:' + name) ?? '',
+        rows,
+        counter: Number(meta.get('counter:' + name) ?? rows.length + 1),
+      });
     }
-    cart = data.cart;
-    cartCounter = data.cartCounter;
-    addresses = data.addresses;
-    addressCounter = data.addressCounter;
-    favorites = data.favorites ?? [];
-    favoriteCounter = data.favoriteCounter ?? 1;
-    config = data.config;
+    cart = rowsOf('__cart') as unknown as CartItem[];
+    addresses = rowsOf('__addresses') as unknown as Address[];
+    favorites = rowsOf('__favorites') as unknown as Favorite[];
+    cartCounter = Number(meta.get('cartCounter') ?? 1);
+    addressCounter = Number(meta.get('addressCounter') ?? 1);
+    favoriteCounter = Number(meta.get('favoriteCounter') ?? 1);
+    const cfg = meta.get('config');
+    config = cfg ? (JSON.parse(cfg) as Record<string, unknown>) : {};
     return true;
   } catch {
-    return false; // 快照损坏 → 回退种子，不阻断启动
+    return false; // 库损坏 → 回退种子，不阻断启动
   }
 }
 

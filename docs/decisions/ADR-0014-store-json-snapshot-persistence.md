@@ -1,10 +1,14 @@
-# ADR-0014: 内存 store 的 JSON 文件快照持久化（PG 之前的过渡）
+# ADR-0014: 内存 store 的持久化（SQLite 实库；PG 之前的过渡）
 
 - 状态：Accepted
-- 日期：2026-06-02
-- 决策者：用户（产品/技术负责人）+ claude-gap-fix
+- 日期：2026-06-02（2026-06-03 升级为 SQLite）
+- 决策者：用户（产品/技术负责人）+ claude-gap-fix / claude-finish-todos
 - 依赖：ADR-0003（PostgreSQL + Prisma + Redis —— 仍为生产目标，本 ADR 不取代）
 - 关联：open-questions Q2（数据全内存、重启丢失）· consistency-plan P2#10
+
+> **🔄 更新（2026-06-03）**：持久化后端从「JSON 文件快照」升级为 **SQLite 实库**（`better-sqlite3`，同步驱动，每行存为关系行 `store_kv(coll,id,seq,data)` + `store_meta`）。
+> 升级动机：JSON 文件每次写全量重写、非事务、不可查询；SQLite 是真正的数据库（事务、WAL、按行存储），更贴近生产。`better-sqlite3` 同步 API 让 store 对外仍全同步、**读写逻辑与路由零改动**（95 测试不变全绿）。
+> 仍是 ADR-0003（PostgreSQL）落地前的过渡：SQLite 无需独立服务、文件即库，适合 Demo / 单实例；切 PG 时换数据源即可，store 接口不动。下文「JSON 快照」均已由 SQLite 取代，机制描述同理（开关 `STORE_PERSIST_PATH` 改指 `.db` 文件）。
 
 ## 背景 Context
 
