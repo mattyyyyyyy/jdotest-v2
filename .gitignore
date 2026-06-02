@@ -25,6 +25,9 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 
+# store 运行时快照（ADR-0014；STORE_PERSIST_PATH 默认 ./.data）
+.data/
+
 # openspec 本地临时
 openspec/**/.tmp/
 

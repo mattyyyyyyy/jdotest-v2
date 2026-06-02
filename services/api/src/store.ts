@@ -6,7 +6,11 @@
  *
  * 商品/分类/banner/推荐位 的种子来自消费端 V3 data.js（单一真相，见 data/load-v3.ts）。
  * 订单/用户/优惠券/评价/自提点 等来自 data/admin-seed.ts 的样例。
+ *
+ * 持久化（ADR-0014）：设 `STORE_PERSIST_PATH` 时，启动加载快照、每次变更落盘 JSON，
+ * 重启不丢数据；不设时纯内存（测试默认）。PG（ADR-0003）仍为生产目标，store 接口不变。
  */
+import fs from 'node:fs';
 import { loadV3Data } from './data/load-v3.js';
 import * as seed from './data/admin-seed.js';
 
@@ -93,6 +97,57 @@ function seedAll(): void {
   config = { ...seed.config };
   seedCart();
   seedAddresses();
+  // 持久化：已有快照则加载覆盖种子；否则把种子落盘建立首个快照。
+  if (!loadFromDisk()) save();
+}
+
+// ---------- 持久化（ADR-0014：JSON 文件快照；PG 仍为目标）----------
+// 路径动态读 env（便于测试注入），不设则纯内存。
+function persistPath(): string | undefined {
+  return process.env.STORE_PERSIST_PATH;
+}
+interface Snapshot {
+  resources: Record<string, { prefix: string; rows: Row[]; counter: number }>;
+  cart: CartItem[];
+  cartCounter: number;
+  addresses: Address[];
+  addressCounter: number;
+  config: Record<string, unknown>;
+}
+function snapshot(): Snapshot {
+  const res: Snapshot['resources'] = {};
+  for (const [name, r] of resources) res[name] = { prefix: r.prefix, rows: r.rows, counter: r.counter };
+  return { resources: res, cart, cartCounter, addresses, addressCounter, config };
+}
+/** 落盘（best-effort：失败不影响内存读写，仅丢持久化）。无路径时 no-op。 */
+function save(): void {
+  const p = persistPath();
+  if (!p) return;
+  try {
+    fs.writeFileSync(p, JSON.stringify(snapshot()));
+  } catch {
+    /* best-effort：磁盘问题不应让 API 崩 */
+  }
+}
+/** 从快照恢复，覆盖当前内存态。返回 false = 无路径/无文件/损坏（调用方回退种子）。 */
+function loadFromDisk(): boolean {
+  const p = persistPath();
+  if (!p || !fs.existsSync(p)) return false;
+  try {
+    const data = JSON.parse(fs.readFileSync(p, 'utf8')) as Snapshot;
+    resources.clear();
+    for (const [name, r] of Object.entries(data.resources)) {
+      resources.set(name, { prefix: r.prefix, rows: r.rows, counter: r.counter });
+    }
+    cart = data.cart;
+    cartCounter = data.cartCounter;
+    addresses = data.addresses;
+    addressCounter = data.addressCounter;
+    config = data.config;
+    return true;
+  } catch {
+    return false; // 快照损坏 → 回退种子，不阻断启动
+  }
 }
 
 seedAll();
@@ -121,6 +176,7 @@ export const store = {
     let row: Row = { ...data, id };
     if (name === 'products') row = normalizeProduct(row);
     r.rows.unshift(row); // 新增置顶：后台列表/前台都最先看到
+    save();
     return row;
   },
   update(name: string, id: string, patch: Record<string, unknown>): Row | undefined {
@@ -129,6 +185,7 @@ export const store = {
     for (const [k, v] of Object.entries(patch)) {
       if (k !== 'id' && v !== undefined) row[k] = v;
     }
+    save();
     return row;
   },
   remove(name: string, id: string): boolean {
@@ -138,6 +195,7 @@ export const store = {
     r.rows.splice(i, 1);
     // 级联：删商品时同步清出购物车，避免悬挂的购物车行
     if (name === 'products') cart = cart.filter((c) => c.productId !== id);
+    save();
     return true;
   },
   /** 分类是否被商品引用（删除前校验，防止商品 cat 变孤儿）*/
@@ -171,6 +229,7 @@ export const store = {
   },
   setConfig(patch: Record<string, unknown>): Record<string, unknown> {
     config = { ...config, ...patch };
+    save();
     return { ...config };
   },
 
@@ -195,10 +254,12 @@ export const store = {
     const exist = cart.find((c) => c.productId === productId && c.spec === spec);
     if (exist) {
       exist.qty += qty;
+      save();
       return exist;
     }
     const item: CartItem = { id: `ci-${cartCounter++}`, productId, qty, selected: true, spec };
     cart.unshift(item); // 新加购置顶
+    save();
     return item;
   },
   cartUpdate(id: string, patch: { qty?: number | undefined; selected?: boolean | undefined }): CartItem | undefined {
@@ -206,12 +267,14 @@ export const store = {
     if (!it) return undefined;
     if (patch.qty !== undefined) it.qty = Math.max(1, patch.qty);
     if (patch.selected !== undefined) it.selected = patch.selected;
+    save();
     return it;
   },
   cartRemove(id: string): boolean {
     const i = cart.findIndex((c) => c.id === id);
     if (i < 0) return false;
     cart.splice(i, 1);
+    save();
     return true;
   },
   /** 结算：取已选项，移出购物车，返回结算明细（分） */
@@ -222,6 +285,7 @@ export const store = {
       return { title: p ? (p.title as string) : c.productId, price: p ? (p.price as number) : 0, qty: c.qty };
     });
     cart = cart.filter((c) => !c.selected);
+    save();
     return { items, removed: sel.length };
   },
 
@@ -259,6 +323,7 @@ export const store = {
     if (isDefault) addresses.forEach((a) => { if (a.userId === userId) a.isDefault = false; });
     const item: Address = { id: `addr-${addressCounter++}`, userId, receiver: data.receiver, phone: data.phone, addr: data.addr, isDefault };
     addresses.unshift(item);
+    save();
     return item;
   },
   addressUpdate(userId: string, id: string, patch: { receiver?: string | undefined; phone?: string | undefined; addr?: string | undefined; isDefault?: boolean | undefined }): Address | undefined {
@@ -269,12 +334,14 @@ export const store = {
     if (patch.phone !== undefined) a.phone = patch.phone;
     if (patch.addr !== undefined) a.addr = patch.addr;
     if (patch.isDefault !== undefined) a.isDefault = patch.isDefault;
+    save();
     return a;
   },
   addressRemove(userId: string, id: string): boolean {
     const i = addresses.findIndex((x) => x.id === id && x.userId === userId);
     if (i < 0) return false;
     addresses.splice(i, 1);
+    save();
     return true;
   },
 

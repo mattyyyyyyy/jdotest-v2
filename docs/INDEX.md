@@ -18,6 +18,7 @@
 |---|---|---|---|---|
 | claude-android-proto-refactor | 用用户新交付的原生原型重构除商城首页外的全部屏（采用其 theme/components/nav/screens 为基线，保留我的商城首页+接真实后端） | 2026-06-02 | `apps/android-ivi/**` | 进行中 |
 | claude-fix-api-sync | 修复前后台数据断路：Catalog.load() 解析 categories/heroRecs/banners + ApiHero 补字段 + fetchProduct 改用 /products/:id | 2026-06-02 | `apps/android-ivi/**` | 待提交 |
+| claude-gap-fix | 修项目欠缺：①硬伤(JSON快照持久化/库存校验/消费端mock屏接API) ②CI+docker-compose+openapi ③口径统一(时间/ID/枚举/计量) ④task-plan漂移+analytics+_templates ⑤apps/admin抽离。每个行为变更走 openspec change + 测试 | 2026-06-02 | `services/api/**`、`packages/**`、`.github/**`、`infra/**`、`openspec/**`、`docs/**` | 进行中 |
 
 ## 🗺 Ownership Zones（目录分工建议）
 
@@ -235,6 +236,7 @@
 | [ADR-0011](./decisions/ADR-0011-admin-rbac.md) | **后台权限模型**（独立 AdminUser + RBAC 角色/权限点 + 审计日志）| Accepted | 2026-05-29 |
 | [ADR-0012](./decisions/ADR-0012-admin-ui-baseline.md) | **后台 UI 基准**（复用 design token + 桌面布局，不重画）| Accepted | 2026-05-29 |
 | [ADR-0013](./decisions/ADR-0013-consumer-native-android.md) | **消费端改原生安卓**（Kotlin + Jetpack Compose，普通安卓车机/平板；设计靠 token 移植 1:1 保持；**Supersedes H5 锁定结论**）| Accepted | 2026-06-02 |
+| [ADR-0014](./decisions/ADR-0014-store-json-snapshot-persistence.md) | **内存 store 的 JSON 文件快照持久化**（`STORE_PERSIST_PATH` 开关，重启不丢；PG/ADR-0003 仍为生产目标，不取代；解 Q2 过渡）| Accepted | 2026-06-02 |
 
 > **依赖顺序**：ADR-0006 → 0001 / 0002 / 0003 → 0007 → 0004 → 0005。
 > 详见 PRD.md §起手 Coding 计划 / 开干前必须先定的 ADR。
