@@ -120,26 +120,27 @@
 ## 路由 → OpenSpec domain 映射
 
 > spec 主体在 `openspec/specs/<domain>/spec.md`；本表只做导航。改 spec 走 `/opsx:propose`，不直接编辑 specs/。
+> **spec 状态**（2026-06-02 全域补齐后）：✅=`specs/` 已有当前真相；🟡 forward=未实现，spec 在 `changes/<id>/` 待实现后 archive。
 
-| 路由（消费端 / 后台） | Domain |
-|---|---|
-| `/`, `/c/:cid`, `/search`, `/p/:pid` | `catalog` |
-| `/cart` | `cart` |
-| `/checkout`, `/orders`, `/orders/:oid` | `order` |
-| `/pay/:orderId` | `payment` |
-| `/login`（手机号） | `auth-login` |
-| `/login`（扫码）, `/driving` 扫码 | `auth-qr` |
-| `/me`, `/me/addresses` | `user` |
-| `/driving`, 全局行车态降级 | `driving-mode` |
-| 自提点 / 物流轨迹（消费端展示） | `fulfillment` |
-| `/admin/login`, `/admin/system` | `admin-auth` |
-| `/admin/products`, `/admin/categories` | `admin-catalog` |
-| `/admin/orders` | `admin-order` |
-| `/admin/users` | `admin-user` |
-| `/admin/marketing`, `/admin/coupons` | `admin-marketing` |
-| `/admin/content` | `admin-content` |
-| `/admin/pickup-points`, `/admin/shipping` | `admin-fulfillment` |
-| `/admin`（看板） | `admin-analytics` |
+| 路由（消费端 / 后台） | Domain | spec 状态 |
+|---|---|---|
+| `/`, `/c/:cid`, `/search`, `/p/:pid` | `catalog` | ✅ |
+| `/cart` | `cart` | ✅ |
+| `/checkout`, `/orders`, `/orders/:oid` | `order` | ✅ |
+| `/pay/:orderId` | `payment` | ✅ |
+| `/login`（手机号） | `auth-login` | 🟡 forward（`changes/add-auth-login`）|
+| `/login`（扫码）, `/driving` 扫码 | `auth-qr` | ✅ |
+| `/me`, `/me/addresses` | `user` | 🟡 forward（`changes/add-user`）|
+| `/driving`, 全局行车态降级 | `driving-mode` | ✅ |
+| 自提点 / 物流轨迹（消费端展示） | `fulfillment` | 🟡 forward（`changes/add-fulfillment`）|
+| `/admin/login`, `/admin/system` | `admin-auth` | ✅ |
+| `/admin/products`, `/admin/categories` | `admin-catalog` | ✅ |
+| `/admin/orders` | `admin-order` | ✅ |
+| `/admin/users` | `admin-user` | ✅ |
+| `/admin/marketing`, `/admin/coupons` | `admin-marketing` | ✅ |
+| `/admin/content` | `admin-content` | ✅ |
+| `/admin/pickup-points`, `/admin/shipping` | `admin-fulfillment` | ✅ |
+| `/admin`（看板） | `admin-analytics` | ✅ |
 
 ---
 

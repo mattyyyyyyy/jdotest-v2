@@ -56,6 +56,7 @@
 
 | 日期 | Agent | 完成项 | 关键 commit |
 |---|---|---|---|
+| 2026-06-02 | claude-openspec-backfill | **OpenSpec 全域补齐（5→15 specs + 3 forward changes）**：把"代码先行、spec 缺失"的反向漂移补齐——**回填 10 域**（后台 admin-catalog/order/analytics/user/marketing/content/fulfillment + 消费端 catalog/cart/payment）逐个 propose→archive，spec 贴合 `store.ts`/`app.ts` 实现并暴露应有行为缺口（如 admin-content 缺消费端评价读取接口、admin-fulfillment 缺消费端履约接口）；**3 个未实现域写 forward change**（auth-login/user/fulfillment 留 `changes/` 待实现）。顺带修 `app.ts` "Demo 未挂 RBAC" stale 注释（实际 preHandler 已强制权限点）。`validate --all --strict` **18/18 绿**。同步 INDEX §OpenSpec + feature-spec 路由映射 spec 状态列 + 关 open-questions Q10（解决）/ 更新 Q12 | 本次提交 |
 | 2026-06-02 | claude-fix-drift | **项目全面修复 + 文档 drift 清理 + 待处理项清理**：ADR-0013 对齐纯 Compose；8 文档 H5→Android 同步；ShoppingState 线程安全 + isLoading + clearError；cleartext HTTP；banner 横滑；**NetworkClient HTTP 错误处理**（readResponse 统一 2xx/errorStream）；Android 测试依赖（JUnit/Espresso/Compose Test）；gradlew 标准化（640m JVM）；feature-spec admin 14 页 + 7 后端模块 🟡→🟢；open-questions Q5~Q8 Demo 就绪 + Q8 已解决 | `863a75f` `2105a5a` |
 | 2026-06-02 | codex-android-regression | **Android 次级页面审计 + 交易闭环回归**：审计 19 个非首页页面并落矩阵；新增 payment 确认回调，通过共享状态机持久化 `PENDING_PAYMENT → PAID`，原生与 V3 Web 对照页均接入；修复结算 / 立即购买 / 行车态再买异步竞态、订单 tab / 时间线 / 动作、搜索建议详情跳转；新增持续回归脚本（21 路由装配、Web 支付契约、API、typecheck、Android 构建、可选 emulator 点击链路）。OpenSpec `close-android-commerce-loop` 已 archive；API `56/56` 绿；Android debug build 绿；emulator 实测 `商城 → 购物车 → 结算 → 支付 → 待发货`，后端最新订单 `o-5=PAID` 且无 crash | `863a75f` |
 | 2026-06-02 | codex-android-mall-scale | **商城首页比例与滚动交互收敛**：首页以 `90%` Compose 密度呈现，卡片 / 字号 / 间距同步收紧且保持真实点击区域；搜索框由 `560dp` 收至 `500dp`；顶部「商城 / 我的」改为屏幕中心绝对居中；banner 收起恢复从列表位置推断改为直接监听用户上下滑方向，消除收起后位置重算导致的回弹 | `863a75f` |
@@ -242,26 +243,45 @@
 
 > 项目级文档在 `docs/`；feature / change 级 spec 走 `openspec/`。改 spec 用 `/opsx:propose <id>`（Claude Code）或 `openspec new change <id>`（CLI），**不直接编辑 `specs/`**。详见 [`_templates/references/openspec-integration.md`](../_templates/references/openspec-integration.md)。
 
-### 当前真相 `openspec/specs/`（已写示范，其余待补）
+### 当前真相 `openspec/specs/`（15 域 · 2026-06-02 全域补齐后）
+
+> **覆盖率**：所有已实现的消费端 + 后台域均已沉淀 spec。`validate --all --strict` 18/18 全绿（15 specs + 3 forward changes）。
+
+**消费端**
 
 | Domain | 状态 | 备注 |
 |---|---|---|
-| [driving-mode](../openspec/specs/driving-mode/spec.md) | ✅ 已写 | 行车态进入/退出 + 交互限制（签名功能示范）|
-| [order](../openspec/specs/order/spec.md) | ✅ 已写 | 订单状态机 + 价格库存服务端为准 |
-| [admin-auth](../openspec/specs/admin-auth/spec.md) | ✅ 已写（**首个走完 propose→apply→archive 的域**，2026-06-01）| 后台登录 + RBAC 4 角色权限点 + 操作审计（实现 `services/api/src/admin-auth.ts`，38 测试）|
-| [auth-qr](../openspec/specs/auth-qr/spec.md) | ✅ 已写（propose→apply→archive，2026-06-01）| 车主端车机扫码登录 + 手机确认下发车主 JWT + Demo mock-login（实现 `services/api/src/consumer-auth.ts`，9 测试，与 admin 隔离）|
-| catalog / cart / payment / auth-login / auth-qr / user / fulfillment | 🟡 待补 | 用 `/opsx:propose` 或从 feature-spec 迁移 |
+| [driving-mode](../openspec/specs/driving-mode/spec.md) | ✅ | 行车态进入/退出 + 交互限制（签名功能示范）|
+| [order](../openspec/specs/order/spec.md) | ✅ | 订单状态机 + 价格库存服务端为准 |
+| [consumer-commerce-loop](../openspec/specs/consumer-commerce-loop/spec.md) | ✅ | 安卓交易闭环（archive `close-android-commerce-loop`）|
+| [auth-qr](../openspec/specs/auth-qr/spec.md) | ✅ | 车机扫码登录 + 手机确认下发车主 JWT（与 admin 隔离）|
+| [catalog](../openspec/specs/catalog/spec.md) | ✅ 回填 2026-06-02 | 分类/商品列表/详情（仅上架）+ 首页 bootstrap |
+| [cart](../openspec/specs/cart/spec.md) | ✅ 回填 2026-06-02 | 购物车现价 join + 加购合并 + 结算走状态机 |
+| [payment](../openspec/specs/payment/spec.md) | ✅ 回填 2026-06-02 | 支付确认走状态机 + 幂等 + 非法 409（Demo mock）|
 
-### 进行中变更 `openspec/changes/`（首批 admin）
+**后台端（8 域全覆盖）**
+
+| Domain | 状态 | 备注 |
+|---|---|---|
+| [admin-auth](../openspec/specs/admin-auth/spec.md) | ✅（首个完整生命周期，2026-06-01）| 后台登录 + RBAC 4 角色权限点 + 审计（`admin-auth.ts`，38 测试）|
+| [admin-catalog](../openspec/specs/admin-catalog/spec.md) | ✅ 回填 2026-06-02 | 商品/分类 CRUD + 商品归一化 + 分类删除 409 + 写守卫 |
+| [admin-order](../openspec/specs/admin-order/spec.md) | ✅ 回填 2026-06-02 | 订单流转走共享状态机 + 前→后单一数据源 |
+| [admin-user](../openspec/specs/admin-user/spec.md) | ✅ 回填 2026-06-02 | 用户查询 + 封禁联动扫码登录 |
+| [admin-marketing](../openspec/specs/admin-marketing/spec.md) | ✅ 回填 2026-06-02 | banner/heroRec/coupon CRUD + active 门控前台 |
+| [admin-content](../openspec/specs/admin-content/spec.md) | ✅ 回填 2026-06-02 | 评价审核 hidden + 消费端读取接口缺口（已标注）|
+| [admin-fulfillment](../openspec/specs/admin-fulfillment/spec.md) | ✅ 回填 2026-06-02 | 自提点/物流 CRUD + 分角色写权限点 |
+| [admin-analytics](../openspec/specs/admin-analytics/spec.md) | ✅ 回填 2026-06-02 | 看板聚合（订单类实时 / 流量类 Demo 固定值）|
+
+### 进行中变更 `openspec/changes/`（forward · 未实现，实现后再 archive）
 
 | Change | 状态 | 备注 |
 |---|---|---|
-| ~~add-admin-auth~~ → **已 archive** | ✅ apply 完成 + `openspec archive`（`changes/archive/2026-06-01-add-admin-auth/`，delta 已并入 `specs/admin-auth/`）| **首个完整生命周期**；实现见 `admin-auth.ts`，38 测试，typecheck 绿 |
-| add-admin-catalog | 🟡 骨架（待 `/opsx:propose` 填充）| 商品/SKU/分类后台 |
-| add-admin-order | 🟡 骨架 | 订单管理/发货/退款 |
-| add-admin-analytics | 🟡 骨架 | 运营看板 |
+| [add-auth-login](../openspec/changes/add-auth-login/) | 🟡 forward | 手机号 + 验证码登录（下发与 auth-qr 等价车主 token）|
+| [add-user](../openspec/changes/add-user/) | 🟡 forward | 消费端个人资料 + 地址簿 CRUD + 积分余额只读 |
+| [add-fulfillment](../openspec/changes/add-fulfillment/) | 🟡 forward | 消费端附近自提点查询 + 订单物流轨迹（读 admin-fulfillment 同源）|
 
-> 待填骨架只有 `.openspec.yaml`。下一步在 Claude Code 里跑 `/opsx:propose add-admin-catalog` 让 AI 按上下文补满 4 件套。
+> 三个 forward change 已写满 proposal/tasks/delta spec 且 `validate --strict` 通过；待按 tasks 实现后跑 `openspec archive <id>` 合并 delta 进 `specs/`。
+> 已 archive 的 change 全部在 `openspec/changes/archive/`（含本轮 10 个回填）。
 
 ## 🔍 调研报告 research/
 

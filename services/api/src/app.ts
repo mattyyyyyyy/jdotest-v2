@@ -260,7 +260,8 @@ export function buildApp(): FastifyInstance {
 
   // ============ 后台（admin）/api/v1/admin/* ============
   // 通用 CRUD：一套接口管所有实体（products/categories/banners/...）
-  // Demo 未挂 RBAC（见 ADR-0011 / openspec add-admin-auth）
+  // RBAC 已挂：上方 preHandler 钩子 + parseAdminRoute 对每个 resource 强制
+  // <resource>:read/write 权限点（见 ADR-0011 / openspec specs admin-auth/admin-catalog/...）
 
   app.get('/api/v1/admin/resources', async () => ({ items: RESOURCE_LIST }));
 
