@@ -13,6 +13,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -132,67 +138,87 @@ private fun toneBrush(tone: String, c: com.jdo.ivi.ui.theme.JdoColors): Brush = 
     else   -> Brush.linearGradient(listOf(Color(0xFF1E1B4B), Color(0xFF3730A3), Color(0xFF4F46E5)))
 }
 
-/** 左侧大卡：轮播全部时空推荐（6s 切换） */
+/** 左侧大卡：自动向左滑动轮播全部时空推荐（6s 切换，新卡从右滑入、旧卡向左滑出） */
 @Composable
 private fun HeroBig(slides: List<HeroRec>, modifier: Modifier, nav: (String) -> Unit, onJump: (String) -> Unit) {
     val c = JdoTheme.colors
     var i by remember { mutableStateOf(0) }
     LaunchedEffect(slides.size) { while (true) { delay(6000); if (slides.isNotEmpty()) i = (i + 1) % slides.size } }
-    val r = slides[i % slides.size]
-    Box(
-        modifier.fillMaxHeight().clip(RoundedCornerShape(RadiusXl)).background(toneBrush(r.tone, c))
-            .clickable { onJump(r.navScene) }.padding(32.dp),
-    ) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(jdoIcon(r.icon), null, tint = Color.White, modifier = Modifier.size(22.dp))
-                Spacer(Modifier.width(10.dp))
-                Text(r.tag, color = Color.White.copy(0.92f), fontSize = 20.sp)
-            }
-            Spacer(Modifier.height(12.dp))
-            Text(r.title, color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.SemiBold, lineHeight = 44.sp)
-            Spacer(Modifier.height(6.dp))
-            Text(r.sub, color = Color.White.copy(0.8f), fontSize = 18.sp)
-            Spacer(Modifier.weight(1f))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    Text(r.statValue, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                    Text(r.statLabel, color = Color.White.copy(0.7f), fontSize = 14.sp)
+    AnimatedContent(
+        targetState = i,
+        modifier = modifier.fillMaxHeight().clip(RoundedCornerShape(RadiusXl)),
+        transitionSpec = {
+            (slideInHorizontally(tween(520)) { w -> w } + fadeIn(tween(520))) togetherWith
+                (slideOutHorizontally(tween(520)) { w -> -w } + fadeOut(tween(520)))
+        },
+        label = "hero-big",
+    ) { idx ->
+        val r = slides[idx % slides.size]
+        Box(
+            Modifier.fillMaxSize().background(toneBrush(r.tone, c))
+                .clickable { onJump(r.navScene) }.padding(32.dp),
+        ) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(jdoIcon(r.icon), null, tint = Color.White, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(r.tag, color = Color.White.copy(0.92f), fontSize = 20.sp)
                 }
+                Spacer(Modifier.height(12.dp))
+                Text(r.title, color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.SemiBold, lineHeight = 44.sp)
+                Spacer(Modifier.height(6.dp))
+                Text(r.sub, color = Color.White.copy(0.8f), fontSize = 18.sp)
                 Spacer(Modifier.weight(1f))
-                Box(
-                    Modifier.clip(RoundedCornerShape(9999.dp)).background(Color.White)
-                        .clickable { onJump(r.navScene) }.padding(horizontal = 28.dp, vertical = 16.dp),
-                ) { Text(r.cta, color = Color(0xFF0F172A), fontSize = 20.sp, fontWeight = FontWeight.SemiBold) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column {
+                        Text(r.statValue, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                        Text(r.statLabel, color = Color.White.copy(0.7f), fontSize = 14.sp)
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Box(
+                        Modifier.clip(RoundedCornerShape(9999.dp)).background(Color.White)
+                            .clickable { onJump(r.navScene) }.padding(horizontal = 28.dp, vertical = 16.dp),
+                    ) { Text(r.cta, color = Color(0xFF0F172A), fontSize = 20.sp, fontWeight = FontWeight.SemiBold) }
+                }
             }
         }
     }
 }
 
-/** 右侧小卡：在传入的 2 张之间轮播 */
+/** 右侧小卡：在传入的 2 张之间自动向左滑动轮播 */
 @Composable
 private fun HeroSmall(slides: List<HeroRec>, period: Long, modifier: Modifier, onJump: (String) -> Unit) {
     val c = JdoTheme.colors
     var i by remember { mutableStateOf(0) }
     LaunchedEffect(slides.size) { while (true) { delay(period); if (slides.isNotEmpty()) i = (i + 1) % slides.size } }
-    val r = slides[i % slides.size]
-    Box(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(RadiusLg)).background(toneBrush(r.tone, c))
-            .clickable { onJump(r.navScene) }.padding(24.dp),
-    ) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(jdoIcon(r.icon), null, tint = Color.White.copy(0.85f), modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(r.tag, color = Color.White.copy(0.85f), fontSize = 15.sp)
-            }
-            Spacer(Modifier.height(6.dp))
-            Text(r.title, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, lineHeight = 26.sp)
-            Spacer(Modifier.weight(1f))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(r.statValue, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+    AnimatedContent(
+        targetState = i,
+        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(RadiusLg)),
+        transitionSpec = {
+            (slideInHorizontally(tween(480)) { w -> w } + fadeIn(tween(480))) togetherWith
+                (slideOutHorizontally(tween(480)) { w -> -w } + fadeOut(tween(480)))
+        },
+        label = "hero-small",
+    ) { idx ->
+        val r = slides[idx % slides.size]
+        Box(
+            Modifier.fillMaxSize().background(toneBrush(r.tone, c))
+                .clickable { onJump(r.navScene) }.padding(24.dp),
+        ) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(jdoIcon(r.icon), null, tint = Color.White.copy(0.85f), modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(r.tag, color = Color.White.copy(0.85f), fontSize = 15.sp)
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(r.title, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, lineHeight = 26.sp)
                 Spacer(Modifier.weight(1f))
-                Text(r.cta, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(r.statValue, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.weight(1f))
+                    Text(r.cta, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                }
             }
         }
     }
