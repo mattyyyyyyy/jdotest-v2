@@ -73,6 +73,15 @@ function seedFavorites(): void {
   ];
   favoriteCounter = 3;
 }
+
+// 运营埋点指标（Q15）：种子给一个历史基线，真实事件在其上累加（pv 页面浏览 / uv 独立访客 / 行车态切换）。
+interface Metrics { pv: number; uv: number; drivingSwitches: number }
+let metrics: Metrics = { pv: 12840, uv: 3210, drivingSwitches: 487 };
+let seenVisitors = new Set<string>();
+function seedMetrics(): void {
+  metrics = { pv: 12840, uv: 3210, drivingSwitches: 487 };
+  seenVisitors = new Set<string>();
+}
 function seedCart(): void {
   cart = [
     { id: 'ci-1', productId: 'g1', qty: 2, selected: true, spec: '木质香调' },
@@ -112,6 +121,7 @@ function seedAll(): void {
   seedCart();
   seedAddresses();
   seedFavorites();
+  seedMetrics();
   // 持久化：已有快照则加载覆盖种子；否则把种子落盘建立首个快照。
   if (!loadFromDisk()) save();
 }
@@ -157,11 +167,13 @@ interface Snapshot {
   favorites: Favorite[];
   favoriteCounter: number;
   config: Record<string, unknown>;
+  metrics: Metrics;
+  seenVisitors: string[];
 }
 function snapshot(): Snapshot {
   const res: Snapshot['resources'] = {};
   for (const [name, r] of resources) res[name] = { prefix: r.prefix, rows: r.rows, counter: r.counter };
-  return { resources: res, cart, cartCounter, addresses, addressCounter, favorites, favoriteCounter, config };
+  return { resources: res, cart, cartCounter, addresses, addressCounter, favorites, favoriteCounter, config, metrics, seenVisitors: [...seenVisitors] };
 }
 
 /** 落盘到 SQLite（best-effort，事务内整体重写）。无路径时 no-op。 */
@@ -187,6 +199,8 @@ function save(): void {
       meta.run('addressCounter', String(snap.addressCounter));
       meta.run('favoriteCounter', String(snap.favoriteCounter));
       meta.run('config', JSON.stringify(snap.config));
+      meta.run('metrics', JSON.stringify(snap.metrics));
+      meta.run('seenVisitors', JSON.stringify(snap.seenVisitors));
     })();
   } catch {
     /* best-effort：磁盘/DB 问题不应让 API 崩 */
@@ -224,6 +238,10 @@ function loadFromDisk(): boolean {
     favoriteCounter = Number(meta.get('favoriteCounter') ?? 1);
     const cfg = meta.get('config');
     config = cfg ? (JSON.parse(cfg) as Record<string, unknown>) : {};
+    const m = meta.get('metrics');
+    if (m) metrics = JSON.parse(m) as Metrics;
+    const sv = meta.get('seenVisitors');
+    seenVisitors = sv ? new Set<string>(JSON.parse(sv) as string[]) : new Set<string>();
     return true;
   } catch {
     return false; // 库损坏 → 回退种子，不阻断启动
@@ -320,6 +338,22 @@ export const store = {
     config = { ...config, ...patch };
     save();
     return { ...config };
+  },
+
+  // ---------- 运营埋点（Q15）----------
+  /** 记一条埋点事件。type: pageview / driving-switch；visitorId 用于 uv 去重。 */
+  trackEvent(type: string, visitorId?: string): Metrics {
+    if (type === 'pageview') metrics.pv += 1;
+    else if (type === 'driving-switch') metrics.drivingSwitches += 1;
+    if (visitorId && !seenVisitors.has(visitorId)) {
+      seenVisitors.add(visitorId);
+      metrics.uv += 1;
+    }
+    save();
+    return { ...metrics };
+  },
+  metrics(): Metrics {
+    return { ...metrics };
   },
 
   // ---------- 购物车（真实数据；价格 join 商品现价，单位分）----------

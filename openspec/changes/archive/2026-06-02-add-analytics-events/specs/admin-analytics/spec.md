@@ -1,8 +1,5 @@
-# admin-analytics Specification
+## MODIFIED Requirements
 
-## Purpose
-后台运营看板：订单类指标（orderTotal/channel/gmv）实时聚合自订单数据源，流量类（pv/uv/drivingSwitches）由真实埋点（`POST /api/v1/events`）在种子基线上累加；看板访问受 `analytics:read` 权限点守卫（四角色均可读）。
-## Requirements
 ### Requirement: 运营看板聚合指标
 
 The system MUST expose an aggregated operations dashboard at `GET /api/v1/admin/analytics` returning：流量类 `pv` / `uv` / `drivingSwitches`（行车态切换次数），订单类 `orderTotal`（订单总数）、`channel.{car, phone}`（按入口渠道分组计数）、`gmv`（已有订单 `totalAmount` 求和，单位分）。订单类指标 MUST be computed from the live orders store（与后台订单管理同一数据源），so a new order changes `orderTotal` / `gmv` / `channel` 即时。
@@ -31,18 +28,7 @@ The system MUST expose an aggregated operations dashboard at `GET /api/v1/admin/
 - **THEN** `uv` 加 1
 - **AND** 同一 `visitorId` 再次上报时 `uv` 不再增加
 
-### Requirement: 看板访问受 RBAC 守卫
-
-`GET /api/v1/admin/analytics` MUST be guarded by the `analytics:read` permission point per `admin-auth` RBAC。四个预设角色均持 `*:read`，故均可读看板；无 token / 消费端 token MUST 收到 401。
-
-#### Scenario: 财务可读看板
-- **GIVEN** 财务角色 admin（持 `*:read`）
-- **WHEN** 请求看板
-- **THEN** 守卫放行并返回指标
-
-#### Scenario: 无 token 访问被拒
-- **WHEN** 不带 admin token 请求看板
-- **THEN** 系统返回 401 `ADMIN_UNAUTHENTICATED`
+## ADDED Requirements
 
 ### Requirement: 埋点事件上报
 
@@ -55,4 +41,3 @@ The system MUST expose `POST /api/v1/events { type, visitorId? }` 供消费端�
 #### Scenario: 非法事件类型被拒
 - **WHEN** `POST /api/v1/events { type: "bogus" }`
 - **THEN** 系统拒绝该请求（zod 校验失败 → 400）
-

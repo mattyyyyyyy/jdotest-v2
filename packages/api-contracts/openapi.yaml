@@ -35,6 +35,12 @@ paths:
       summary: 首页一次性引导数据（categories/products/banners/heroRecs）
       responses: { '200': { description: ok } }
 
+  /api/v1/events:
+    post:
+      tags: [catalog]
+      summary: 埋点上报（pageview / driving-switch，可带 visitorId 去重 uv）
+      responses: { '200': { description: metrics } }
+
   /api/v1/auth/qr-code:
     post:
       tags: [consumer-auth]

@@ -562,6 +562,27 @@ describe('admin-analytics · 运营看板', () => {
     expect(a.channel.car + a.channel.phone).toBeLessThanOrEqual(a.orderTotal);
     expect(typeof a.gmv).toBe('number');
   });
+
+  it('埋点 pageview → 看板 pv +1（Q15 真实累加）', async () => {
+    const before = (await inj({ method: 'GET', url: '/api/v1/admin/analytics' })).json().pv;
+    await inj({ method: 'POST', url: '/api/v1/events', payload: { type: 'pageview' } });
+    expect((await inj({ method: 'GET', url: '/api/v1/admin/analytics' })).json().pv).toBe(before + 1);
+  });
+
+  it('埋点 driving-switch → 看板 drivingSwitches +1', async () => {
+    const before = (await inj({ method: 'GET', url: '/api/v1/admin/analytics' })).json().drivingSwitches;
+    await inj({ method: 'POST', url: '/api/v1/events', payload: { type: 'driving-switch' } });
+    expect((await inj({ method: 'GET', url: '/api/v1/admin/analytics' })).json().drivingSwitches).toBe(before + 1);
+  });
+
+  it('uv 按 visitorId 去重：新访客 +1，重复不再加', async () => {
+    const before = (await inj({ method: 'GET', url: '/api/v1/admin/analytics' })).json().uv;
+    await inj({ method: 'POST', url: '/api/v1/events', payload: { type: 'pageview', visitorId: 'visitor-xyz' } });
+    const after1 = (await inj({ method: 'GET', url: '/api/v1/admin/analytics' })).json().uv;
+    expect(after1).toBe(before + 1);
+    await inj({ method: 'POST', url: '/api/v1/events', payload: { type: 'pageview', visitorId: 'visitor-xyz' } });
+    expect((await inj({ method: 'GET', url: '/api/v1/admin/analytics' })).json().uv).toBe(after1); // 同访客不重复计
+  });
 });
 
 describe('admin-catalog · 商品/库存/分类', () => {

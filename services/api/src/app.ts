@@ -116,6 +116,13 @@ export function buildApp(): FastifyInstance {
     heroRecs: store.activeHeroRecs(),
   }));
 
+  // 埋点上报（Q15）：消费端上报 pageview / driving-switch；看板的 pv/uv/drivingSwitches 据此累加。
+  app.post('/api/v1/events', async (req) => {
+    const body = z.object({ type: z.enum(['pageview', 'driving-switch']), visitorId: z.string().optional() }).parse(req.body ?? {});
+    const m = store.trackEvent(body.type, body.visitorId);
+    return { ok: true, metrics: m };
+  });
+
   // ============ 车主登录 /api/v1/auth/*（openspec/specs/auth-qr）============
   // 车机出码 → 手机确认 → 车机轮询拿车主 JWT；与 admin token 物理隔离（typ='user'）。
   app.post('/api/v1/auth/qr-code', async () => cauth.createSession());
@@ -430,10 +437,11 @@ export function buildApp(): FastifyInstance {
     const orders = store.list('orders');
     const car = orders.filter((o) => o.channel === 'car').length;
     const phone = orders.filter((o) => o.channel === 'phone').length;
+    const m = store.metrics(); // 流量类来自真实埋点累加（Q15，种子基线起算）
     return {
-      pv: 12840,
-      uv: 3210,
-      drivingSwitches: 487,
+      pv: m.pv,
+      uv: m.uv,
+      drivingSwitches: m.drivingSwitches,
       orderTotal: orders.length,
       channel: { car, phone },
       gmv: orders.reduce((s, o) => s + (o.totalAmount as number), 0),
