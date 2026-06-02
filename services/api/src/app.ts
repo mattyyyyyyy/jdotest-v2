@@ -232,6 +232,37 @@ export function buildApp(): FastifyInstance {
     return { ok: true, items: store.addressesByUser(p.sub) };
   });
 
+  // 我的收藏（按 userId 隔离）——（add-account-extras / openspec user）
+  app.get('/api/v1/me/favorites', async (req, reply) => {
+    const p = requireUser(req, reply);
+    if (!p) return reply;
+    return { items: store.favoritesByUser(p.sub) };
+  });
+
+  app.post('/api/v1/me/favorites', async (req, reply) => {
+    const p = requireUser(req, reply);
+    if (!p) return reply;
+    const body = z.object({ productId: z.string() }).parse(req.body);
+    if (!store.get('products', body.productId)) return reply.code(404).send(errBody('PRODUCT_NOT_FOUND', '商品不存在', { productId: body.productId }));
+    store.favoriteAdd(p.sub, body.productId); // 同款幂等
+    return reply.code(201).send({ ok: true, items: store.favoritesByUser(p.sub) });
+  });
+
+  app.delete('/api/v1/me/favorites/:productId', async (req, reply) => {
+    const p = requireUser(req, reply);
+    if (!p) return reply;
+    const { productId } = z.object({ productId: z.string() }).parse(req.params);
+    if (!store.favoriteRemove(p.sub, productId)) return reply.code(404).send(errBody('FAVORITE_NOT_FOUND', '未收藏该商品', { productId }));
+    return { ok: true, items: store.favoritesByUser(p.sub) };
+  });
+
+  // 我的售后单（经关联订单归属当前车主）
+  app.get('/api/v1/me/aftersale', async (req, reply) => {
+    const p = requireUser(req, reply);
+    if (!p) return reply;
+    return { items: store.aftersaleByUser(p.sub) };
+  });
+
   // ============ 消费端履约 /api/v1/fulfillment/*（openspec/specs/fulfillment）============
   // 自提点 / 物流轨迹读取，数据源与后台 admin-fulfillment 同源。
   app.get('/api/v1/fulfillment/pickup-points', async (req) => {
@@ -257,6 +288,15 @@ export function buildApp(): FastifyInstance {
     const items = store.productsOnShelf(q.cat);
     return { items, total: items.length };
   });
+
+  // 消费端商品评价：排除后台隐藏的（add-consumer-reviews / openspec admin-content）
+  app.get('/api/v1/reviews', async (req) => {
+    const q = z.object({ productId: z.string().optional() }).parse(req.query);
+    return { items: store.reviewsByProduct(q.productId) };
+  });
+
+  // 可领优惠券（启用且有库存）—— 消费端公开读取（add-account-extras / openspec user）
+  app.get('/api/v1/coupons', async () => ({ items: store.activeCoupons() }));
 
   app.get('/api/v1/products/:id', async (req, reply) => {
     const { id } = z.object({ id: z.string() }).parse(req.params);

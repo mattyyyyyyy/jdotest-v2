@@ -26,14 +26,17 @@ Writes to reviews MUST be guarded by the `reviews:write` permission point per `a
 - **THEN** 系统返回 403 `ADMIN_FORBIDDEN`
 - **AND** 评价显示状态不变
 
-### Requirement: 消费端评价展示遵守 hidden（待补读取接口）
+### Requirement: 消费端评价读取（过滤 hidden）
 
-When a consumer-facing reviews read endpoint exists, it MUST exclude reviews with `hidden=true`。
+The system MUST expose `GET /api/v1/reviews?productId=` 供消费端读取商品评价，且 MUST 排除 `hidden=true` 的评价（后台隐藏的违规评价对消费端不可见）。`productId` 可选：提供时只返回该商品评价；不提供时返回全部未隐藏评价。返回 `{ items }`。
 
-> **实现缺口（暴露）**：当前消费端无评价读取 API（`app.ts` 未暴露 `/api/v1/reviews`），故 `hidden` 仅在后台生效。补消费端评价接口时 MUST 过滤 `hidden`，对齐后台「评价/推荐位」内容治理（feature-spec A-11）。
+#### Scenario: 消费端读取过滤隐藏评价
+- **GIVEN** 某商品有 2 条评价，其中 1 条被后台 `hidden=true`
+- **WHEN** 消费端 `GET /api/v1/reviews?productId=<id>`
+- **THEN** 返回结果只含未隐藏的那 1 条
 
-#### Scenario: 消费端读取过滤隐藏评价（未来接口）
-- **GIVEN** 一条 `hidden=true` 的评价
-- **WHEN** 未来的消费端评价读取接口被调用
-- **THEN** 返回结果不包含该评价
+#### Scenario: 后台隐藏后消费端立即不可见
+- **GIVEN** 一条可见评价正在消费端展示
+- **WHEN** 后台 `PATCH /api/v1/admin/reviews/:id { hidden: true }`
+- **THEN** 消费端 `GET /api/v1/reviews` 不再返回该评价
 

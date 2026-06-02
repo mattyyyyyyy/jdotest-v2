@@ -59,6 +59,18 @@ function seedAddresses(): void {
   ];
   addressCounter = 3;
 }
+
+// 收藏（按 userId 归属，存 productId；Demo 内存）。
+interface Favorite { id: string; userId: string; productId: string }
+let favorites: Favorite[] = [];
+let favoriteCounter = 1;
+function seedFavorites(): void {
+  favorites = [
+    { id: 'fav-1', userId: 'u-1001', productId: 'e4' },
+    { id: 'fav-2', userId: 'u-1001', productId: 'g1' },
+  ];
+  favoriteCounter = 3;
+}
 function seedCart(): void {
   cart = [
     { id: 'ci-1', productId: 'g1', qty: 2, selected: true, spec: '木质香调' },
@@ -97,6 +109,7 @@ function seedAll(): void {
   config = { ...seed.config };
   seedCart();
   seedAddresses();
+  seedFavorites();
   // 持久化：已有快照则加载覆盖种子；否则把种子落盘建立首个快照。
   if (!loadFromDisk()) save();
 }
@@ -112,12 +125,14 @@ interface Snapshot {
   cartCounter: number;
   addresses: Address[];
   addressCounter: number;
+  favorites: Favorite[];
+  favoriteCounter: number;
   config: Record<string, unknown>;
 }
 function snapshot(): Snapshot {
   const res: Snapshot['resources'] = {};
   for (const [name, r] of resources) res[name] = { prefix: r.prefix, rows: r.rows, counter: r.counter };
-  return { resources: res, cart, cartCounter, addresses, addressCounter, config };
+  return { resources: res, cart, cartCounter, addresses, addressCounter, favorites, favoriteCounter, config };
 }
 /** 落盘（best-effort：失败不影响内存读写，仅丢持久化）。无路径时 no-op。 */
 function save(): void {
@@ -143,6 +158,8 @@ function loadFromDisk(): boolean {
     cartCounter = data.cartCounter;
     addresses = data.addresses;
     addressCounter = data.addressCounter;
+    favorites = data.favorites ?? [];
+    favoriteCounter = data.favoriteCounter ?? 1;
     config = data.config;
     return true;
   } catch {
@@ -223,6 +240,10 @@ export const store = {
   },
   ordersByUser(userId?: string): Row[] {
     return res('orders').rows.filter((o) => !userId || o.userId === userId);
+  },
+  /** 消费端评价：排除后台隐藏(hidden)的，可按商品过滤。 */
+  reviewsByProduct(productId?: string): Row[] {
+    return res('reviews').rows.filter((r) => r.hidden !== true && (!productId || r.productId === productId));
   },
   config(): Record<string, unknown> {
     return { ...config };
@@ -382,6 +403,43 @@ export const store = {
     addresses.splice(i, 1);
     save();
     return true;
+  },
+
+  // ---------- 我的：收藏 / 优惠券 / 售后（add-account-extras）----------
+  /** 收藏列表（join 商品现状；下架商品标 onShelf=false 仍展示，便于提示失效）。 */
+  favoritesByUser(userId: string): Row[] {
+    return favorites
+      .filter((f) => f.userId === userId)
+      .map((f) => {
+        const p = res('products').rows.find((x) => x.id === f.productId);
+        return { id: f.id, productId: f.productId, title: p?.title ?? f.productId, img: p?.img ?? '', price: (p?.price as number) ?? 0, onShelf: p?.onShelf === true } as Row;
+      });
+  },
+  /** 加收藏（同款幂等，不重复）。返回该收藏行。 */
+  favoriteAdd(userId: string, productId: string): Favorite {
+    const exist = favorites.find((f) => f.userId === userId && f.productId === productId);
+    if (exist) return exist;
+    const item: Favorite = { id: `fav-${favoriteCounter++}`, userId, productId };
+    favorites.unshift(item);
+    save();
+    return item;
+  },
+  /** 取消收藏（按 userId + productId 隔离）。 */
+  favoriteRemove(userId: string, productId: string): boolean {
+    const i = favorites.findIndex((f) => f.userId === userId && f.productId === productId);
+    if (i < 0) return false;
+    favorites.splice(i, 1);
+    save();
+    return true;
+  },
+  /** 可领优惠券：启用且有剩余库存。 */
+  activeCoupons(): Row[] {
+    return res('coupons').rows.filter((c) => c.active === true && (c.stock as number) > 0);
+  },
+  /** 某车主的售后单：经关联订单的 userId 归属（aftersale 自身无 userId）。 */
+  aftersaleByUser(userId: string): Row[] {
+    const myOrderIds = new Set(res('orders').rows.filter((o) => o.userId === userId).map((o) => o.id));
+    return res('aftersale').rows.filter((a) => myOrderIds.has(a.orderId as string));
   },
 
   // ---------- 消费端履约读取（add-fulfillment；读后台 admin-fulfillment 同源数据）----------

@@ -267,6 +267,25 @@ describe('购物车真实数据（加购→购物车→结算）', () => {
   });
 });
 
+describe('消费端评价读取（add-consumer-reviews · 过滤 hidden）', () => {
+  it('GET /reviews 排除后台隐藏评价（rv-3 g2 hidden 不出现）', async () => {
+    const { items } = (await inj({ method: 'GET', url: '/api/v1/reviews' })).json();
+    expect(items.every((r: { hidden?: boolean }) => r.hidden !== true)).toBe(true);
+    expect(items.some((r: { id: string }) => r.id === 'rv-3')).toBe(false); // 种子里 rv-3 hidden
+  });
+
+  it('?productId=g2 → 空（g2 仅有一条被隐藏的评价）', async () => {
+    const { items } = (await inj({ method: 'GET', url: '/api/v1/reviews?productId=g2' })).json();
+    expect(items.length).toBe(0);
+  });
+
+  it('后台隐藏一条评价后 → 消费端立即不可见', async () => {
+    expect((await inj({ method: 'GET', url: '/api/v1/reviews?productId=e4' })).json().items.length).toBe(1); // rv-1 可见
+    await inj({ method: 'PATCH', url: '/api/v1/admin/reviews/rv-1', payload: { hidden: true } });
+    expect((await inj({ method: 'GET', url: '/api/v1/reviews?productId=e4' })).json().items.length).toBe(0);
+  });
+});
+
 describe('库存校验（add-inventory-guard · P2#9 硬伤）', () => {
   it('下架商品加购 → 409 PRODUCT_UNAVAILABLE', async () => {
     await inj({ method: 'PATCH', url: '/api/v1/admin/products/e1', payload: { onShelf: false } });
@@ -682,6 +701,60 @@ describe('user · 个人资料 / 地址簿 / 钱包（openspec/specs/user）', (
     expect((await get('/api/v1/me/addresses', tB)).json().items.length).toBe(0); // B 无地址
     expect((await patch('/api/v1/me/addresses/' + idA, { addr: '改你的' }, tB)).statusCode).toBe(404); // 改不动 A 的
     expect((await del('/api/v1/me/addresses/' + idA, tB)).statusCode).toBe(404);
+  });
+});
+
+describe('account-extras · 收藏/优惠券/售后（add-account-extras / openspec user）', () => {
+  const post = (url: string, payload?: unknown, token?: string): Promise<LightMyRequestResponse> =>
+    app.inject({ method: 'POST', url, payload, headers: token ? { authorization: `Bearer ${token}` } : {} } as InjectOptions) as Promise<LightMyRequestResponse>;
+  const get = (url: string, token?: string): Promise<LightMyRequestResponse> =>
+    app.inject({ method: 'GET', url, headers: token ? { authorization: `Bearer ${token}` } : {} } as InjectOptions) as Promise<LightMyRequestResponse>;
+  const del = (url: string, token?: string): Promise<LightMyRequestResponse> =>
+    app.inject({ method: 'DELETE', url, headers: token ? { authorization: `Bearer ${token}` } : {} } as InjectOptions) as Promise<LightMyRequestResponse>;
+  const u1001 = async (): Promise<string> => (await app.inject({ method: 'POST', url: '/api/v1/auth/mock-login' } as InjectOptions)).json().accessToken as string;
+  const loginPhone = async (phone: string): Promise<string> => {
+    const { code } = (await app.inject({ method: 'POST', url: '/api/v1/auth/sms-code', payload: { phone } } as InjectOptions)).json();
+    return (await app.inject({ method: 'POST', url: '/api/v1/auth/sms-login', payload: { phone, code } } as InjectOptions)).json().accessToken as string;
+  };
+
+  it('我的收藏：种子 2 条 + 加收藏幂等 + 取消 + 404', async () => {
+    const t = await u1001();
+    expect((await get('/api/v1/me/favorites', t)).json().items.length).toBe(2); // 种子 e4/g1
+    expect((await post('/api/v1/me/favorites', { productId: 'e1' }, t)).statusCode).toBe(201);
+    expect((await post('/api/v1/me/favorites', { productId: 'e1' }, t)).json().items.length).toBe(3); // 幂等不重复
+    expect((await del('/api/v1/me/favorites/e1', t)).json().items.length).toBe(2);
+    expect((await del('/api/v1/me/favorites/e1', t)).statusCode).toBe(404); // 已无
+  });
+
+  it('收藏不存在商品 → 404；收藏按车主隔离', async () => {
+    const t = await u1001();
+    expect((await post('/api/v1/me/favorites', { productId: 'nope' }, t)).statusCode).toBe(404);
+    const tB = await loginPhone('13900000043');
+    expect((await get('/api/v1/me/favorites', tB)).json().items.length).toBe(0); // B 无收藏
+  });
+
+  it('可领优惠券：只返回启用且有库存（cp-3 停用被排除）', async () => {
+    const { items } = (await get('/api/v1/coupons')).json();
+    expect(items.every((c: { active: boolean; stock: number }) => c.active === true && c.stock > 0)).toBe(true);
+    expect(items.some((c: { id: string }) => c.id === 'cp-3')).toBe(false); // 停用
+    // 把 cp-1 库存清零 → 不再可领
+    await inj({ method: 'PATCH', url: '/api/v1/admin/coupons/cp-1', payload: { stock: 0 } });
+    expect((await get('/api/v1/coupons')).json().items.some((c: { id: string }) => c.id === 'cp-1')).toBe(false);
+  });
+
+  it('我的售后：按订单 userId 归属隔离', async () => {
+    const tA = await u1001(); // 种子售后 as-1 属 o-20004(u-1003)，故 A(u-1001) 初始为空
+    expect((await get('/api/v1/me/aftersale', tA)).json().items.length).toBe(0);
+    // 后台为 u-1001 的订单 o-20001 建一张售后单 → A 应能看到，且仍看不到他人的 as-1
+    await inj({ method: 'POST', url: '/api/v1/admin/aftersale', payload: { orderId: 'o-20001', reason: '测试', status: 'pending' } });
+    const mine = (await get('/api/v1/me/aftersale', tA)).json().items;
+    expect(mine.some((a: { orderId: string }) => a.orderId === 'o-20001')).toBe(true);
+    expect(mine.some((a: { id: string }) => a.id === 'as-1')).toBe(false); // 他人(u-1003)的不可见
+  });
+
+  it('未登录 /me/favorites、/me/aftersale → 401', async () => {
+    expect((await get('/api/v1/me/favorites')).statusCode).toBe(401);
+    expect((await get('/api/v1/me/aftersale')).statusCode).toBe(401);
   });
 });
 

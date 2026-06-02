@@ -22,8 +22,8 @@
 | # | 业务点 | 现状（不统一） | 统一方案 |
 |---|---|---|---|
 | 1 | **购物车未接真实数据** | V3 购物车/结算用写死的 3 件；下单只提交这 3 件 | 新增 `cart` 实体 + API（加购/改量/删/清空）；V3 加购→购物车→结算全走 API |
-| 2 | **消费端多屏纯 mock** | favorites/points/wallet/coupons/orders/tracking/aftersale/reviews/addresses 这些 V3 屏是静态，没接后台数据 | 逐屏接 API（后台对应实体已存在）：先 orders（已可接）→ coupons → addresses → 其余 |
-| 3 | **登录/鉴权未统一** | ✅ admin 侧已落地（add-admin-auth apply+archive：登录+RBAC 4角色+审计+限流，38 测试）；🔴 消费端仍无真实登录 | admin 完成；消费端接扫码登录（add-qr-login）待 propose+apply |
+| ~~2~~ | 🟢 **消费端多屏接 API**（2026-06-02 基本完成）：orders ✅、addresses ✅（add-user）、wallet/points ✅（`/me/wallet`）、reviews ✅（add-consumer-reviews 过滤 hidden）、favorites/coupons/aftersale ✅（add-account-extras）、tracking ✅（add-fulfillment `/orders/:id/shipping`）。各域均有后端接口 + 测试 | 后端接口齐备；剩 V3/Android 前端页把 mock 替换为这些 API（前端工作） |
+| ~~3~~ | ✅ **登录/鉴权已统一**：admin（add-admin-auth）+ 消费端车机扫码（auth-qr）+ 手机验证码（auth-login）均 apply+archive | 三入口齐备 |
 
 ### P1 · 字段/格式口径
 
