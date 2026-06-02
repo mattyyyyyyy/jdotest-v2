@@ -14,6 +14,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" // 仪器测试运行器（否则 androidTest 不被发现）
         // 后端基址：cloudflared 公网隧道 → 本机 services/api（与 web 后台同一后端）。
         // 隧道重启地址会变，改这里重打包即可；或后续做成运行时可配置。
         buildConfigField("String", "API_BASE", "\"http://10.0.2.2:3000/api/v1\"")

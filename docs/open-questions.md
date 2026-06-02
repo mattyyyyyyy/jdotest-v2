@@ -30,7 +30,7 @@
 |---|---|---|
 | Q9 | 副驾 / 后排乘客无法识别身份 | Demo 统一按驾驶员降级（PRD US-30）；阶段二再议 |
 | Q13 | **`apps/admin` 未独立建**（ADR-0010 定的独立后台前端）：现为后端内嵌 vanilla JS SPA（`admin-spa.ts`），可用但不可单测/难维护 | Demo 阶段**接受内嵌 SPA**，ADR-0010 的独立 `apps/admin` 推迟到需要独立部署/前端测试时再抽离；届时复用现有 API + design token |
-| Q14 | **Android 构建 / instrumented 测试缺自动化**：`apps/android-ivi` 21 屏 Compose 已落地，但沙箱无 Android SDK，无法编译/跑 emulator 测试，也无 unit/instrumented 测试入库 | Demo 阶段后端有 95 测试 + CI 守；Android 端待**有 SDK 的环境**补 Compose UI 测试 + 接入 CI（gradle）。当前靠人工 emulator 验证（见 research/android-native-v3-regression-audit） |
+| ~~Q14~~ | ✅ **基本解决（2026-06-03）· Android 测试入库**：本机 Android SDK 实际可用（之前误判）。已加 JVM 单测（`LogicUnitTest`：fmtPrice/Catalog.byScene/byId，4 例，`testDebugUnitTest` 绿）+ Compose UI 仪器测试（`PrimaryButtonTest`：渲染+点击，`connectedDebugAndroidTest` 在 emulator 通过）。修了缺失的 `testInstrumentationRunner`（原致仪器测试跑 0 个）。CI 加 `android-unit` job 跑单测；仪器测试需 emulator（CI 暂不跑） | SDK 在 `~/Library/Android/sdk`，JDK 用 AS JBR | 单测进 CI；仪器测试本地/emulator 跑 | — |
 | ~~Q15~~ | ✅ **已解决（2026-06-03）· analytics 接真实埋点**：新增 `POST /api/v1/events`（pageview/driving-switch + visitorId 去重 uv），看板 pv/uv/drivingSwitches 在种子基线上真实累加并持久化（SQLite）。change `add-analytics-events` archive，spec 已更新，3 测试 | 种子基线 + 真实累加 | 已接埋点 | — |
 
 ## ✅ 已解决（保留指针，不删）
