@@ -7,37 +7,40 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /** 商品（price 单位「分」，与后端 store 一致）。 */
-data class ApiProduct(val id: String, val title: String, val priceFen: Int, val cat: String, val tag: String)
+data class ApiProduct(val id: String, val title: String, val priceFen: Int, val oriFen: Int, val cat: String, val tag: String, val sold: Double, val star: Double)
+data class ApiCategory(val id: String, val name: String, val icon: String)
+data class ApiBanner(val title: String, val sub: String, val tone: String)
+data class Bootstrap(val categories: List<ApiCategory>, val products: List<ApiProduct>, val banners: List<ApiBanner>)
 
 /**
  * 与 web 后台同一后端（services/api，经 cloudflared 公网隧道）。
- * read：拉商品（后台改→这里刷出来）；write：下单（→后台订单立刻可见）。
+ * read：拉 bootstrap（分类/banner/商品，后台改→刷新即出现）；write：下单（→后台订单可见）。
  * 仅用 JDK 内置 HttpURLConnection + org.json，不引第三方网络库。
  */
 object NetworkClient {
     private val BASE = BuildConfig.API_BASE
 
-    fun fetchProducts(): List<ApiProduct> {
-        val conn = (URL("$BASE/products").openConnection() as HttpURLConnection).apply {
+    fun fetchBootstrap(): Bootstrap {
+        val conn = (URL("$BASE/bootstrap").openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"; connectTimeout = 15000; readTimeout = 15000
         }
-        conn.inputStream.use { ins ->
-            val items = JSONObject(ins.readBytes().decodeToString()).getJSONArray("items")
-            val out = ArrayList<ApiProduct>(items.length())
-            for (i in 0 until items.length()) {
-                val o = items.getJSONObject(i)
-                out.add(
-                    ApiProduct(
-                        id = o.optString("id"),
-                        title = o.optString("title"),
-                        priceFen = o.optInt("price"),
-                        cat = o.optString("cat"),
-                        tag = o.optString("tag", ""),
-                    ),
+        val root = JSONObject(conn.inputStream.use { it.readBytes().decodeToString() })
+        return Bootstrap(
+            categories = root.getJSONArray("categories").map {
+                ApiCategory(it.optString("id"), it.optString("name"), it.optString("icon"))
+            },
+            products = root.getJSONArray("products").map {
+                ApiProduct(
+                    id = it.optString("id"), title = it.optString("title"),
+                    priceFen = it.optInt("price"), oriFen = it.optInt("ori"),
+                    cat = it.optString("cat"), tag = it.optString("tag", ""),
+                    sold = it.optDouble("sold", 0.0), star = it.optDouble("star", 0.0),
                 )
-            }
-            return out
-        }
+            },
+            banners = root.getJSONArray("banners").map {
+                ApiBanner(it.optString("title"), it.optString("sub"), it.optString("tone"))
+            },
+        )
     }
 
     /** 下单 → 后台订单管理立刻可见（app→后台写互通）。返回订单 id，失败 null。 */
@@ -55,4 +58,10 @@ object NetworkClient {
     } catch (e: Exception) {
         null
     }
+}
+
+private inline fun <T> JSONArray.map(f: (JSONObject) -> T): List<T> {
+    val out = ArrayList<T>(length())
+    for (i in 0 until length()) out.add(f(getJSONObject(i)))
+    return out
 }
