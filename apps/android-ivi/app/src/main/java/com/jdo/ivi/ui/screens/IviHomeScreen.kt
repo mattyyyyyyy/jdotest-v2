@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +37,10 @@ import androidx.compose.ui.unit.sp
 import com.jdo.ivi.R
 import com.jdo.ivi.ui.theme.JdoColors
 import com.jdo.ivi.ui.theme.JdoDimens
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
 
 /**
  * 车机 IVI 首页 —— 1:1 复刻消费端 V3（mockups/jdo-pencil-v3 screens/ivi-home）。
@@ -44,24 +49,35 @@ import com.jdo.ivi.ui.theme.JdoDimens
  */
 @Composable
 fun IviHomeScreen(onOpenMall: () -> Unit = {}) {
+    val haze = remember { HazeState() }
     Box(modifier = Modifier.fillMaxSize().background(JdoColors.Bg0)) {
-        // 壁纸（暗夜极光 + Porsche Cayenne）铺满
+        // 壁纸（暗夜极光 + Porsche Cayenne）铺满 —— 作为 haze 模糊源
         Image(
             painter = painterResource(R.drawable.ivi_wallpaper_dark),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().hazeSource(haze),
         )
 
         Column(modifier = Modifier.fillMaxSize().padding(JdoDimens.Space5)) {
             StatusBar()
             Spacer(Modifier.weight(1f))
-            CardsRow()
+            CardsRow(haze)
             Spacer(Modifier.height(JdoDimens.Space4))
-            Dock(onOpenMall = onOpenMall)
+            Dock(haze, onOpenMall = onOpenMall)
         }
     }
 }
+
+/** 玻璃材质修饰：backdrop blur（模糊壁纸）+ 暗色 tint，还原 web 的 backdrop-filter 玻璃卡。 */
+private fun Modifier.glass(haze: HazeState, shape: androidx.compose.ui.graphics.Shape): Modifier =
+    this.clip(shape)
+        .hazeEffect(state = haze) {
+            blurRadius = 28.dp
+            backgroundColor = JdoColors.Bg1
+            tints = listOf(HazeTint(JdoColors.SurfaceGlass))
+        }
+        .border(1.dp, JdoColors.BorderSubtle, shape)
 
 @Composable
 private fun StatusBar() {
@@ -91,24 +107,20 @@ private fun Pill(text: String) {
 }
 
 @Composable
-private fun GlassCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+private fun GlassCard(haze: HazeState, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(JdoDimens.RadiusXl))
-            .background(JdoColors.SurfaceGlass)
-            .border(1.dp, JdoColors.BorderSubtle, RoundedCornerShape(JdoDimens.RadiusXl))
-            .padding(JdoDimens.Space4),
+        modifier = modifier.glass(haze, RoundedCornerShape(JdoDimens.RadiusXl)).padding(JdoDimens.Space4),
     ) { content() }
 }
 
 @Composable
-private fun CardsRow() {
+private fun CardsRow(haze: HazeState) {
     Row(
         modifier = Modifier.fillMaxWidth().height(150.dp),
         horizontalArrangement = Arrangement.spacedBy(JdoDimens.Space4),
     ) {
         // 1. 快捷
-        GlassCard(modifier = Modifier.weight(1.1f).fillMaxHeight()) {
+        GlassCard(haze, modifier = Modifier.weight(1.1f).fillMaxHeight()) {
             Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 QuickAction("🔍", "搜索")
                 QuickAction("🏠", "回家")
@@ -117,7 +129,7 @@ private fun CardsRow() {
             }
         }
         // 2. 音乐
-        GlassCard(modifier = Modifier.weight(1.3f).fillMaxHeight()) {
+        GlassCard(haze, modifier = Modifier.weight(1.3f).fillMaxHeight()) {
             Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
                 Text("正在播放 · QQ 音乐", color = JdoColors.TextMuted, fontSize = 15.sp)
                 Spacer(Modifier.height(6.dp))
@@ -127,7 +139,7 @@ private fun CardsRow() {
             }
         }
         // 3. 续航
-        GlassCard(modifier = Modifier.weight(1f).fillMaxHeight()) {
+        GlassCard(haze, modifier = Modifier.weight(1f).fillMaxHeight()) {
             Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                 Column {
                     Text("续航", color = JdoColors.TextMuted, fontSize = 15.sp)
@@ -142,7 +154,7 @@ private fun CardsRow() {
             }
         }
         // 4. 天气
-        GlassCard(modifier = Modifier.weight(1f).fillMaxHeight()) {
+        GlassCard(haze, modifier = Modifier.weight(1f).fillMaxHeight()) {
             Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
                 Text("上海 · 浦东", color = JdoColors.TextSecondary, fontSize = 15.sp)
                 Row(verticalAlignment = Alignment.Top) {
@@ -184,10 +196,9 @@ private fun Ring(progress: Float) {
 }
 
 @Composable
-private fun Dock(onOpenMall: () -> Unit) {
+private fun Dock(haze: HazeState, onOpenMall: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(JdoDimens.RadiusLg)).background(JdoColors.SurfaceGlass)
-            .border(1.dp, JdoColors.BorderSubtle, RoundedCornerShape(JdoDimens.RadiusLg)).padding(horizontal = JdoDimens.Space5, vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().glass(haze, RoundedCornerShape(JdoDimens.RadiusLg)).padding(horizontal = JdoDimens.Space5, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text("🏠   🚗   🧭", color = JdoColors.TextSecondary, fontSize = 22.sp)
