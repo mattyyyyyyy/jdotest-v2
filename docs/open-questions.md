@@ -29,6 +29,9 @@
 | # | 问题 | 决定 |
 |---|---|---|
 | Q9 | 副驾 / 后排乘客无法识别身份 | Demo 统一按驾驶员降级（PRD US-30）；阶段二再议 |
+| Q13 | **`apps/admin` 未独立建**（ADR-0010 定的独立后台前端）：现为后端内嵌 vanilla JS SPA（`admin-spa.ts`），可用但不可单测/难维护 | Demo 阶段**接受内嵌 SPA**，ADR-0010 的独立 `apps/admin` 推迟到需要独立部署/前端测试时再抽离；届时复用现有 API + design token |
+| Q14 | **Android 构建 / instrumented 测试缺自动化**：`apps/android-ivi` 21 屏 Compose 已落地，但沙箱无 Android SDK，无法编译/跑 emulator 测试，也无 unit/instrumented 测试入库 | Demo 阶段后端有 95 测试 + CI 守；Android 端待**有 SDK 的环境**补 Compose UI 测试 + 接入 CI（gradle）。当前靠人工 emulator 验证（见 research/android-native-v3-regression-audit） |
+| Q15 | **analytics 流量类指标是 Demo 固定值**：`/api/v1/admin/analytics` 的 pv/uv/drivingSwitches 写死（订单类 orderTotal/gmv/channel 为实时聚合）| 已在 `openspec/specs/admin-analytics` 标注；接真实埋点后替换，spec 行为不变（数值来源升级）|
 
 ## ✅ 已解决（保留指针，不删）
 
