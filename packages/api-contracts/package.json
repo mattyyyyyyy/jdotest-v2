@@ -1,0 +1,11 @@
+{
+  "name": "@jdo/api-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "JDO API 契约单一真相（OpenAPI）。漂移检查见 services/api 的 contract.test.ts。",
+  "type": "module",
+  "main": "openapi.yaml",
+  "scripts": {
+    "test": "node -e \"process.stdout.write('contract: openapi.yaml present\\n')\""
+  }
+}

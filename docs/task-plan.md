@@ -38,11 +38,11 @@
 
 ### C. 脚手架欠账（PRD Week 0/2 未尽项）
 
-- [ ] `.github/workflows/ci.yml`：lint + typecheck + test + build 四件套
-- [ ] `.env.example`（Q3，Phase B 即补）
-- [ ] `infra/docker-compose.yml`（PG + Redis）
-- [ ] `apps/android-ivi` 骨架：原生安卓消费端（Kotlin + Jetpack Compose）
-- [ ] CI 契约检查：controller 与 openapi.yaml 漂移报错
+- [x] `.github/workflows/ci.yml`：typecheck + lint + test + build + openspec validate（2026-06-02）
+- [x] `.env.example`（Q3，Phase B 即补）
+- [x] `infra/docker-compose.yml`（PG + Redis）（2026-06-02）
+- [x] `apps/android-ivi` 骨架：原生安卓消费端（Kotlin + Jetpack Compose）（已落地，见 ADR-0013）
+- [x] CI 契约检查：`packages/api-contracts/openapi.yaml` + `contract.test.ts` 漂移守卫（每个文档 path 必为已注册路由；2026-06-02）
 
 ## 三、参考：PRD 原始 Week 计划（已部分完成）
 

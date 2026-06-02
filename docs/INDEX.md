@@ -312,6 +312,9 @@
 | [.github/PULL_REQUEST_TEMPLATE.md](../.github/PULL_REQUEST_TEMPLATE.md) | PR 必填项（测试证据 + 文档同步 checklist）| Active | 2026-06-01 |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | 人类贡献者协作规则（与 CLAUDE.md 分工）| Active | 2026-06-01 |
 | [.github/CODEOWNERS](../.github/CODEOWNERS) | 路径 → owner，对应 §Ownership Zones | Active | 2026-06-01 |
+| [.github/workflows/ci.yml](../.github/workflows/ci.yml) | **CI 四件套**：typecheck + lint + test + build + openspec validate（push/PR 触发）| Active | 2026-06-02 |
+| [infra/docker-compose.yml](../infra/docker-compose.yml) | 本地依赖 PostgreSQL + Redis（ADR-0003；对齐 .env.example）| Active | 2026-06-02 |
+| [packages/api-contracts/openapi.yaml](../packages/api-contracts/openapi.yaml) | **API 契约单一真相（OpenAPI）**；漂移守卫见 `services/api/src/contract.test.ts`（每个 path 必为已注册路由）| Active | 2026-06-02 |
 
 ---
 

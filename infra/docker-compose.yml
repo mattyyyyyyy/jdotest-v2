@@ -1,0 +1,38 @@
+# 本地依赖：PostgreSQL + Redis（ADR-0003）。
+# 用法：docker compose -f infra/docker-compose.yml up -d
+# 默认值对齐 .env.example（DATABASE_URL / REDIS_URL）；生产密钥走 secret manager。
+# 说明：当前后端默认走内存 store + 可选 JSON 快照（ADR-0014）；接 Prisma+PG 后用这套依赖。
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: jdo-postgres
+    environment:
+      POSTGRES_USER: jdo
+      POSTGRES_PASSWORD: replace-me-local-password
+      POSTGRES_DB: jdo
+    ports:
+      - "5432:5432"
+    volumes:
+      - jdo-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jdo -d jdo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: jdo-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - jdo-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  jdo-pgdata:
+  jdo-redisdata:

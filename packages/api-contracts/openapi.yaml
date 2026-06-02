@@ -1,0 +1,269 @@
+openapi: 3.0.3
+info:
+  title: JDO 车机电商 API
+  version: 0.1.0
+  description: >
+    消费端 + 后台管理统一 REST 契约（单一真相，docs/api-contracts.md 的机器可读版）。
+    所有金额单位「分」。错误体统一 { code, message, details, traceId }。
+    路径与 services/api 实现保持同步——漂移检查见 services/api/src/contract.test.ts
+    （断言此处每个 path 均为已注册路由）。
+servers:
+  - url: http://localhost:3000
+    description: 本地
+tags:
+  - name: health
+  - name: consumer-auth
+  - name: consumer-account
+  - name: catalog
+  - name: cart
+  - name: order
+  - name: payment
+  - name: fulfillment
+  - name: admin-auth
+  - name: admin
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: 健康检查
+      responses: { '200': { description: ok } }
+
+  /api/v1/bootstrap:
+    get:
+      tags: [catalog]
+      summary: 首页一次性引导数据（categories/products/banners/heroRecs）
+      responses: { '200': { description: ok } }
+
+  /api/v1/auth/qr-code:
+    post:
+      tags: [consumer-auth]
+      summary: 车机出二维码会话
+      responses: { '200': { description: pending 会话 } }
+  /api/v1/auth/qr-confirm:
+    post:
+      tags: [consumer-auth]
+      summary: 手机确认扫码会话（封禁 403）
+      responses: { '200': { description: ok }, '403': { description: USER_BANNED }, '410': { description: QR_EXPIRED } }
+  /api/v1/auth/qr-status:
+    get:
+      tags: [consumer-auth]
+      summary: 车机轮询会话状态（confirmed 下发车主 token）
+      responses: { '200': { description: status } }
+  /api/v1/auth/mock-login:
+    post:
+      tags: [consumer-auth]
+      summary: Demo 直接拿车主 token（u-1001）
+      responses: { '200': { description: token } }
+  /api/v1/auth/sms-code:
+    post:
+      tags: [consumer-auth]
+      summary: 手机号请求短信验证码（Demo 直出 code；60s 频控 429）
+      responses: { '200': { description: code }, '429': { description: SMS_RATE_LIMITED } }
+  /api/v1/auth/sms-login:
+    post:
+      tags: [consumer-auth]
+      summary: 手机号 + 验证码登录（错误 401 / 封禁 403 / 首登建号）
+      responses: { '200': { description: token }, '401': { description: SMS_CODE_INVALID }, '403': { description: USER_BANNED } }
+  /api/v1/auth/me:
+    get:
+      tags: [consumer-auth]
+      summary: 当前车主（typ=user，401 未登录）
+      responses: { '200': { description: user }, '401': { description: UNAUTHENTICATED } }
+
+  /api/v1/me:
+    get:
+      tags: [consumer-account]
+      summary: 个人资料（含积分/余额）
+      responses: { '200': { description: profile }, '401': { description: UNAUTHENTICATED } }
+    patch:
+      tags: [consumer-account]
+      summary: 改资料（仅昵称）
+      responses: { '200': { description: profile }, '401': { description: UNAUTHENTICATED } }
+  /api/v1/me/wallet:
+    get:
+      tags: [consumer-account]
+      summary: 积分与余额只读
+      responses: { '200': { description: wallet }, '401': { description: UNAUTHENTICATED } }
+  /api/v1/me/addresses:
+    get:
+      tags: [consumer-account]
+      summary: 地址簿列表
+      responses: { '200': { description: list }, '401': { description: UNAUTHENTICATED } }
+    post:
+      tags: [consumer-account]
+      summary: 新增地址（首个/标记自动默认，默认互斥）
+      responses: { '201': { description: created }, '401': { description: UNAUTHENTICATED } }
+  /api/v1/me/addresses/{id}:
+    patch:
+      tags: [consumer-account]
+      summary: 改地址（按 userId 隔离）
+      responses: { '200': { description: ok }, '404': { description: ADDRESS_NOT_FOUND } }
+    delete:
+      tags: [consumer-account]
+      summary: 删地址
+      responses: { '200': { description: ok }, '404': { description: ADDRESS_NOT_FOUND } }
+  /api/v1/me/favorites:
+    get:
+      tags: [consumer-account]
+      summary: 我的收藏（join 商品）
+      responses: { '200': { description: list }, '401': { description: UNAUTHENTICATED } }
+    post:
+      tags: [consumer-account]
+      summary: 加收藏（幂等；商品不存在 404）
+      responses: { '201': { description: created }, '404': { description: PRODUCT_NOT_FOUND } }
+  /api/v1/me/favorites/{productId}:
+    delete:
+      tags: [consumer-account]
+      summary: 取消收藏
+      responses: { '200': { description: ok }, '404': { description: FAVORITE_NOT_FOUND } }
+  /api/v1/me/aftersale:
+    get:
+      tags: [consumer-account]
+      summary: 我的售后单（经订单 userId 归属）
+      responses: { '200': { description: list }, '401': { description: UNAUTHENTICATED } }
+
+  /api/v1/categories:
+    get:
+      tags: [catalog]
+      summary: 分类列表（按 sort）
+      responses: { '200': { description: list } }
+  /api/v1/reviews:
+    get:
+      tags: [catalog]
+      summary: 商品评价（过滤 hidden；可选 productId）
+      responses: { '200': { description: list } }
+  /api/v1/coupons:
+    get:
+      tags: [catalog]
+      summary: 可领优惠券（active && stock>0）
+      responses: { '200': { description: list } }
+  /api/v1/products:
+    get:
+      tags: [catalog]
+      summary: 商品列表（仅上架；可选 cat）
+      responses: { '200': { description: list } }
+  /api/v1/products/{id}:
+    get:
+      tags: [catalog]
+      summary: 商品详情（下架/不存在 404）
+      responses: { '200': { description: product }, '404': { description: PRODUCT_NOT_FOUND } }
+
+  /api/v1/cart:
+    get:
+      tags: [cart]
+      summary: 购物车（价格 join 现价）
+      responses: { '200': { description: list } }
+  /api/v1/cart/items:
+    post:
+      tags: [cart]
+      summary: 加购（库存/上架校验：下架 409 / 超库存 409）
+      responses: { '201': { description: created }, '409': { description: PRODUCT_UNAVAILABLE 或 INSUFFICIENT_STOCK } }
+  /api/v1/cart/items/{id}:
+    patch:
+      tags: [cart]
+      summary: 改数量/选中（下限 1）
+      responses: { '200': { description: ok }, '404': { description: CART_ITEM_NOT_FOUND } }
+    delete:
+      tags: [cart]
+      summary: 删除购物车项
+      responses: { '200': { description: ok }, '404': { description: CART_ITEM_NOT_FOUND } }
+  /api/v1/cart/checkout:
+    post:
+      tags: [cart]
+      summary: 结算（库存校验全有或全无 + 扣减；空选 400）
+      responses: { '200': { description: order }, '400': { description: EMPTY_SELECTION }, '409': { description: INSUFFICIENT_STOCK } }
+
+  /api/v1/orders:
+    get:
+      tags: [order]
+      summary: 订单列表（可选 userId）
+      responses: { '200': { description: list } }
+    post:
+      tags: [order]
+      summary: 直接下单（items: title/price/qty）
+      responses: { '200': { description: order } }
+  /api/v1/orders/transition:
+    post:
+      tags: [order]
+      summary: 订单状态机流转（非法 409）
+      responses: { '200': { description: state }, '409': { description: INVALID_TRANSITION } }
+  /api/v1/orders/{id}/shipping:
+    get:
+      tags: [fulfillment]
+      summary: 订单物流轨迹（仅本人，他人/不存在 404）
+      responses: { '200': { description: track }, '401': { description: UNAUTHENTICATED }, '404': { description: ORDER_NOT_FOUND } }
+  /api/v1/payments/{orderId}/confirm:
+    post:
+      tags: [payment]
+      summary: 支付确认（状态机 + 幂等；非法 409）
+      responses: { '200': { description: ok }, '404': { description: ORDER_NOT_FOUND }, '409': { description: INVALID_TRANSITION } }
+
+  /api/v1/fulfillment/pickup-points:
+    get:
+      tags: [fulfillment]
+      summary: 附近自提点（仅营业 + 就近 + limit）
+      responses: { '200': { description: list } }
+
+  /api/v1/admin/auth/login:
+    post:
+      tags: [admin-auth]
+      summary: 后台登录（限流 429）
+      responses: { '200': { description: token }, '401': { description: ADMIN_LOGIN_FAILED }, '429': { description: RATE_LIMITED } }
+  /api/v1/admin/auth/refresh:
+    post:
+      tags: [admin-auth]
+      summary: 刷新 admin token
+      responses: { '200': { description: token }, '401': { description: ADMIN_REFRESH_INVALID } }
+  /api/v1/admin/auth/me:
+    get:
+      tags: [admin-auth]
+      summary: 当前 admin + 权限点
+      responses: { '200': { description: admin }, '401': { description: ADMIN_UNAUTHENTICATED } }
+
+  /api/v1/admin/resources:
+    get:
+      tags: [admin]
+      summary: 可管理资源列表（列/字段定义）
+      responses: { '200': { description: list } }
+  /api/v1/admin/analytics:
+    get:
+      tags: [admin]
+      summary: 运营看板聚合
+      responses: { '200': { description: metrics } }
+  /api/v1/admin/config:
+    get:
+      tags: [admin]
+      summary: 读系统配置
+      responses: { '200': { description: config } }
+    patch:
+      tags: [admin]
+      summary: 改系统配置
+      responses: { '200': { description: config } }
+  /api/v1/admin/orders/{id}/status:
+    patch:
+      tags: [admin]
+      summary: 订单状态流转（共享状态机；非法 409）
+      responses: { '200': { description: ok }, '404': { description: NOT_FOUND }, '409': { description: INVALID_TRANSITION } }
+  /api/v1/admin/{resource}:
+    get:
+      tags: [admin]
+      summary: 通用资源列表（受 <resource>:read 权限点）
+      responses: { '200': { description: list }, '404': { description: UNKNOWN_RESOURCE } }
+    post:
+      tags: [admin]
+      summary: 通用资源创建（受 <resource>:write）
+      responses: { '201': { description: created }, '404': { description: UNKNOWN_RESOURCE } }
+  /api/v1/admin/{resource}/{id}:
+    get:
+      tags: [admin]
+      summary: 通用资源详情
+      responses: { '200': { description: row }, '404': { description: NOT_FOUND } }
+    patch:
+      tags: [admin]
+      summary: 通用资源更新
+      responses: { '200': { description: row }, '404': { description: NOT_FOUND } }
+    delete:
+      tags: [admin]
+      summary: 通用资源删除（分类被引用 409）
+      responses: { '200': { description: ok }, '404': { description: NOT_FOUND }, '409': { description: CATEGORY_IN_USE } }
