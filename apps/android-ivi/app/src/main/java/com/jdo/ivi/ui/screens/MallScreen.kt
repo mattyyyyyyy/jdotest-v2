@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -35,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jdo.ivi.data.ApiBanner
+import com.jdo.ivi.data.ApiHero
 import com.jdo.ivi.data.ApiCategory
 import com.jdo.ivi.data.ApiProduct
 import com.jdo.ivi.data.Bootstrap
@@ -113,7 +115,7 @@ fun MallScreen(onNav: (String, String?) -> Unit, onBack: () -> Unit) {
             else -> Row(modifier = Modifier.fillMaxSize()) {
                 Rail(d.categories, selectedCat) { selectedCat = it }
                 Column(modifier = Modifier.fillMaxSize().padding(JdoDimens.Space4)) {
-                    BannersRow(d.banners)
+                    HeroArea(d.banners, d.heroRecs)
                     Spacer(Modifier.height(JdoDimens.Space4))
                     val name = d.categories.find { it.id == selectedCat }?.name ?: "推荐"
                     Text("$name · 为你精选", color = JdoColors.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
@@ -165,14 +167,41 @@ private fun Rail(cats: List<ApiCategory>, selected: String, onSelect: (String) -
 }
 
 @Composable
-private fun BannersRow(banners: List<ApiBanner>) {
-    Row(modifier = Modifier.fillMaxWidth().height(96.dp), horizontalArrangement = Arrangement.spacedBy(JdoDimens.Space4)) {
-        banners.take(3).forEach { b ->
-            Box(modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(JdoDimens.RadiusLg)).background(Brush.linearGradient(bannerColors(b.tone))).padding(JdoDimens.Space4)) {
-                Column {
-                    Text(b.title, color = JdoColors.TextPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                    Spacer(Modifier.height(4.dp))
-                    Text(b.sub, color = JdoColors.TextSecondary, fontSize = 14.sp, maxLines = 2)
+private fun HeroArea(banners: List<ApiBanner>, heroRecs: List<ApiHero>) {
+    Row(modifier = Modifier.fillMaxWidth().height(140.dp), horizontalArrangement = Arrangement.spacedBy(JdoDimens.Space4)) {
+        // 左：大 banner
+        val b = banners.firstOrNull()
+        Box(
+            modifier = Modifier.weight(1.5f).fillMaxHeight().clip(RoundedCornerShape(JdoDimens.RadiusLg))
+                .background(Brush.linearGradient(bannerColors(b?.tone ?: "blue"))).padding(JdoDimens.Space5),
+        ) {
+            Column {
+                Text("充值返现 · 限时", color = JdoColors.Mint, fontSize = 13.sp)
+                Spacer(Modifier.height(6.dp))
+                Text(b?.title ?: "车主权益日", color = JdoColors.TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(6.dp))
+                Text(b?.sub ?: "", color = JdoColors.TextSecondary, fontSize = 14.sp, maxLines = 1)
+            }
+            Box(modifier = Modifier.align(Alignment.BottomEnd).clip(RoundedCornerShape(JdoDimens.RadiusPill)).background(JdoColors.Brand500).padding(horizontal = JdoDimens.Space4, vertical = 8.dp)) {
+                Text("去充值 ›", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        // 右：2 个时空推荐 heroRec 堆叠
+        Column(modifier = Modifier.weight(1.6f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(JdoDimens.Space3)) {
+            heroRecs.take(2).forEach { h ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(JdoDimens.RadiusLg))
+                        .background(Brush.linearGradient(bannerColors(h.tone))).padding(JdoDimens.Space4),
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(h.title, color = JdoColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        Text(h.sub, color = JdoColors.TextMuted, fontSize = 12.sp, maxLines = 1)
+                    }
+                    Spacer(Modifier.width(JdoDimens.Space2))
+                    Box(modifier = Modifier.clip(RoundedCornerShape(JdoDimens.RadiusPill)).background(JdoColors.Bg0.copy(alpha = 0.4f)).padding(horizontal = JdoDimens.Space3, vertical = 6.dp)) {
+                        Text(h.cta, color = JdoColors.Mint, fontSize = 12.sp, maxLines = 1)
+                    }
                 }
             }
         }
@@ -185,13 +214,19 @@ private fun ProductCard(p: ApiProduct, onOpen: () -> Unit, onAdd: () -> Unit) {
         modifier = Modifier.clip(RoundedCornerShape(JdoDimens.RadiusLg)).background(JdoColors.Bg2)
             .border(1.dp, JdoColors.BorderSubtle, RoundedCornerShape(JdoDimens.RadiusLg)).clickable { onOpen() }.padding(JdoDimens.Space4),
     ) {
-        Box(modifier = Modifier.fillMaxWidth().height(96.dp).clip(RoundedCornerShape(JdoDimens.RadiusMd))) {
+        Box(modifier = Modifier.fillMaxWidth().height(110.dp).clip(RoundedCornerShape(JdoDimens.RadiusMd))) {
             ProductImage(p.img, Modifier.fillMaxSize())
             if (p.tag.isNotEmpty()) {
                 Box(modifier = Modifier.padding(8.dp).clip(RoundedCornerShape(JdoDimens.RadiusSm)).background(JdoColors.Mint).padding(horizontal = 8.dp, vertical = 3.dp)) {
                     Text(p.tag, color = JdoColors.TextInverse, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
+            // 右下「+」圆钮（仿 web quick-add）
+            Box(
+                modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp).size(40.dp).clip(RoundedCornerShape(20.dp))
+                    .background(JdoColors.Brand500).clickable { onAdd() },
+                contentAlignment = Alignment.Center,
+            ) { Text("+", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold) }
         }
         Spacer(Modifier.height(JdoDimens.Space3))
         Text(p.title, color = JdoColors.TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 2)
@@ -202,9 +237,9 @@ private fun ProductCard(p: ApiProduct, onOpen: () -> Unit, onAdd: () -> Unit) {
                 Spacer(Modifier.width(6.dp))
                 Text(yuan(p.oriFen), color = JdoColors.TextMuted, fontSize = 13.sp)
             }
-            Spacer(Modifier.weight(1f))
-            Chip("加入", JdoColors.Brand500, Color.White) { onAdd() }
         }
+        Spacer(Modifier.height(2.dp))
+        Text("★ ${p.star} · 已售 ${p.sold}k+", color = JdoColors.TextMuted, fontSize = 12.sp)
     }
 }
 

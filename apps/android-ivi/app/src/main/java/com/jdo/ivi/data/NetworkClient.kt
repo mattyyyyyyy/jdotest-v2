@@ -13,7 +13,8 @@ data class ApiProduct(
 )
 data class ApiCategory(val id: String, val name: String, val icon: String)
 data class ApiBanner(val title: String, val sub: String, val tone: String)
-data class Bootstrap(val categories: List<ApiCategory>, val products: List<ApiProduct>, val banners: List<ApiBanner>)
+data class ApiHero(val title: String, val sub: String, val tone: String, val cta: String)
+data class Bootstrap(val categories: List<ApiCategory>, val products: List<ApiProduct>, val banners: List<ApiBanner>, val heroRecs: List<ApiHero>)
 /** 购物车行（price 单位「分」）。 */
 data class CartItem(val id: String, val productId: String, val title: String, val img: String, val priceFen: Int, val qty: Int, val selected: Boolean, val spec: String)
 /** 订单（totalAmount 单位「分」）。 */
@@ -55,6 +56,7 @@ object NetworkClient {
             categories = root.getJSONArray("categories").map { ApiCategory(it.optString("id"), it.optString("name"), it.optString("icon")) },
             products = root.getJSONArray("products").map { productOf(it) },
             banners = root.getJSONArray("banners").map { ApiBanner(it.optString("title"), it.optString("sub"), it.optString("tone")) },
+            heroRecs = (root.optJSONArray("heroRecs") ?: org.json.JSONArray()).map { ApiHero(it.optString("title"), it.optString("sub"), it.optString("tone"), it.optString("cta")) },
         )
     }
 
