@@ -29,7 +29,7 @@
 | # | 问题 | 决定 |
 |---|---|---|
 | Q9 | 副驾 / 后排乘客无法识别身份 | Demo 统一按驾驶员降级（PRD US-30）；阶段二再议 |
-| Q13 | **`apps/admin` 未独立建**（ADR-0010 定的独立后台前端）：现为后端内嵌 vanilla JS SPA（`admin-spa.ts`），可用但不可单测/难维护 | Demo 阶段**接受内嵌 SPA**，ADR-0010 的独立 `apps/admin` 推迟到需要独立部署/前端测试时再抽离；届时复用现有 API + design token |
+| ~~Q13~~ | 🟢 **基本解决（2026-06-03）· `apps/admin` 独立工程已落地**：建 Vite + React + TS 独立应用（ADR-0010），复用 `/api/v1/admin/*` + design token；登录 + 资源浏览（分→元/图/布尔/列表 类型化展示），`vite build` + `tsc` 绿、产物 serve 200、纳入 turbo/CI。**与内嵌 SPA 的全量 CRUD/表单/上传 对齐为增量迁移**（内嵌 SPA 仍为当前功能最全） | 独立 React 应用 + 同一后端 | 结构缺口已补，功能逐步迁 | 增量补 CRUD 表单 |
 | ~~Q14~~ | ✅ **基本解决（2026-06-03）· Android 测试入库**：本机 Android SDK 实际可用（之前误判）。已加 JVM 单测（`LogicUnitTest`：fmtPrice/Catalog.byScene/byId，4 例，`testDebugUnitTest` 绿）+ Compose UI 仪器测试（`PrimaryButtonTest`：渲染+点击，`connectedDebugAndroidTest` 在 emulator 通过）。修了缺失的 `testInstrumentationRunner`（原致仪器测试跑 0 个）。CI 加 `android-unit` job 跑单测；仪器测试需 emulator（CI 暂不跑） | SDK 在 `~/Library/Android/sdk`，JDK 用 AS JBR | 单测进 CI；仪器测试本地/emulator 跑 | — |
 | ~~Q15~~ | ✅ **已解决（2026-06-03）· analytics 接真实埋点**：新增 `POST /api/v1/events`（pageview/driving-switch + visitorId 去重 uv），看板 pv/uv/drivingSwitches 在种子基线上真实累加并持久化（SQLite）。change `add-analytics-events` archive，spec 已更新，3 测试 | 种子基线 + 真实累加 | 已接埋点 | — |
 

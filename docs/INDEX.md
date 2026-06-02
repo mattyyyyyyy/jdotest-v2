@@ -44,7 +44,7 @@
 | **`docs/INDEX.md`** | **全员 append-only** | 任何 agent 都可在 Workstreams / Activity 加行，不可改/删别人的 |
 | **`CLAUDE.md`** | **全员协商** | 改公约前必须在 Active Workstreams 登记并征询其它在线 agent |
 | `apps/h5/**` `services/api/**` `packages/**` | 实施 agent | 待落地，按 ADR-0006 monorepo 结构 |
-| `apps/admin/**` | admin 实施 agent | **后台管理前端**（桌面 Web，per ADR-0010）· 待落地 |
+| `apps/admin/**` | admin 实施 agent | **后台管理前端**（独立 Vite+React，per ADR-0010）· **已落地骨架**（2026-06-03：登录+资源浏览，复用 API+token，vite build 绿）；全量 CRUD 对齐内嵌 SPA 为增量 |
 | `apps/android-ivi/**` | 原生实施 agent | **消费端原生安卓（Compose）** per ADR-0013 · 已落地设计 token 主题（首切片）；屏幕待迁移。⚠️ 需 Android Studio 构建（沙箱无 SDK）|
 | `services/api/**/admin*` `/api/v1/admin/*` | admin 实施 agent | 后台后端命名空间，复用同一 monolith |
 | `openspec/specs/**` | 全员（只读）| **不直接编辑**，改 spec 走 change → archive |

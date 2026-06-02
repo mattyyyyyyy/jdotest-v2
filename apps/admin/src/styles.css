@@ -1,0 +1,41 @@
+/* 复用 design-system 的 token 子集（与 mockups/jdo-pencil-v3/styles/tokens.css 同源，ADR-0012）。 */
+:root {
+  --bg-0: #0a0b0e;
+  --bg-1: #11141a;
+  --bg-2: #181c24;
+  --bg-3: #21262d;
+  --border: rgba(255, 255, 255, 0.1);
+  --text-1: #f1f5f9;
+  --text-2: #94a3b8;
+  --text-3: #64748b;
+  --mint: #5eead4;
+  --accent: #38bdf8;
+  --error: #f87171;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: 'Noto Sans SC', system-ui, sans-serif;
+  background: var(--bg-0);
+  color: var(--text-1);
+}
+.shell { display: flex; min-height: 100vh; }
+.side { width: 220px; background: var(--bg-1); border-right: 1px solid var(--border); padding: 16px; }
+.side h1 { font-size: 18px; margin: 8px 12px 20px; }
+.side button { display: block; width: 100%; text-align: left; padding: 10px 12px; margin: 2px 0; background: transparent; color: var(--text-2); border: 0; border-radius: 8px; cursor: pointer; font-size: 14px; }
+.side button.active, .side button:hover { background: var(--bg-3); color: var(--text-1); }
+.main { flex: 1; padding: 24px 28px; overflow: auto; }
+.topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.topbar .role { margin-left: auto; color: var(--text-3); font-size: 13px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+th { color: var(--text-3); font-weight: 500; }
+td { color: var(--text-1); }
+td img { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; background: var(--bg-2); }
+.login { max-width: 360px; margin: 12vh auto; background: var(--bg-1); border: 1px solid var(--border); border-radius: 16px; padding: 32px; }
+.login h1 { margin: 0 0 6px; font-size: 22px; }
+.login p { margin: 0 0 20px; color: var(--text-3); font-size: 13px; }
+.login input { width: 100%; padding: 12px; margin: 6px 0; background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; color: var(--text-1); font-size: 14px; }
+.btn { width: 100%; padding: 12px; margin-top: 12px; background: var(--mint); color: #03171f; border: 0; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.err { color: var(--error); font-size: 13px; margin-top: 10px; }
+.muted { color: var(--text-3); font-size: 13px; }

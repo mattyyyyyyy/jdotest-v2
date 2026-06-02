@@ -19,7 +19,7 @@
 | `packages/api-contracts` | ✅ OpenAPI 契约 + 漂移守卫测试（2026-06-02）|
 | 后台管理站 | ✅ `services/api/src/admin-spa.ts` 内嵌站点 + 前后台连通（`7a5b41c`→`3c29141`）|
 | `apps/android-ivi`（消费端原生安卓前端）| ✅ 21 屏 Compose 已落地（ADR-0013）· ⚠️ 构建/instrumented 测试需 Android SDK（沙箱无）|
-| `apps/admin`（独立后台前端）| ⏸ **暂不建**（现内嵌 SPA 可用）；ADR-0010「独立 apps/admin」推迟，见 open-questions Q13 |
+| `apps/admin`（独立后台前端）| 🟢 **已落地骨架**（2026-06-03，Vite+React+TS，登录+资源浏览，复用 API+token，vite build 绿，进 turbo/CI）；全量 CRUD 对齐内嵌 SPA 为增量。见 open-questions Q13 |
 | 数据持久化 | 🟢 JSON 文件快照（ADR-0014，重启不丢，4 测试）；🔴 生产 Prisma + PG（ADR-0003）待接 |
 | admin RBAC + 审计 | ✅ 已实施（`admin-auth.ts`，apply+archive，38 测试）·（旧表误标未实施，已更正）|
 | CI / docker-compose | ✅ `.github/workflows/ci.yml` + `infra/docker-compose.yml`（2026-06-02）|
