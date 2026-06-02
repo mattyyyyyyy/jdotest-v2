@@ -16,8 +16,7 @@
 
 | Agent | 工作范围 | 起始 | 涉及文件 | 状态 |
 |---|---|---|---|---|
-| claude-harness-reconcile | 消费端运行形态改原生安卓（Compose，普通安卓车机/平板）：落 ADR-0013（supersede H5 锁定结论）+ 移植 design tokens 保证设计 1:1 | 2026-06-02 | `docs/decisions/ADR-0013-*.md`, `docs/INDEX.md` | 🔵 in-progress |
-| claude-harness-reconcile | （暂停·未提交）收 3 个 admin 骨架 change + admin-order 状态机端点 + admin-spa 鉴权修复 + launch.json | 2026-06-01 | `services/api/src/**`, `.claude/launch.json`, `openspec/changes/add-admin-*/**` | 🟡 paused |
+| _暂无登记_ | | | | |
 
 ## 🗺 Ownership Zones（目录分工建议）
 
@@ -56,6 +55,7 @@
 
 | 日期 | Agent | 完成项 | 关键 commit |
 |---|---|---|---|
+| 2026-06-02 | claude-harness-reconcile | **消费端原生安卓落地（ADR-0013）**：本机装 Node20/Gradle/Android SDK + emulator 真机验证；后端经 cloudflared 公网隧道；先纯 Compose 复刻购物链路(10 屏)+真实后端互通(read/write 实测)，因毛玻璃/图片/banner 难逐像素还原 → **改方案 A：WebView 直载 V3 网页**（界面 100% 复用 web、21 屏全功能、连同一后端）。配套 admin 订单状态机端点 + 后台 SPA 鉴权修复 | `33aea9a` `914fd32` `e6af031` `fac2ba8` |
 | 2026-06-01 | claude-harness-reconcile | **实现车主端登录（车机扫码）+ 第二个 OpenSpec 生命周期**：propose→apply→archive `add-qr-login`——`consumer-auth.ts`（车主 token typ=user 独立 secret + 扫码会话 TTL/banned）+ 5 路由（qr-code/qr-confirm/qr-status/mock-login/me）+ 9 测试（含车主↔admin 双向越权隔离）；archive 生成 `specs/auth-qr/`。关 Q12 | `f591cee` + archive |
 | 2026-06-01 | claude-harness-reconcile | **实现后台登录功能 + 跑通首个 OpenSpec 生命周期**：apply `add-admin-auth`（admin 账号密码登录 + RBAC 4 角色权限点守卫 + 操作审计 + 5/min 限流；scrypt/HS256/内存 store 适配）→ 38 route 测试（401 越权 / 403 客服改价 / 审计落库 / 429 / refresh）→ 修 5 处 typecheck 严格错 → `openspec archive` 合并 delta 到 `specs/admin-auth/`（propose→apply→archive 首次走完，解 Q10 核心）。更正误诊的 Q1 | `7409a35` + archive |
 | 2026-06-01 | claude-harness-reconcile | **Harness 强制层 + 文档唯一真相整改**（用 ai-project-bootstrapper skill 反向优化 v2）：① 落地 `.claude` 5 个 hook（开工三件套 / 密钥扫描 / commit 自报家门 / 防孤儿 / openspec 校验，`exit 2` 实测通过，会话中真实拦截过 Write）② INDEX 同步（孤儿 6→0、回填真实 commit、补登 admin/demo 两条遗漏）③ 拆 PRD §Implementation Decisions → architecture/backend-spec/api-contracts（566→352 行，留指针）④ 补 constraints / open-questions / task-plan ⑤ 补 Observability 层（.env.example / PR 模板 / CONTRIBUTING / CODEOWNERS）⑥ P2：核实 ADR-0009 七类 sync 一致（关 Q4）+ 如实登记 OpenSpec 生命周期阻塞（Q10）；反向修 bootstrapper-skill 3 项（hook schema 错 / docs｜openspec 双轨 / dogfooding 诚实化，skill repo `ba58c69`）⑦ 本机装 Node20 + openspec CLI（`~/.local/node20`）跑通 `validate --all --strict`（3/3 绿）；真跑又抓出 hook 与文档的 `validate --strict` **空跑 bug**（缺 `--all`），修 hook（+PATH 自定位）+ CLAUDE/constraints + skill（`bf78049`）；登记 Q11（_templates 副本待重新 vendoring）| `9aa6772` `bc3ef7e` `8443224` `949d6ef` `0c0279a` `+本次` |

@@ -6,6 +6,10 @@
 - 依赖：ADR-0007（design tokens / 设计系统）· ADR-0004（车速数据源 JS Bridge → 改为原生 Car API）
 - Supersedes：CLAUDE.md §锁定结论「消费端运行形态 = 车机内嵌 H5 / WebView」；并改写 ADR-0001（React+Vite 仅适用于 H5）在消费端的适用范围
 
+> **🔄 修订（2026-06-02，实施中变更）**：实现路线由「纯原生 Compose」改为「**原生壳 + WebView 直载 V3 网页**」（即下文替代方案 **A**）。
+> 原因：手写 Compose 难以逐像素还原 web 的毛玻璃(backdrop-filter)、图片尺寸、banner 布局等 CSS 效果（实测多处对不上）。WebView 直接复用 web 代码 → 界面 100% 一致、21 屏全功能、连同一后端、工作量极小。
+> 平台决定（普通安卓平板）不变。`apps/android-ivi`：MainActivity 用 WebView 加载后端 `/app` 的 V3 网页（`useWideViewPort=false` 让网页 autofit 正确适配）。已写的 Compose 屏暂留仓库未引用（待清理或保留为"纯原生"分支备选）。
+
 ## 背景 Context
 
 消费端原定为车机内嵌 H5 / WebView（锁定结论 + ADR-0001），现有 21 屏以 React 原型落在 `mockups/jdo-pencil-v3`。用户决定把消费端**改为原生安卓应用**，运行在**普通安卓车机 / 平板**（非 Android Automotive OS），并要求**界面设计与现状完全一致**。
