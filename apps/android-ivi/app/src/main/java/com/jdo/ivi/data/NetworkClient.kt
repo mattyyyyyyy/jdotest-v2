@@ -16,6 +16,8 @@ data class ApiBanner(val title: String, val sub: String, val tone: String)
 data class Bootstrap(val categories: List<ApiCategory>, val products: List<ApiProduct>, val banners: List<ApiBanner>)
 /** 购物车行（price 单位「分」）。 */
 data class CartItem(val id: String, val productId: String, val title: String, val img: String, val priceFen: Int, val qty: Int, val selected: Boolean, val spec: String)
+/** 订单（totalAmount 单位「分」）。 */
+data class ApiOrder(val id: String, val status: String, val totalFen: Int, val itemTitles: List<String>, val channel: String, val createdAt: String)
 
 /**
  * 与 web 后台同一后端（services/api，经 cloudflared 公网隧道）。
@@ -69,6 +71,14 @@ object NetworkClient {
                 selected = it.optBoolean("selected"), spec = it.optString("spec"),
             )
         }
+
+    fun fetchOrders(): List<ApiOrder> = JSONObject(get("/orders")).getJSONArray("items").map {
+        ApiOrder(
+            id = it.optString("id"), status = it.optString("status"), totalFen = it.optInt("totalAmount"),
+            itemTitles = (it.optJSONArray("itemTitles") ?: org.json.JSONArray()).let { a -> (0 until a.length()).map { i -> a.optString(i) } },
+            channel = it.optString("channel"), createdAt = it.optString("createdAt"),
+        )
+    }
 
     fun getCart(): List<CartItem> = cartOf(get("/cart"))
     fun addCartItem(productId: String, qty: Int, spec: String): Boolean = try {

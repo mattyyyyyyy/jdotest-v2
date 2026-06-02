@@ -10,7 +10,11 @@ import com.jdo.ivi.ui.screens.MallCart
 import com.jdo.ivi.ui.screens.MallCategory
 import com.jdo.ivi.ui.screens.MallCheckout
 import com.jdo.ivi.ui.screens.MallDetail
+import com.jdo.ivi.ui.screens.MallLogin
+import com.jdo.ivi.ui.screens.MallOrders
+import com.jdo.ivi.ui.screens.MallPay
 import com.jdo.ivi.ui.screens.MallScreen
+import com.jdo.ivi.ui.screens.MallSearch
 import com.jdo.ivi.ui.screens.Placeholder
 import com.jdo.ivi.ui.theme.JdoTheme
 
@@ -31,6 +35,10 @@ class MainActivity : ComponentActivity() {
                     "mall-detail" -> MallDetail(productId = arg ?: "", onNav = nav, onBack = back)
                     "mall-cart" -> MallCart(onNav = nav, onBack = back)
                     "mall-checkout" -> MallCheckout(onNav = nav, onBack = back)
+                    "mall-pay" -> MallPay(onNav = nav, onBack = back)
+                    "mall-orders" -> MallOrders(onNav = nav, onBack = back)
+                    "mall-search" -> MallSearch(onNav = nav, onBack = back)
+                    "mall-login" -> MallLogin(onNav = nav, onBack = back)
                     else -> Placeholder(route = route, onBack = back, onHome = { nav("mall-home", null) })
                 }
             }
