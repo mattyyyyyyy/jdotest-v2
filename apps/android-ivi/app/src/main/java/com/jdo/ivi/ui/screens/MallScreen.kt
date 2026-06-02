@@ -1,7 +1,6 @@
 package com.jdo.ivi.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,20 +31,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jdo.ivi.data.ApiBanner
-import com.jdo.ivi.data.ApiHero
 import com.jdo.ivi.data.ApiCategory
+import com.jdo.ivi.data.ApiHero
 import com.jdo.ivi.data.ApiProduct
 import com.jdo.ivi.data.Bootstrap
 import com.jdo.ivi.data.NetworkClient
 import com.jdo.ivi.ui.components.Chip
 import com.jdo.ivi.ui.components.ProductImage
+import com.jdo.ivi.ui.components.WallpaperBackdrop
+import com.jdo.ivi.ui.components.glass
 import com.jdo.ivi.ui.components.yuan
 import com.jdo.ivi.ui.theme.JdoColors
 import com.jdo.ivi.ui.theme.JdoDimens
+import dev.chrisbanes.haze.HazeState
 import kotlin.concurrent.thread
 
 private fun catIcon(id: String) = when (id) {
@@ -61,6 +64,7 @@ private fun bannerColors(tone: String): List<Color> = when (tone) {
 
 @Composable
 fun MallScreen(onNav: (String, String?) -> Unit, onBack: () -> Unit) {
+    val haze = remember { HazeState() }
     var data by remember { mutableStateOf<Bootstrap?>(null) }
     var selectedCat by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
@@ -84,61 +88,60 @@ fun MallScreen(onNav: (String, String?) -> Unit, onBack: () -> Unit) {
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(JdoColors.Bg0)) {
-        // 顶栏
-        Row(
-            modifier = Modifier.fillMaxWidth().background(JdoColors.Bg1).padding(horizontal = JdoDimens.Space5, vertical = JdoDimens.Space3),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(modifier = Modifier.width(280.dp).clip(RoundedCornerShape(JdoDimens.RadiusPill)).background(JdoColors.Bg2).border(1.dp, JdoColors.BorderSubtle, RoundedCornerShape(JdoDimens.RadiusPill)).clickable { onNav("mall-category", null) }.padding(horizontal = JdoDimens.Space4, vertical = 9.dp)) {
-                Text("🔍  请在此输入 · 试试说\"我要买玻璃水\"", color = JdoColors.TextMuted, fontSize = 15.sp, maxLines = 1)
+    // 商城也铺车型壁纸（调暗）→ 卡片玻璃透出壁纸，还原 web 观感
+    WallpaperBackdrop(haze, dim = 0.5f) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // 顶栏（玻璃）
+            Row(
+                modifier = Modifier.fillMaxWidth().glass(haze, RectangleShape).padding(horizontal = JdoDimens.Space5, vertical = JdoDimens.Space3),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(modifier = Modifier.width(280.dp).glass(haze, RoundedCornerShape(JdoDimens.RadiusPill)).clickable { onNav("mall-category", null) }.padding(horizontal = JdoDimens.Space4, vertical = 9.dp)) {
+                    Text("🔍  请在此输入 · 试试说\"我要买玻璃水\"", color = JdoColors.TextMuted, fontSize = 15.sp, maxLines = 1)
+                }
+                Spacer(Modifier.width(JdoDimens.Space5))
+                Text("商城", color = JdoColors.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(JdoDimens.Space4))
+                Text("我的", color = JdoColors.TextMuted, fontSize = 20.sp, modifier = Modifier.clickable { onNav("mall-profile", null) })
+                Spacer(Modifier.weight(1f))
+                Chip("⟳ 刷新", JdoColors.Bg2, JdoColors.Accent) { reloadKey++ }
+                Spacer(Modifier.width(JdoDimens.Space3))
+                Chip("🛒 $cart", JdoColors.Bg2, JdoColors.TextPrimary) { onNav("mall-cart", null) }
+                Spacer(Modifier.width(JdoDimens.Space3))
+                Chip("‹ IVI", JdoColors.Bg2, JdoColors.TextPrimary) { onBack() }
             }
-            Spacer(Modifier.width(JdoDimens.Space5))
-            Text("商城", color = JdoColors.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(JdoDimens.Space4))
-            Text("我的", color = JdoColors.TextMuted, fontSize = 20.sp, modifier = Modifier.clickable { onNav("mall-profile", null) })
-            Spacer(Modifier.weight(1f))
-            Chip("⟳ 刷新", JdoColors.Bg2, JdoColors.Accent) { reloadKey++ }
-            Spacer(Modifier.width(JdoDimens.Space3))
-            Chip("🛒 $cart", JdoColors.Bg2, JdoColors.TextPrimary) { onNav("mall-cart", null) }
-            Spacer(Modifier.width(JdoDimens.Space3))
-            Chip("‹ IVI", JdoColors.Bg2, JdoColors.TextPrimary) { onBack() }
-        }
-        toast?.let {
-            Text(it, color = JdoColors.Success, fontSize = 15.sp, modifier = Modifier.fillMaxWidth().background(JdoColors.SuccessBg).padding(horizontal = JdoDimens.Space5, vertical = 8.dp))
-        }
-        val d = data
-        when {
-            loading -> Center("加载中… 正在从后端拉数据")
-            error != null -> Center(error!!)
-            d == null -> Center("暂无数据")
-            else -> Row(modifier = Modifier.fillMaxSize()) {
-                Rail(d.categories, selectedCat) { selectedCat = it }
-                Column(modifier = Modifier.fillMaxSize().padding(JdoDimens.Space4)) {
-                    HeroArea(d.banners, d.heroRecs)
-                    Spacer(Modifier.height(JdoDimens.Space4))
-                    val name = d.categories.find { it.id == selectedCat }?.name ?: "推荐"
-                    Text("$name · 为你精选", color = JdoColors.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.height(JdoDimens.Space3))
-                    val list = d.products.filter { it.cat == selectedCat }
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        horizontalArrangement = Arrangement.spacedBy(JdoDimens.Space4),
-                        verticalArrangement = Arrangement.spacedBy(JdoDimens.Space4),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        items(list) { p ->
-                            ProductCard(
-                                p = p,
-                                onOpen = { onNav("mall-detail", p.id) },
-                                onAdd = {
+            toast?.let {
+                Text(it, color = JdoColors.Success, fontSize = 15.sp, modifier = Modifier.fillMaxWidth().background(JdoColors.SuccessBg).padding(horizontal = JdoDimens.Space5, vertical = 8.dp))
+            }
+            val d = data
+            when {
+                loading -> Center("加载中… 正在从后端拉数据")
+                error != null -> Center(error!!)
+                d == null -> Center("暂无数据")
+                else -> Row(modifier = Modifier.fillMaxSize()) {
+                    Rail(haze, d.categories, selectedCat) { selectedCat = it }
+                    Column(modifier = Modifier.fillMaxSize().padding(JdoDimens.Space4)) {
+                        HeroArea(d.banners, d.heroRecs)
+                        Spacer(Modifier.height(JdoDimens.Space4))
+                        val name = d.categories.find { it.id == selectedCat }?.name ?: "推荐"
+                        Text("$name · 为你精选", color = JdoColors.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(JdoDimens.Space3))
+                        val list = d.products.filter { it.cat == selectedCat }
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            horizontalArrangement = Arrangement.spacedBy(JdoDimens.Space4),
+                            verticalArrangement = Arrangement.spacedBy(JdoDimens.Space4),
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            items(list) { p ->
+                                ProductCard(haze, p, onOpen = { onNav("mall-detail", p.id) }, onAdd = {
                                     thread {
                                         NetworkClient.addCartItem(p.id, 1, "默认规格")
                                         cart = NetworkClient.getCart().sumOf { it.qty }
                                         toast = "已加入购物车：${p.title}"
                                     }
-                                },
-                            )
+                                })
+                            }
                         }
                     }
                 }
@@ -148,8 +151,8 @@ fun MallScreen(onNav: (String, String?) -> Unit, onBack: () -> Unit) {
 }
 
 @Composable
-private fun Rail(cats: List<ApiCategory>, selected: String, onSelect: (String) -> Unit) {
-    Column(modifier = Modifier.width(160.dp).fillMaxHeight().background(JdoColors.Bg1).padding(vertical = JdoDimens.Space4, horizontal = JdoDimens.Space3)) {
+private fun Rail(haze: HazeState, cats: List<ApiCategory>, selected: String, onSelect: (String) -> Unit) {
+    Column(modifier = Modifier.width(160.dp).fillMaxHeight().glass(haze, RectangleShape).padding(vertical = JdoDimens.Space4, horizontal = JdoDimens.Space3)) {
         cats.forEach { c ->
             val active = c.id == selected
             Row(
@@ -169,12 +172,8 @@ private fun Rail(cats: List<ApiCategory>, selected: String, onSelect: (String) -
 @Composable
 private fun HeroArea(banners: List<ApiBanner>, heroRecs: List<ApiHero>) {
     Row(modifier = Modifier.fillMaxWidth().height(140.dp), horizontalArrangement = Arrangement.spacedBy(JdoDimens.Space4)) {
-        // 左：大 banner
         val b = banners.firstOrNull()
-        Box(
-            modifier = Modifier.weight(1.5f).fillMaxHeight().clip(RoundedCornerShape(JdoDimens.RadiusLg))
-                .background(Brush.linearGradient(bannerColors(b?.tone ?: "blue"))).padding(JdoDimens.Space5),
-        ) {
+        Box(modifier = Modifier.weight(1.5f).fillMaxHeight().clip(RoundedCornerShape(JdoDimens.RadiusLg)).background(Brush.linearGradient(bannerColors(b?.tone ?: "blue"))).padding(JdoDimens.Space5)) {
             Column {
                 Text("充值返现 · 限时", color = JdoColors.Mint, fontSize = 13.sp)
                 Spacer(Modifier.height(6.dp))
@@ -186,14 +185,9 @@ private fun HeroArea(banners: List<ApiBanner>, heroRecs: List<ApiHero>) {
                 Text("去充值 ›", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             }
         }
-        // 右：2 个时空推荐 heroRec 堆叠
         Column(modifier = Modifier.weight(1.6f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(JdoDimens.Space3)) {
             heroRecs.take(2).forEach { h ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(JdoDimens.RadiusLg))
-                        .background(Brush.linearGradient(bannerColors(h.tone))).padding(JdoDimens.Space4),
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(JdoDimens.RadiusLg)).background(Brush.linearGradient(bannerColors(h.tone))).padding(JdoDimens.Space4)) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(h.title, color = JdoColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                         Text(h.sub, color = JdoColors.TextMuted, fontSize = 12.sp, maxLines = 1)
@@ -209,10 +203,9 @@ private fun HeroArea(banners: List<ApiBanner>, heroRecs: List<ApiHero>) {
 }
 
 @Composable
-private fun ProductCard(p: ApiProduct, onOpen: () -> Unit, onAdd: () -> Unit) {
+private fun ProductCard(haze: HazeState, p: ApiProduct, onOpen: () -> Unit, onAdd: () -> Unit) {
     Column(
-        modifier = Modifier.clip(RoundedCornerShape(JdoDimens.RadiusLg)).background(JdoColors.Bg2)
-            .border(1.dp, JdoColors.BorderSubtle, RoundedCornerShape(JdoDimens.RadiusLg)).clickable { onOpen() }.padding(JdoDimens.Space4),
+        modifier = Modifier.glass(haze, RoundedCornerShape(JdoDimens.RadiusLg)).clickable { onOpen() }.padding(JdoDimens.Space4),
     ) {
         Box(modifier = Modifier.fillMaxWidth().height(110.dp).clip(RoundedCornerShape(JdoDimens.RadiusMd))) {
             ProductImage(p.img, Modifier.fillMaxSize())
@@ -221,12 +214,9 @@ private fun ProductCard(p: ApiProduct, onOpen: () -> Unit, onAdd: () -> Unit) {
                     Text(p.tag, color = JdoColors.TextInverse, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
-            // 右下「+」圆钮（仿 web quick-add）
-            Box(
-                modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp).size(40.dp).clip(RoundedCornerShape(20.dp))
-                    .background(JdoColors.Brand500).clickable { onAdd() },
-                contentAlignment = Alignment.Center,
-            ) { Text("+", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold) }
+            Box(modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp).size(40.dp).clip(RoundedCornerShape(20.dp)).background(JdoColors.Brand500).clickable { onAdd() }, contentAlignment = Alignment.Center) {
+                Text("+", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            }
         }
         Spacer(Modifier.height(JdoDimens.Space3))
         Text(p.title, color = JdoColors.TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 2)
