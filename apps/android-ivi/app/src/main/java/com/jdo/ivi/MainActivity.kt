@@ -2,46 +2,28 @@ package com.jdo.ivi
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.mutableStateListOf
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import com.jdo.ivi.ui.screens.IviHomeScreen
-import com.jdo.ivi.ui.screens.MallCart
-import com.jdo.ivi.ui.screens.MallCategory
-import com.jdo.ivi.ui.screens.MallCheckout
-import com.jdo.ivi.ui.screens.MallDetail
-import com.jdo.ivi.ui.screens.MallLogin
-import com.jdo.ivi.ui.screens.MallOrders
-import com.jdo.ivi.ui.screens.MallPay
-import com.jdo.ivi.ui.screens.MallScreen
-import com.jdo.ivi.ui.screens.MallSearch
-import com.jdo.ivi.ui.screens.Placeholder
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import com.jdo.ivi.ui.nav.JdoNavHost
 import com.jdo.ivi.ui.theme.JdoTheme
 
-/** 消费端 = 纯原生 Compose（ADR-0013 主线）。路由栈分发到各原生屏。 */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
-            JdoTheme {
-                val stack = remember { mutableStateListOf<Pair<String, String?>>("ivi" to null) }
-                val nav: (String, String?) -> Unit = { r, a -> stack.add(r to a) }
-                val back: () -> Unit = { if (stack.size > 1) stack.removeAt(stack.lastIndex) }
-                BackHandler(enabled = stack.size > 1) { back() }
-                val (route, arg) = stack.last()
-                when (route) {
-                    "ivi" -> IviHomeScreen(onOpenMall = { nav("mall-home", null) })
-                    "mall-home" -> MallScreen(onNav = nav, onBack = back)
-                    "mall-category" -> MallCategory(onNav = nav, onBack = back)
-                    "mall-detail" -> MallDetail(productId = arg ?: "", onNav = nav, onBack = back)
-                    "mall-cart" -> MallCart(onNav = nav, onBack = back)
-                    "mall-checkout" -> MallCheckout(onNav = nav, onBack = back)
-                    "mall-pay" -> MallPay(onNav = nav, onBack = back)
-                    "mall-orders" -> MallOrders(onNav = nav, onBack = back)
-                    "mall-search" -> MallSearch(onNav = nav, onBack = back)
-                    "mall-login" -> MallLogin(onNav = nav, onBack = back)
-                    else -> Placeholder(route = route, onBack = back, onHome = { nav("mall-home", null) })
+            // 深色为默认（与原型一致）；可在设置页切换
+            var dark by remember { mutableStateOf(true) }
+            JdoTheme(darkTheme = dark) {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    JdoNavHost(onToggleTheme = { dark = !dark })
                 }
             }
         }

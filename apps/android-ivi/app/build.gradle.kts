@@ -16,9 +16,7 @@ android {
         versionName = "0.1"
         // 后端基址：cloudflared 公网隧道 → 本机 services/api（与 web 后台同一后端）。
         // 隧道重启地址会变，改这里重打包即可；或后续做成运行时可配置。
-        buildConfigField("String", "API_BASE", "\"https://bristol-advantage-favourites-helen.trycloudflare.com/api/v1\"")
-        // WebView 直接加载的 V3 网页（后端 /app 静态服务，经隧道）——100% 复用 web 界面
-        buildConfigField("String", "APP_URL", "\"https://bristol-advantage-favourites-helen.trycloudflare.com/app/JDO%20%E8%BD%A6%E6%9C%BA%E7%94%B5%E5%95%86.html\"")
+        buildConfigField("String", "API_BASE", "\"https://maternity-between-cathedral-muscles.trycloudflare.com/api/v1\"")
     }
 
     buildFeatures {
@@ -52,6 +50,6 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     // 网络图片（商品图 Unsplash https / data-uri），Coil 2
     implementation("io.coil-kt:coil-compose:2.7.0")
-    // 毛玻璃 backdrop blur（还原 web 的 backdrop-filter 玻璃卡）
-    implementation("dev.chrisbanes.haze:haze:1.7.2")
+    // 导航（原型用 NavHost；21 屏路由）
+    implementation("androidx.navigation:navigation-compose:2.9.0")
 }
