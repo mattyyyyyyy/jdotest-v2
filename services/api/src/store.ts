@@ -192,6 +192,10 @@ export const store = {
     const id = (data.id as string) ?? `${r.prefix}${r.counter++}`;
     let row: Row = { ...data, id };
     if (name === 'products') row = normalizeProduct(row);
+    // 统一时间口径（consistency-plan P1#4，加性）：新增补 ISO createdAt + updatedAt，不改既有值
+    const nowIso = new Date().toISOString();
+    if (row.createdAt === undefined) row.createdAt = nowIso;
+    row.updatedAt = nowIso;
     r.rows.unshift(row); // 新增置顶：后台列表/前台都最先看到
     save();
     return row;
@@ -202,6 +206,7 @@ export const store = {
     for (const [k, v] of Object.entries(patch)) {
       if (k !== 'id' && v !== undefined) row[k] = v;
     }
+    row.updatedAt = new Date().toISOString(); // 每次写盖 updatedAt（ISO）
     save();
     return row;
   },

@@ -187,3 +187,33 @@
 | category.icon | bolt 闪电 · wrench 扳手 · cookie 饼干 · luggage 行李 · car 车 · phone 电话 · sparkles 星 |
 
 > 后台 SPA 的列/表单按本字典的「中文标签」「类型」渲染：money→`¥`、bool→中文徽章、cat→分类名、enum→中文。实现见 `services/api/src/app.ts`（RESOURCE_LIST 列定义）+ `admin-spa.ts`（格式化）。
+
+---
+
+## 口径锁定（consistency-plan P1 · 安全子集，2026-06-02）
+
+> P1 的「ID / 枚举大小写 / 计量后缀」改存储格式会波及 V3 网页、Android、admin、全部测试（破坏性）。
+> 本轮采用**安全子集**：**锁定现状口径 + 显示层映射**，不改既有存储值；新增数据按下表规范。
+
+### 时间字段（P1#4 · ✅ 已落地）
+- 存储统一 **ISO 8601 字符串**。store 写操作自动盖 `updatedAt`，新增补 `createdAt`（缺失时）——见 `store.ts` create/update。
+- 既有种子的展示值（如订单 `createdAt='刚刚'/'2026-05-20'`）保留，显示层格式化为「相对时间 / 年月日」。
+
+### ID 前缀表（P1#5 · 锁定现状，新增按规范）
+| 实体 | 前缀 | 示例 | 说明 |
+|---|---|---|---|
+| products | `p`（V3 种子用 `e1`/`g1` 等业务前缀）| `e1` / `p70` | 种子沿用 V3 命名；后台新增用 `p<n>` |
+| categories | `cat` | `energy` / `cat3` | 种子用场景英文 id（ADR-0009）|
+| orders | `o-` | `o-20001` | 带连字符 |
+| users | `u-` | `u-1001` | 带连字符 |
+| coupons/reviews/pickupPoints/aftersale | `cp-`/`rv-`/`pp-`/`as-` | `cp-1` | 带连字符 |
+| addresses/favorites | `addr-`/`fav-` | `addr-1` | 带连字符 |
+
+> 现状前缀**不统一**（业务前缀 vs `<entity>-<n>`）是已知妥协；锁定于此表，新增一律按对应前缀，不回改既有 id（回改会断 V3/Android 引用）。
+
+### 枚举大小写（P1#6 · 锁定 + 中文映射）
+- 存储沿用现状：`OrderState` 大写下划线（`PAID`）、`coupon.type`/`aftersale.status` 小写（`fixed`/`pending`）。
+- **不回改存储**（改会断 order-state-machine + 测试 + 前端）；统一靠上方「枚举字典」中文映射在显示层消化。
+
+### 计量后缀（P1#7 · 显示层口径）
+- `sold` 存储为数值（V3 语义为「万」），**显示层统一**按「≥1 显示 `{n}万`，<1 显示 `{n*10000}`」格式化，避免 `k`/万 歧义。后端不变。

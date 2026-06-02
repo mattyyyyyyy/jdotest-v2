@@ -576,6 +576,14 @@ describe('admin-catalog · 商品/库存/分类', () => {
     expect(typeof created.img).toBe('string');
     expect((created.img as string).length).toBeGreaterThan(0);
   });
+
+  it('时间口径（P1#4）：新增补 ISO createdAt + updatedAt；更新盖 updatedAt', async () => {
+    const created = (await inj({ method: 'POST', url: '/api/v1/admin/products', payload: { title: '时间测试品', cat: 'gear', price: 1000 } })).json();
+    expect(created.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/); // ISO 8601
+    expect(created.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    const updated = (await inj({ method: 'PATCH', url: '/api/v1/admin/products/' + created.id, payload: { price: 2000 } })).json();
+    expect(updated.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
 });
 
 // ===== forward change 实现：消费端账号 / 履约 / 验证码登录 =====
