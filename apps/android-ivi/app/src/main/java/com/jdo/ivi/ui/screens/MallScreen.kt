@@ -23,8 +23,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Build
@@ -47,6 +49,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -80,11 +83,13 @@ private fun categoryIcon(id: String): ImageVector = when (id) {
     else -> Icons.Outlined.Bolt
 }
 
+// 鲜艳 3 段对角渐变（对齐 web mall-home-hero.css 的 hero-flash/hero-banner）
 private fun bannerColors(tone: String): List<Color> = when (tone) {
-    "blue" -> listOf(Color(0xFF1E3A5F), Color(0xFF0F2233))
-    "emerald" -> listOf(Color(0xFF14463A), Color(0xFF0F2922))
-    "amber", "orange" -> listOf(Color(0xFF5A3A12), Color(0xFF2E1E0B))
-    else -> listOf(JdoColors.Bg3, JdoColors.Bg1)
+    "blue" -> listOf(Color(0xFF4F46E5), Color(0xFF3730A3), Color(0xFF1E1B4B))
+    "emerald", "mint" -> listOf(Color(0xFF06B6D4), Color(0xFF047857), Color(0xFF064E3B))
+    "amber", "orange", "gold" -> listOf(Color(0xFFF59E0B), Color(0xFFB45309), Color(0xFF7C2D12))
+    "cyan" -> listOf(Color(0xFF06B6D4), Color(0xFF0E7490), Color(0xFF0C4A6E))
+    else -> listOf(Color(0xFF3730A3), Color(0xFF1E1B4B), Color(0xFF0F1722))
 }
 
 @Composable
@@ -207,33 +212,42 @@ private fun Rail(haze: HazeState, cats: List<ApiCategory>, selected: String, onS
 
 @Composable
 private fun HeroArea(banners: List<ApiBanner>, heroRecs: List<ApiHero>) {
-    Row(modifier = Modifier.fillMaxWidth().height(140.dp), horizontalArrangement = Arrangement.spacedBy(JdoDimens.Space4)) {
+    Row(modifier = Modifier.fillMaxWidth().height(168.dp), horizontalArrangement = Arrangement.spacedBy(JdoDimens.Space4)) {
+        // 左：大 banner（鲜艳渐变 + 图片 + 高光）
         val b = banners.firstOrNull()
         Box(modifier = Modifier.weight(1.5f).fillMaxHeight().clip(RoundedCornerShape(JdoDimens.RadiusLg)).background(Brush.linearGradient(bannerColors(b?.tone ?: "blue")))) {
             if (b != null && b.img.isNotEmpty()) ProductImage(b.img, Modifier.fillMaxSize())
-            // 横向渐变：左实右透，图片在右侧露出、左侧文字可读
-            Box(modifier = Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xF20A0B0E), Color(0xCC0A0B0E), Color(0x330A0B0E)))))
+            // 左实右透（文字可读、图片右露）
+            Box(modifier = Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xF20A0B0E), Color(0xA60A0B0E), Color(0x000A0B0E)))))
+            // 右上高光
+            Box(modifier = Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Color(0x40FFFFFF), Color.Transparent), center = Offset(1400f, 0f), radius = 820f)))
             Column(modifier = Modifier.fillMaxSize().padding(JdoDimens.Space5)) {
-                Text("充值返现 · 限时", color = JdoColors.Mint, fontSize = 13.sp)
+                Text("充值返现 · 限时", color = JdoColors.Mint, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
-                Text(b?.title ?: "车主权益日", color = JdoColors.TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text(b?.title ?: "车主权益日", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
-                Text(b?.sub ?: "", color = JdoColors.TextSecondary, fontSize = 14.sp, maxLines = 1)
+                Text(b?.sub ?: "", color = Color(0xFFCBD5E1), fontSize = 14.sp, maxLines = 1)
             }
-            Box(modifier = Modifier.align(Alignment.BottomEnd).padding(JdoDimens.Space4).clip(RoundedCornerShape(JdoDimens.RadiusPill)).background(JdoColors.Brand500).padding(horizontal = JdoDimens.Space4, vertical = 8.dp)) {
-                Text("去充值 ›", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Box(modifier = Modifier.align(Alignment.BottomEnd).padding(JdoDimens.Space4).clip(RoundedCornerShape(JdoDimens.RadiusPill)).background(Color.White).padding(horizontal = JdoDimens.Space4, vertical = 8.dp)) {
+                Text("去充值 ›", color = Color(0xFF1E1B4B), fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
         }
+        // 右：2 个时空推荐（Column 布局，标题/副标/CTA 各行，CTA 完整不截断）
         Column(modifier = Modifier.weight(1.6f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(JdoDimens.Space3)) {
             heroRecs.take(2).forEach { h ->
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(JdoDimens.RadiusLg)).background(Brush.linearGradient(bannerColors(h.tone))).padding(JdoDimens.Space4)) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(h.title, color = JdoColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        Text(h.sub, color = JdoColors.TextMuted, fontSize = 12.sp, maxLines = 1)
-                    }
-                    Spacer(Modifier.width(JdoDimens.Space2))
-                    Box(modifier = Modifier.clip(RoundedCornerShape(JdoDimens.RadiusPill)).background(JdoColors.Bg0.copy(alpha = 0.4f)).padding(horizontal = JdoDimens.Space3, vertical = 6.dp)) {
-                        Text(h.cta, color = JdoColors.Mint, fontSize = 12.sp, maxLines = 1)
+                Box(modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(JdoDimens.RadiusLg)).background(Brush.linearGradient(bannerColors(h.tone)))) {
+                    Box(modifier = Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Color(0x26FFFFFF), Color.Transparent), center = Offset(1000f, 0f), radius = 560f)))
+                    Column(modifier = Modifier.fillMaxSize().padding(horizontal = JdoDimens.Space4, vertical = JdoDimens.Space3)) {
+                        Text(h.title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        Spacer(Modifier.height(2.dp))
+                        Text(h.sub, color = Color(0xFFCBD5E1), fontSize = 11.sp, maxLines = 1)
+                        Spacer(Modifier.weight(1f))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Spacer(Modifier.weight(1f))
+                            Box(modifier = Modifier.clip(RoundedCornerShape(JdoDimens.RadiusPill)).background(Color(0x33FFFFFF)).padding(horizontal = 12.dp, vertical = 5.dp)) {
+                                Text(h.cta, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                            }
+                        }
                     }
                 }
             }
@@ -253,8 +267,8 @@ private fun ProductCard(haze: HazeState, p: ApiProduct, onOpen: () -> Unit, onAd
                     Text(p.tag, color = JdoColors.TextInverse, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
-            Box(modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp).size(40.dp).clip(RoundedCornerShape(20.dp)).background(JdoColors.Brand500).clickable { onAdd() }, contentAlignment = Alignment.Center) {
-                Text("+", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Box(modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp).size(38.dp).clip(CircleShape).background(JdoColors.Brand500).clickable { onAdd() }, contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.Add, contentDescription = "加入购物车", tint = Color.White, modifier = Modifier.size(22.dp))
             }
         }
         Spacer(Modifier.height(JdoDimens.Space3))
