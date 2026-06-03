@@ -39,7 +39,11 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jdo.ivi.data.Catalog
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import com.jdo.ivi.data.Banner
 import com.jdo.ivi.data.HeroRec
+import com.jdo.ivi.data.imageModel
 import com.jdo.ivi.ui.components.*
 import com.jdo.ivi.ui.nav.Routes
 import com.jdo.ivi.ui.theme.JdoTheme
@@ -79,10 +83,13 @@ fun MallHomeScreen(nav: (String) -> Unit) {
     }
     val density = LocalDensity.current
 
-    // 时空推荐：1 大卡（轮播全部）+ 2 小卡（各轮播 2 张）——对照 V3「1 官方 + 2 场景」3 块并排
-    val official = Catalog.heroRecs
-    val recsTop = official.take(2)
-    val recsBottom = official.drop(2).take(2)
+    // 顶部 3 块并排（对照 V3「左 1 官方广告 banner + 右 2 场景推荐」）：
+    //   大卡 = 后台「Banner 横幅」(有图广告)；2 小卡 = 后台「推荐位」(场景卡)
+    val banners = Catalog.banners
+    val heros = Catalog.heroRecs
+    val recsTop = heros.take(2)
+    val recsBottom = heros.drop(2).take(2)
+    val hasTopArea = banners.isNotEmpty() || heros.isNotEmpty()
 
     MallBg {
         CompositionLocalProvider(LocalDensity provides Density(density.density * MALL_HOME_UI_SCALE, density.fontScale)) {
@@ -90,8 +97,8 @@ fun MallHomeScreen(nav: (String) -> Unit) {
                 StatusBar()
                 MallTopBar(nav)
 
-                // 时空推荐 — 1 大 + 2 小，3 块并排（对照 V3：左 1 官方 + 右 2 场景），上滑收起
-                if (official.isNotEmpty()) {
+                // 顶部 — 1 大（官方广告 banner）+ 2 小（场景推荐），3 块并排，上滑收起
+                if (hasTopArea) {
                     Row(
                         Modifier.fillMaxWidth().height(bannerHeight)
                             .graphicsLayer {
@@ -101,7 +108,9 @@ fun MallHomeScreen(nav: (String) -> Unit) {
                             .padding(top = bannerPadding, start = 36.dp, end = 36.dp),
                         horizontalArrangement = Arrangement.spacedBy(20.dp),
                     ) {
-                        HeroBig(official, Modifier.weight(1.4f), nav) { scene = it }
+                        // 大卡：后台 Banner 横幅（有图广告）；无 banner 时回退用场景大卡
+                        if (banners.isNotEmpty()) HeroBanner(banners, Modifier.weight(1.4f))
+                        else HeroBig(heros, Modifier.weight(1.4f), nav) { scene = it }
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                             if (recsTop.isNotEmpty()) HeroSmall(recsTop, 4500, Modifier.weight(1f)) { scene = it }
                             if (recsBottom.isNotEmpty()) HeroSmall(recsBottom, 5500, Modifier.weight(1f)) { scene = it }
@@ -140,7 +149,34 @@ private fun toneBrush(tone: String, c: com.jdo.ivi.ui.theme.JdoColors): Brush = 
     else   -> Brush.linearGradient(listOf(Color(0xFF1E1B4B), Color(0xFF3730A3), Color(0xFF4F46E5)))
 }
 
-/** 左侧大卡：自动向左滑动轮播全部时空推荐（6s 切换，新卡从右滑入、旧卡向左滑出） */
+/** 左侧大卡：后台「Banner 横幅」官方广告（图片 + 标题/副标），自动向左滑动轮播。 */
+@Composable
+private fun HeroBanner(slides: List<Banner>, modifier: Modifier) {
+    var i by remember { mutableStateOf(0) }
+    LaunchedEffect(slides.size) { while (true) { delay(6000); if (slides.isNotEmpty()) i = (i + 1) % slides.size } }
+    AnimatedContent(
+        targetState = i,
+        modifier = modifier.fillMaxHeight().clip(RoundedCornerShape(RadiusXl)),
+        transitionSpec = {
+            (slideInHorizontally(tween(520)) { w -> w } + fadeIn(tween(520))) togetherWith
+                (slideOutHorizontally(tween(520)) { w -> -w } + fadeOut(tween(520)))
+        },
+        label = "hero-banner",
+    ) { idx ->
+        val b = slides[idx % slides.size]
+        Box(Modifier.fillMaxSize()) {
+            AsyncImage(imageModel(b.img), b.title, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            // 暗角渐变遮罩，保证文字可读
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.10f), Color.Black.copy(0.60f)))))
+            Column(Modifier.align(Alignment.BottomStart).padding(28.dp)) {
+                Text(b.title, color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.SemiBold, lineHeight = 40.sp)
+                Spacer(Modifier.height(8.dp))
+                Text(b.sub, color = Color.White.copy(0.88f), fontSize = 18.sp)
+            }
+        }
+    }
+}
+
 @Composable
 private fun HeroBig(slides: List<HeroRec>, modifier: Modifier, nav: (String) -> Unit, onJump: (String) -> Unit) {
     val c = JdoTheme.colors

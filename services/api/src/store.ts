@@ -588,5 +588,7 @@ function normalizeProduct(row: Row): Row {
   if (p.star === undefined) p.star = 5;
   if (!p.tagKind) p.tagKind = 'mint';
   if (p.onShelf === undefined) p.onShelf = true;
+  // 新增商品兜底库存：未填或 <=0 → 默认有货，否则库存校验会把加购/立即购买 409 拦掉（后台可再改 0 表示缺货）
+  if (typeof p.stock !== 'number' || (p.stock as number) <= 0) p.stock = 100;
   return p;
 }

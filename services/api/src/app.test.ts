@@ -313,6 +313,13 @@ describe('库存校验（add-inventory-guard · P2#9 硬伤）', () => {
     expect((await inj({ method: 'GET', url: '/api/v1/admin/orders' })).json().items.length).toBe(ordersBefore); // 无新订单
   });
 
+  it('新增商品未填库存 → 兜底有货，可加购/立即购买（不被 0 库存误拦）', async () => {
+    const created = (await inj({ method: 'POST', url: '/api/v1/admin/products', payload: { title: '无库存新品', cat: 'energy', price: 2000, onShelf: true } })).json();
+    expect(created.stock).toBe(100); // normalizeProduct 兜底
+    const r = await inj({ method: 'POST', url: '/api/v1/cart/items', payload: { productId: created.id, qty: 1 } });
+    expect(r.statusCode).toBe(201); // 立即购买/加购可用
+  });
+
   it('结算成功 → 按下单数量扣减库存', async () => {
     const before = (await inj({ method: 'GET', url: '/api/v1/admin/products/g1' })).json().stock as number; // 种子选中 qty=2
     const r = await inj({ method: 'POST', url: '/api/v1/cart/checkout', payload: { channel: 'car' } });
