@@ -10,7 +10,9 @@
 
 ## 怎么读（开工前必读）
 
-1. [`CLAUDE.md`](./CLAUDE.md) — 协作公约（Harness 5 层 + OpenSpec 原生 + 开工三件套）
+> 🧪 **开发方法论：TDD（测试驱动 · 红-绿-重构 · 测试先行）** — 改 feature 行为先写失败测试再实现。权威定义见 [CLAUDE.md §测试驱动开发](./CLAUDE.md) / [docs/testing-strategy.md](./docs/testing-strategy.md)。
+
+1. [`CLAUDE.md`](./CLAUDE.md) — 协作公约（Harness 5 层 + OpenSpec 原生 + 开工三件套 + TDD）
 2. [`docs/INDEX.md`](./docs/INDEX.md) — 导航仪表盘 + Active Workstreams + Ownership Zones
 3. [`docs/PRD.md`](./docs/PRD.md) — 需求 v0.5（§I 后台管理）
 4. [`docs/scope.md`](./docs/scope.md) — MVP 边界（admin 已入范围）

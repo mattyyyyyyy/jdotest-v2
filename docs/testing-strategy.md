@@ -3,6 +3,22 @@
 > 状态：Draft · 日期：2026-06-03 · 维护者：QA/工程 agent
 > 上游：`_templates/references/backend-testing-integration.md`（方法论）
 > 起因：「后端单测全绿 ≠ 产品能用」——大量 UI / 前后端接线坑(banner没接、死按钮、写死 mock、详情页假规格)后端测试根本不覆盖。本文定义**每层测什么、对应命令、绿的边界**。
+> **方法论（v4 起）：TDD 测试驱动开发**，权威定义见 [CLAUDE.md §测试驱动开发](../CLAUDE.md)。
+
+## 🧪 TDD 工作法（红-绿-重构 · 测试先行）
+
+本项目改 feature 行为一律 **测试先于实现**：
+
+```
+🔴 RED       先把 OpenSpec 的 #### Scenario（GIVEN/WHEN/THEN）翻成失败测试 → 跑，确认红
+🟢 GREEN     写最小实现让它变绿
+♻️ REFACTOR  绿灯保护下重构，保持全绿
+```
+
+- **scenario ↔ 测试一一对应**：propose 出的每个 scenario 必须有测试，否则该 change 未完成。
+- **测试落最靠近行为的层**：后端→inject/单测；状态机→单测；安卓 UI↔后端→仪器测试；admin→组件/E2E。
+- **Bug 先复现再修**：先写能复现的失败测试，再修到绿（防回归）。
+- **强制力**：「测试先写」的顺序无法机器校验（属 `should` 文化约束）；**有牙齿的是覆盖率门槛（CI gate）**——见下文 §覆盖率门槛。
 
 ## ⚠️ "测试全绿"的准确含义（别再误读）
 
@@ -22,12 +38,26 @@
 - **前后台打通契约** `app.test.ts §前后台打通契约`：6 域 admin→consumer，断了 CI 红。
 - **API 契约漂移** `contract.test.ts`：openapi↔路由一致。
 
+## 📊 覆盖率门槛（TDD 的牙齿 · 待落地）
+
+TDD 的"测试先写"无法机器强制，但"代码必须被测试覆盖"可以——用覆盖率门槛逼出测试。规划如下（落地后此节标 ✅）：
+
+| 范围 | 工具 | 门槛（起步，逐步提高） | CI gate |
+|---|---|---|---|
+| 后端 `services/api` + `packages` | Vitest coverage（`@vitest/coverage-v8`） | 行/分支 ≥ **60%**（现状高，先卡住不退化） | `vitest run --coverage` 不达标 → 红 |
+| Android | JaCoCo | 纯逻辑模块 ≥ **40%** | gradle verification task |
+| admin（React） | Vitest + Testing Library | 先要求**非零**（当前 0），冒烟起步 | 同后端 |
+
+> 原则：**门槛只升不降**；新增代码覆盖率不得拉低整体（理想用 diff-coverage 卡新增行）。
+
 ## 待补（已知缺口，按优先级）
-1. **Android 仪器测试断言"屏显示后端数据"**（最该补——直接防 banner/资料/mock 这类坑；需 emulator，CI 走 `reactivecircus/android-emulator-runner`）
-2. **detekt**（`EmptyFunctionBlock` + `UnusedPrivateMember`）补静态死代码检测
-3. **写死领域数据 lint**：屏文件里本地 `data class` 假模型 / 硬编码价格姓名（低误报版待打磨）
-4. **E2E**（Maestro / Playstore 链路）跑主链路 + 关键异常
-5. MSW 式前端 mock 隔离（确保 mock 永不进生产构建）
+1. **覆盖率门槛进 CI**（TDD 的牙齿，见上节——没有它 TDD 只是口号）
+2. **Android 仪器测试断言"屏显示后端数据 / 关键按钮可见"**（直接防 banner/资料/mock/「下单按钮被裁掉」这类坑；需 emulator，CI 走 `reactivecircus/android-emulator-runner`）
+3. **admin（React）从 0 补测试**：组件测试 + Playwright 冒烟
+4. **detekt**（`EmptyFunctionBlock` + `UnusedPrivateMember`）补静态死代码检测
+5. **写死领域数据 lint**：屏文件里本地 `data class` 假模型 / 硬编码价格姓名（低误报版待打磨）
+6. **E2E**（Maestro 安卓 / Playwright admin）跑主链路 + 关键异常
+7. MSW 式前端 mock 隔离（确保 mock 永不进生产构建）
 
 ## 业界依据（详见对话/research）
 - detekt empty-blocks（死按钮/空块）· MSW（mock 隔离）· Pact + OpenAPI（契约,schema 抓结构 + consumer 抓用法,二者缺一漏）。

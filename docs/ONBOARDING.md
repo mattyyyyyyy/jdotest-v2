@@ -111,8 +111,12 @@ npx serve mockups/jdo-pencil-v3 -p 8080
    /opsx:propose <change-id>（或 openspec new change <id>）
    产出 4 件套：proposal / design / tasks / delta spec（GIVEN-WHEN-THEN 场景）
 
-③ 实现（apply）
-   写代码 + 同步写测试（后端路由 inject / 状态机单测 / 安卓仪器测试）
+③ 实现（apply）= TDD 红-绿-重构（测试先行，见 CLAUDE.md §测试驱动开发）
+   🔴 RED      把第②步的每个 #### Scenario 翻成失败测试 → 跑，确认它红
+              （后端路由 inject / 状态机单测 / 安卓仪器测试 / admin 组件测试）
+   🟢 GREEN    写最小实现让测试变绿（不多写）
+   ♻️ REFACTOR 在绿的保护下重构，保持全绿
+   ⚠️ 禁止"先写完代码再补测试"；修 bug 也先写复现失败测试再修
 
 ④ 本地验证（"全绿"的准确含义见 testing-strategy.md，别只跑后端就说没问题）
    pnpm typecheck && pnpm test && pnpm build

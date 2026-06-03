@@ -2,6 +2,7 @@
 
 > 本项目用 [ai-project-bootstrapper](./_templates/BOOTSTRAPPER-SKILL.md) 模板重做 JDOTEST，**新增后台管理（admin）端**，消费端 UI 沿用既有 `mockups/jdo-pencil-v3`（不重画）。
 > 任何 agent 编辑任何文件前 MUST 完成 **§开工三件套**。
+> 修订：v4 (2026-06-03) — **开发方法论改为 TDD（测试驱动 · 红-绿-重构 · 测试先行）**，见 §测试驱动开发。
 > 修订：v3 (2026-05-29) — 引入 Harness 5 层强制 + OpenSpec 原生流程 + admin 域。
 
 ---
@@ -51,7 +52,31 @@
 | `check-index-updated.sh` | PostToolUse(Write/Edit) | 防孤儿：新增 `docs/**/*.md` 未登记 INDEX → 反馈提醒 |
 | `openspec-validate.sh` | PostToolUse(Write/Edit) | 改 `openspec/**` 后跑 `validate --all --strict`（注意必须带 `--all`，否则空跑；hook 自动补 `~/.local/node20/bin` 到 PATH，CLI 缺失则跳过）|
 
-> 暂以 `should`（软约束）保留、未配 hook 的：**文档同步**（源码↔spec/ADR 联动）、**测试 gate**（Stop 前跑 lint/test）——这两条误报率高，待规则收敛后再升为 hook，避免噪音削弱护栏可信度。
+> 暂以 `should`（软约束）保留、未配 hook 的：**文档同步**（源码↔spec/ADR 联动）。误报率高，待规则收敛后再升为 hook，避免噪音削弱护栏可信度。
+
+---
+
+## 🧪 测试驱动开发（TDD · 红-绿-重构 · 测试先行）
+
+> **本项目的开发方法论是 TDD**（v4 起）。核心铁律：**改 feature 行为，测试先于实现。**
+> 历史教训：「后端全绿 ≠ 产品能用」「下单按钮被裁掉但 110 个测试全绿」——根因是测试当成了实现的事后伴生品。TDD 把测试前置为**设计的先导**。
+
+**红-绿-重构循环（每条 feature 行为 MUST 按此走）：**
+
+```
+🔴 RED    先写一个会失败的测试（把 OpenSpec scenario / 验收点翻成断言）→ 跑，确认它红
+🟢 GREEN  写最小实现让该测试变绿（不多写）
+♻️ REFACTOR  在绿的保护下重构，保持全绿
+```
+
+**规则：**
+- **测试先于实现**：动 feature 行为前，先有对应的失败测试。禁止"先写完代码再补测试"。
+- **OpenSpec scenario 是测试的直接来源**：`#### Scenario:` 的 GIVEN/WHEN/THEN 逐条翻成测试断言。propose 出的 scenario 没有对应测试 = change 未完成。
+- **测试落在最靠近行为的层**：后端逻辑→路由 inject / 单元测试；状态机→单测；安卓 UI↔后端→仪器测试；admin→组件/E2E。别只在后端测一层就收工。
+- **Bug 先复现再修**：修 bug MUST 先写一个能复现该 bug 的失败测试（red），再修到绿——防回归。
+- **覆盖率门槛是 TDD 的牙齿**：`should` 措辞靠不住，真正强制靠 **CI 覆盖率 gate**（见 [`docs/testing-strategy.md`](./docs/testing-strategy.md)）。新增/改动代码覆盖率不达标 → CI 红。
+
+> ⚠️ **诚实标注强制力**：「测试是否先写」这个**顺序**无法用 hook 机器校验（没法证明先后），所以 TDD 顺序是 `should`（文化约束）；有牙齿的是**覆盖率门槛 + 测试 gate（CI）**——它强制"代码必须被测试覆盖"，间接逼出测试先行。光喊 TDD 没用，门槛才是护栏。
 
 ---
 
@@ -78,7 +103,7 @@
 - `openspec/specs/<domain>/spec.md` — 当前真相（RFC 2119 + GIVEN/WHEN/THEN）
 - `openspec/changes/<id>/` — 提议变更（proposal/design/tasks/delta spec）
 - delta spec 用 `## ADDED / MODIFIED / REMOVED / RENAMED Requirements`，每条 requirement 至少一个 `#### Scenario:`
-- 生命周期：propose → apply → archive
+- 生命周期（TDD 嵌入）：**propose →〔🔴 把 scenario 写成失败测试 → 🟢 实现 → ♻️ 重构〕apply → archive**。每个 `#### Scenario:` MUST 有对应测试（见 §测试驱动开发）。
 - `docs/feature-spec.md` 降级为**派活看板 + 路由→domain 映射**，spec 主体在 `openspec/specs/`
 
 域划分按业务边界（kebab-case）：消费端 `catalog` `cart` `order` `payment` `auth-login` `auth-qr` `fulfillment` `driving-mode`；**后台端 `admin-auth` `admin-catalog` `admin-order` `admin-user` `admin-marketing` `admin-fulfillment` `admin-content` `admin-analytics`**。

@@ -56,6 +56,7 @@
 
 | 日期 | Agent | 完成项 | 关键 commit |
 |---|---|---|---|
+| 2026-06-03 | claude-tdd-migration | **开发方法论改为 TDD（红-绿-重构 · 测试先行）+ 同步所有流程文档**：CLAUDE.md/AGENTS.md 新增 §测试驱动开发（RED→GREEN→REFACTOR、scenario↔测试一一对应、bug 先复现、覆盖率门槛是牙齿）+ TDD 嵌入 OpenSpec 生命周期 + 删过期「测试 gate should」注；ONBOARDING §4 第③步「写代码+同步写测试」→ TDD 三步；testing-strategy 新增 TDD 工作法 + 覆盖率门槛表（vitest v8/JaCoCo/admin 门槛，只升不降）+ 重排缺口；README 置顶方法论；openspec/config.yaml 填 context（技术栈+TDD 约定）+ tasks rule。诚实标注：测试先后顺序无法 hook 校验（should），有牙齿的是覆盖率 CI gate（待落地）。validate 18/18 仍绿 | _pending_ |
 | 2026-06-03 | claude-onboarding-doc | **新增上手+开发流程总文档 `docs/ONBOARDING.md`**：一句话项目 + 仓库地图 + 跑起来命令（三端）+ **开发顺序时间线**（11 阶段，含依赖主线）+ **标准 feature 流程**（开工三件套→propose→apply→验证→commit→archive→push）+ **分角色阅读路径**（任何人/产品/工程/设计/决策背景，给新人的最短路径）+ 已知缺口 + 速查表。登记 INDEX §入口文档置顶 | _pending_ |
 | 2026-06-03 | claude-ui-aesthetic | **修「确认订单」提交按钮消失**：确认订单页右栏（商品清单+实付+提交订单）是不可滚动的普通 Column，购物车商品多（≥5 件）时清单把「实付+提交订单」撑出栏底被裁掉→下单按钮看不见也点不到。重构为：商品清单 `weight(1f)+verticalScroll` 占满剩余空间、可滚动，「实付+提交订单」钉在底部常驻（任意件数都可见）。emulator 实测 4 件清单下按钮 bounds 正常显示。assembleDebug 全绿 | _pending_ |
 | 2026-06-03 | claude-ui-aesthetic | **视觉 QA 整改（不再稀疏 + 砍超宽按钮）**：优惠券页/收藏页 由 `LazyVerticalGrid` 黏左上角→**居中 `FlowRow`**（少量数据时垂直+水平居中，不再大片留白）；超宽 `fillMaxWidth` 独立按钮改自然宽度——退出登录(我的/关于页)、售后「提交申请」(原 `weight(1f)` 占满整行→wrap-content，订单号移到上方说明文字)。emulator 实测：优惠券 2 张居中、收藏 2 件居中、按钮不再撑满。compileDebugKotlin + dead-ui guard 全绿 | _pending_ |

@@ -1,20 +1,22 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+# Project context — shown to AI when creating artifacts (proposal/spec/tasks).
+context: |
+  项目：车机端电商平台 v2（JDOTEST v2）。通用全品类车机电商 + 后台运营管理。
+  技术栈：
+    - 消费端：原生 Android（Kotlin + Jetpack Compose，横屏 + 行车态降级），经 10.0.2.2:3000 连后端
+    - 后端：Fastify + zod + better-sqlite3（单一 /api/v1，admin 与消费端共用），app.inject 测路由
+    - 后台：内嵌 vanilla-JS SPA（/admin-ui）+ 独立 Vite/React（apps/admin），均调 /api/v1/admin/*
+    - 契约：packages/api-contracts/openapi.yaml（contract.test.ts 守漂移）
+  约定：
+    - 沟通与文档语言：中文；commit 末尾带 `agent: <id>` 尾标
+    - 开发方法论：TDD（测试驱动 · 红-绿-重构 · 测试先行）。每个 #### Scenario MUST 先翻成失败测试再实现；
+      tasks 里 MUST 含「先写失败测试（red）」步骤，排在实现之前。修 bug 先写复现测试。
+    - 错误码规范：401 UNAUTHENTICATED / 403 USER_BANNED·INSUFFICIENT_PERMISSION /
+      409 PRODUCT_UNAVAILABLE·INSUFFICIENT_STOCK·CATEGORY_OCCUPIED / 429 SMS_RATE_LIMITED
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+# Per-artifact rules
+rules:
+  tasks:
+    - 每个 #### Scenario 必须先有一条「🔴 写失败测试」任务，排在对应实现任务之前（TDD）
+    - 修 bug 的 change 必须含「先写能复现 bug 的失败测试」任务
