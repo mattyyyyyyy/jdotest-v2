@@ -22,7 +22,7 @@
 | # | 业务点 | 现状（不统一） | 统一方案 |
 |---|---|---|---|
 | 1 | **购物车未接真实数据** | V3 购物车/结算用写死的 3 件；下单只提交这 3 件 | 新增 `cart` 实体 + API（加购/改量/删/清空）；V3 加购→购物车→结算全走 API |
-| ~~2~~ | ✅ **消费端多屏接 API（2026-06-03 完成）**：商城主链路(orders/cart/products/catalog) + **个人中心已接真实后端**——新增 `UserState`(mock-login 拉 /me*)，我的页头(车主小李/真实积分/订单数/券数)←/me+/me/wallet+/orders、优惠券←/coupons、收藏←/me/favorites、收货地址←/me/addresses，进入即刷新(admin 改→退回再进即同步，实测券 2→3)。**接不上后端的 mock 屏已删**：车主钱包(假流水/充值提现)、积分商城、我的车辆/浏览记录/帮助与客服 入口。| 个人中心真同步；剩 售后/物流/评价 屏与地址 CRUD 表单为后续增量 |
+| ~~2~~ | ✅ **消费端多屏接 API（2026-06-03 完成）**：商城主链路(orders/cart/products/catalog) + **个人中心已接真实后端**——新增 `UserState`(mock-login 拉 /me*)，我的页头(车主小李/真实积分/订单数/券数)←/me+/me/wallet+/orders、优惠券←/coupons、收藏←/me/favorites、收货地址←/me/addresses，进入即刷新(admin 改→退回再进即同步，实测券 2→3)。**接不上后端的 mock 屏已删**：车主钱包(假流水/充值提现)、积分商城、我的车辆/浏览记录/帮助与客服 入口。| **个人中心 + 二级屏全接通**：售后(/me/aftersale GET+POST 消费端发起→admin 可见)、物流(/orders/:id/shipping)、评价(/reviews) 也已接真实后端(2026-06-03)。详情页假规格 S/M/L/XL + 假库存已删。剩地址 CRUD 表单为后续增量 |
 | ~~3~~ | ✅ **登录/鉴权已统一**：admin（add-admin-auth）+ 消费端车机扫码（auth-qr）+ 手机验证码（auth-login）均 apply+archive | 三入口齐备 |
 
 ### P1 · 字段/格式口径
