@@ -59,6 +59,14 @@ button{font-family:inherit;}
 .jdo-iconbtn{width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--border);background:var(--surface);color:var(--txt-2);border-radius:8px;cursor:pointer;position:relative;transition:.12s;}
 .jdo-iconbtn:hover{color:var(--txt-1);border-color:var(--border-2);}
 .jdo-iconbtn.badge-dot::after{content:"";position:absolute;top:7px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--err);box-shadow:0 0 0 2px var(--bg);}
+.jdo-notif-pop{position:fixed;z-index:50;width:300px;background:var(--surface);border:1px solid var(--border-2);border-radius:14px;box-shadow:0 16px 48px rgba(0,0,0,.5);padding:8px;animation:notifIn .14s ease;}
+@keyframes notifIn{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:none;}}
+.jdo-notif-head{font-size:12.5px;color:var(--txt-3);padding:8px 10px 6px;font-weight:600;}
+.jdo-notif-empty{padding:18px 12px;color:var(--txt-3);font-size:13.5px;text-align:center;}
+.jdo-notif-item{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;color:var(--txt-1);padding:11px 10px;border-radius:9px;cursor:pointer;font-family:inherit;font-size:14px;text-align:left;}
+.jdo-notif-item:hover{background:var(--surface-2);}
+.jdo-notif-item .jdo-notif-txt{flex:1;}
+.jdo-notif-item .jdo-notif-cnt{color:var(--txt-3);font-size:12.5px;font-variant-numeric:tabular-nums;}
 .jdo-pagehead{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px;gap:16px;}
 .jdo-pagehead-left{display:flex;align-items:baseline;gap:12px;}
 .jdo-pagetitle{font-size:20px;font-weight:700;margin:0;letter-spacing:-.01em;}
@@ -225,7 +233,7 @@ function renderTopbar(curLabel){
     "<div class='jdo-topbar-right'>"+
       "<div class='jdo-globalsearch'>"+ic('search',15)+"<input id='topsearch' placeholder='搜索当前列表…'><kbd>⌘K</kbd></div>"+
       "<button class='jdo-iconbtn' title='日/夜切换' onclick='toggleTheme()'>"+ic(dark?'sun':'moon',18)+"</button>"+
-      "<button class='jdo-iconbtn badge-dot'>"+ic('bell',18)+"</button>"+
+      "<button class='jdo-iconbtn badge-dot' id='notif-bell' title='运营提醒' onclick='openNotif()'>"+ic('bell',18)+"</button>"+
       "<div class='jdo-avatar'>李</div>"+
     "</div>";
   var ts=document.getElementById('topsearch'); if(ts) ts.addEventListener('input',function(e){ if(CUR){QUERY=e.target.value;PAGE=1;renderList();} });
@@ -372,6 +380,35 @@ function showConfig(){
   });
 }
 function saveConfig(){api('PATCH','/api/v1/admin/config',{drivingSpeedThreshold:Number(document.getElementById('c-spd').value),drivingExitSeconds:Number(document.getElementById('c-exit').value),degradeBannerInDriving:document.getElementById('c-deg').classList.contains('on')}).then(function(){alert('已保存');});}
+
+// 运营提醒（消息铃铛）：从实时数据派生待办，点击跳转对应资源。
+function closeNotif(){var p=document.getElementById('notif-pop');if(p)p.remove();}
+function openNotif(){
+  if(document.getElementById('notif-pop')){closeNotif();return;} // 再点关闭
+  Promise.all([api('GET','/api/v1/admin/orders'),api('GET','/api/v1/admin/aftersale'),api('GET','/api/v1/admin/products')]).then(function(res){
+    var orders=(res[0]&&res[0].items)||[],aft=(res[1]&&res[1].items)||[],prods=(res[2]&&res[2].items)||[];
+    var toShip=orders.filter(function(o){return o.status==='PAID';}).length;
+    var refund=orders.filter(function(o){return o.status==='REFUNDING';}).length;
+    var aftPending=aft.filter(function(a){return a.status==='pending';}).length;
+    var lowStock=prods.filter(function(p){return Number(p.stock)<=5;}).length;
+    var items=[];
+    if(toShip)items.push(['truck','待发货订单',toShip+' 单','orders','PAID']);
+    if(refund)items.push(['refresh','退款待处理',refund+' 单','orders','REFUNDING']);
+    if(aftPending)items.push(['shield','售后待处理',aftPending+' 单','aftersale','']);
+    if(lowStock)items.push(['box','低库存(≤5)',lowStock+' 个','products','']);
+    var html="<div class='jdo-notif-head'>运营提醒</div>";
+    if(!items.length)html+="<div class='jdo-notif-empty'>暂无待办，一切正常 ✓</div>";
+    else items.forEach(function(it){html+="<button class='jdo-notif-item' onclick=\\"closeNotif();selectRes('"+it[3]+"')"+(it[4]?(";setTimeout(function(){setFilter('"+it[4]+"');},150)"):"")+"\\">"+ic(it[0],16)+"<span class='jdo-notif-txt'>"+it[1]+"</span><span class='jdo-notif-cnt'>"+it[2]+"</span></button>";});
+    var pop=document.createElement('div');pop.id='notif-pop';pop.className='jdo-notif-pop';pop.innerHTML=html;document.body.appendChild(pop);
+    var bell=document.getElementById('notif-bell');if(bell){var r=bell.getBoundingClientRect();pop.style.top=(r.bottom+8)+'px';pop.style.right=Math.max(12,(window.innerWidth-r.right))+'px';}
+  });
+}
+// 全局：⌘K/Ctrl+K 聚焦搜索；点击外部 / Esc 关通知。
+document.addEventListener('keydown',function(e){
+  if((e.metaKey||e.ctrlKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();var ts=document.getElementById('topsearch');if(ts)ts.focus();}
+  if(e.key==='Escape')closeNotif();
+});
+document.addEventListener('click',function(e){var p=document.getElementById('notif-pop');if(p&&!p.contains(e.target)&&!(e.target.closest&&e.target.closest('#notif-bell')))closeNotif();});
 
 // 启动
 try{var th=localStorage.getItem('jdo-admin-theme');if(th)document.documentElement.setAttribute('data-theme',th);}catch(e){}

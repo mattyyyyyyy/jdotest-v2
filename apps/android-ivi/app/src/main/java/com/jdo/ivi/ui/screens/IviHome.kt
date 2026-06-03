@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -115,7 +117,8 @@ private fun MusicCard(modifier: Modifier) {
             )
             Spacer(Modifier.width(20.dp))
             Column(Modifier.weight(1f)) {
-                Text("正在播放 · QQ 音乐", color = c.textSecondary, fontSize = 14.sp)
+                val playing = remember { mutableStateOf(true) }
+                Text(if (playing.value) "正在播放 · QQ 音乐" else "已暂停 · QQ 音乐", color = c.textSecondary, fontSize = 14.sp)
                 Spacer(Modifier.height(4.dp))
                 Text("黑色幽默 — 周杰伦", color = c.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(10.dp))
@@ -125,7 +128,7 @@ private fun MusicCard(modifier: Modifier) {
                 Spacer(Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                     CircleBtn("prev")
-                    CircleBtn("play", primary = true)
+                    CircleBtn(if (playing.value) "pause" else "play", primary = true) { playing.value = !playing.value }
                     CircleBtn("next")
                 }
             }
@@ -134,11 +137,11 @@ private fun MusicCard(modifier: Modifier) {
 }
 
 @Composable
-private fun CircleBtn(icon: String, primary: Boolean = false) {
+private fun CircleBtn(icon: String, primary: Boolean = false, onClick: () -> Unit = {}) {
     val c = JdoTheme.colors
     val bg = if (primary) Brush.linearGradient(listOf(c.accent, c.brand)) else Brush.linearGradient(listOf(c.bg3.copy(0.6f), c.bg3.copy(0.6f)))
     Box(
-        Modifier.size(if (primary) 48.dp else 42.dp).clip(CircleShape).background(bg).clickable {},
+        Modifier.size(if (primary) 48.dp else 42.dp).clip(CircleShape).background(bg).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { Icon(jdoIcon(icon), null, tint = if (primary) Color(0xFF03171F) else c.textPrimary, modifier = Modifier.size(26.dp)) }
 }
