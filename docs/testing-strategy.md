@@ -38,21 +38,25 @@
 - **前后台打通契约** `app.test.ts §前后台打通契约`：6 域 admin→consumer，断了 CI 红。
 - **API 契约漂移** `contract.test.ts`：openapi↔路由一致。
 
-## 📊 覆盖率门槛（TDD 的牙齿 · 待落地）
+## 📊 覆盖率门槛（TDD 的牙齿 · ✅ 已落地 2026-06-03）
 
-TDD 的"测试先写"无法机器强制，但"代码必须被测试覆盖"可以——用覆盖率门槛逼出测试。规划如下（落地后此节标 ✅）：
+TDD 的"测试先写"无法机器强制，但"代码必须被测试覆盖"可以——用覆盖率门槛逼出测试。
+**已落地**：`@vitest/coverage-v8` + 每包 `vitest.config.ts` 设 `thresholds`，`test` 脚本带 `--coverage`，
+CI 的 `pnpm test` 不达标即 **exit 1 → 红**（已实测：抬高门槛会 exit 1，正常 exit 0）。
 
-| 范围 | 工具 | 门槛（起步，逐步提高） | CI gate |
-|---|---|---|---|
-| 后端 `services/api` + `packages` | Vitest coverage（`@vitest/coverage-v8`） | 行/分支 ≥ **60%**（现状高，先卡住不退化） | `vitest run --coverage` 不达标 → 红 |
-| Android | JaCoCo | 纯逻辑模块 ≥ **40%** | gradle verification task |
-| admin（React） | Vitest + Testing Library | 先要求**非零**（当前 0），冒烟起步 | 同后端 |
+| 范围 | 工具 | 基线（2026-06-03） | 门槛（棘轮，只升不降） | gate |
+|---|---|---|---|---|
+| 后端 `services/api` | `@vitest/coverage-v8` | Lines/Stmts **97.6%** · Funcs **98.8%** · Branch **80.4%** | lines/stmts/funcs ≥ **95**，branch ≥ **78** | `pnpm test` ✅ |
+| `packages/order-state-machine` | 同上 | 全部 **100%** | lines/stmts/funcs ≥ **90**，branch ≥ **85** | `pnpm test` ✅ |
+| admin（React） | Vitest + Testing Library | 0（零测试） | 待补：先要求非零 | ⬜ 待落地 |
+| Android | JaCoCo | — | 纯逻辑模块 ≥ 40% | ⬜ 待落地 |
 
-> 原则：**门槛只升不降**；新增代码覆盖率不得拉低整体（理想用 diff-coverage 卡新增行）。
+> 原则：**门槛只升不降**；排除项见各 `vitest.config.ts`（server.ts 入口 / admin-spa.ts 字符串 / seed 数据）。
+> 提高门槛 = 改 `thresholds` 数字；新增代码覆盖率不得拉低整体（理想后续上 diff-coverage 卡新增行）。
 
 ## 待补（已知缺口，按优先级）
-1. **覆盖率门槛进 CI**（TDD 的牙齿，见上节——没有它 TDD 只是口号）
-2. **Android 仪器测试断言"屏显示后端数据 / 关键按钮可见"**（直接防 banner/资料/mock/「下单按钮被裁掉」这类坑；需 emulator，CI 走 `reactivecircus/android-emulator-runner`）
+1. **admin（React）从 0 补测试 + 覆盖率门槛**（当前 admin 还在门槛外）
+2. **Android 仪器测试断言"屏显示后端数据 / 关键按钮可见"**（直接防 banner/资料/mock/「下单按钮被裁掉」这类坑；需 emulator，CI 走 `reactivecircus/android-emulator-runner`）+ Android JaCoCo 门槛
 3. **admin（React）从 0 补测试**：组件测试 + Playwright 冒烟
 4. **detekt**（`EmptyFunctionBlock` + `UnusedPrivateMember`）补静态死代码检测
 5. **写死领域数据 lint**：屏文件里本地 `data class` 假模型 / 硬编码价格姓名（低误报版待打磨）

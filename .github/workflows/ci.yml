@@ -35,7 +35,8 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Test
+      - name: Test（含覆盖率门槛 · TDD 的牙齿）
+        # vitest run --coverage：覆盖率低于各包 vitest.config.ts 的 thresholds → exit 1 → CI 红
         run: pnpm test
 
       - name: Build

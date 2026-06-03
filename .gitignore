@@ -8,6 +8,9 @@ build/
 .turbo/
 *.tsbuildinfo
 
+# 测试覆盖率报告（CI 现算，不入仓）
+coverage/
+
 # env & secrets (真密钥永不入仓)
 .env
 .env.local
