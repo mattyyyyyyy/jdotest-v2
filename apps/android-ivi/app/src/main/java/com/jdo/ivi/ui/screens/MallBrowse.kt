@@ -15,11 +15,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import com.jdo.ivi.data.AppState
 import com.jdo.ivi.data.Catalog
+import com.jdo.ivi.data.UserState
+import com.jdo.ivi.data.imageModel
 import com.jdo.ivi.ui.components.*
 import com.jdo.ivi.ui.nav.Routes
 import com.jdo.ivi.ui.theme.JdoTheme
+import com.jdo.ivi.ui.theme.MonoNumber
 
 /* ============================================================
    03 分类/搜索结果 · 04 搜索 · 19 收藏 & 浏览历史
@@ -144,23 +154,48 @@ private fun FlowChips(items: List<String>, onClick: (String) -> Unit) {
 /* ── 19 收藏 & 浏览历史 ── */
 @Composable
 fun MallFavoritesScreen(nav: (String) -> Unit, back: () -> Unit) {
-    var tab by remember { mutableStateOf("fav") }
-    val favs = Catalog.products.take(12)
+    val c = JdoTheme.colors
+    val favs = UserState.favorites // 接后端 /me/favorites（真实收藏）
     MallBg {
         Column(Modifier.fillMaxSize()) {
             StatusBar()
-            SubBar("收藏 & 浏览历史", back) { IconBtn("search") {} }
-            Row(Modifier.padding(horizontal = 36.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Chip("我的收藏 ${favs.size}", tab == "fav") { tab = "fav" }
-                Chip("浏览记录 108", tab == "hist") { tab = "hist" }
-            }
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(5),
-                modifier = Modifier.weight(1f).padding(horizontal = 36.dp),
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-            ) {
-                items(favs, key = { it.id }) { p -> ProductCard(p) { nav(Routes.MallDetail) } }
+            SubBar("我的收藏 · ${favs.size} 件", back)
+            if (favs.isEmpty()) {
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text("还没有收藏（商品详情点收藏即同步）", color = c.textMuted, fontSize = 20.sp)
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(4),
+                    modifier = Modifier.weight(1f).padding(36.dp),
+                    horizontalArrangement = Arrangement.spacedBy(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                ) {
+                    items(favs, key = { it.productId }) { f ->
+                        Column(
+                            Modifier.clip(RoundedCornerShape(18.dp)).background(c.bg2.copy(0.5f))
+                                .clickable { AppState.detailId = f.productId; nav(Routes.MallDetail) },
+                        ) {
+                            Box {
+                                AsyncImage(imageModel(f.img), f.title, contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxWidth().aspectRatio(1.2f))
+                                if (!f.onShelf) {
+                                    Box(Modifier.fillMaxWidth().aspectRatio(1.2f).background(Color.Black.copy(0.5f)), contentAlignment = Alignment.Center) {
+                                        Text("已下架", color = Color.White, fontSize = 18.sp)
+                                    }
+                                }
+                            }
+                            Column(Modifier.padding(14.dp)) {
+                                Text(f.title, color = c.textPrimary, fontSize = 18.sp, maxLines = 2)
+                                Spacer(Modifier.height(8.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("¥${f.priceFen / 100}", color = c.error, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, style = MonoNumber, modifier = Modifier.weight(1f))
+                                    Text("取消收藏", color = c.textMuted, fontSize = 14.sp, modifier = Modifier.clickable { UserState.removeFavorite(f.productId) })
+                                }
+                            }
+                        }
+                    }
+                }
             }
             Spacer(Modifier.height(20.dp))
         }

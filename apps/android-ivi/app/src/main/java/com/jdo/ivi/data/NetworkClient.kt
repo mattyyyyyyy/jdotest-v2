@@ -24,6 +24,14 @@ data class Bootstrap(val categories: List<ApiCategory>, val products: List<ApiPr
 data class CartItem(val id: String, val productId: String, val title: String, val img: String, val priceFen: Int, val qty: Int, val selected: Boolean, val spec: String)
 /** 订单（totalAmount 单位「分」）。 */
 data class ApiOrder(val id: String, val status: String, val totalFen: Int, val itemTitles: List<String>, val channel: String, val createdAt: String)
+/** 车主资料（balance/points 来自 /me 或 /me/wallet）。 */
+data class ApiMe(val id: String, val name: String, val phone: String, val points: Int, val balance: Int)
+/** 优惠券（type: fixed 满减(amount 分) / discount 折扣(amount=折数*10)；threshold 门槛分）。 */
+data class ApiCoupon(val id: String, val name: String, val type: String, val amount: Int, val threshold: Int, val stock: Int)
+/** 收藏（join 商品，price 分）。 */
+data class ApiFavorite(val productId: String, val title: String, val img: String, val priceFen: Int, val onShelf: Boolean)
+/** 收货地址。 */
+data class ApiAddress(val id: String, val receiver: String, val phone: String, val addr: String, val isDefault: Boolean)
 
 /**
  * 与 web 后台同一后端（services/api，经 cloudflared 公网隧道）。
@@ -36,9 +44,13 @@ object NetworkClient {
     class HttpException(val code: Int, val body: String) :
         RuntimeException("HTTP $code: ${body.take(200)}")
 
+    // 车主 token（个人中心 /me* 需鉴权；UserState.load 经 mock-login 获取）。
+    @Volatile private var token: String? = null
+
     private fun get(path: String): String {
         val c = (URL("$BASE$path").openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"; connectTimeout = 15000; readTimeout = 15000
+            token?.let { setRequestProperty("Authorization", "Bearer $it") }
         }
         return readResponse(c)
     }
@@ -46,6 +58,7 @@ object NetworkClient {
     private fun send(method: String, path: String, json: JSONObject?): String {
         val c = (URL("$BASE$path").openConnection() as HttpURLConnection).apply {
             requestMethod = method; connectTimeout = 15000; readTimeout = 15000
+            token?.let { setRequestProperty("Authorization", "Bearer $it") }
             if (json != null) { doOutput = true; setRequestProperty("Content-Type", "application/json") }
         }
         if (json != null) c.outputStream.use { it.write(json.toString().toByteArray()) }
@@ -140,6 +153,33 @@ object NetworkClient {
     /** Demo 支付回调确认：后端通过状态机持久化 PENDING_PAYMENT -> PAID。 */
     fun confirmPayment(orderId: String): ApiOrder =
         orderOf(JSONObject(send("POST", "/payments/$orderId/confirm", JSONObject())).getJSONObject("order"))
+
+    // ---------- 车主登录 + 个人中心（接 /me*、/coupons）----------
+    /** Demo 登录拿车主 token（u-1001 车主小李），后续 /me* 带上。 */
+    fun mockLogin(): ApiMe? = try {
+        val d = JSONObject(send("POST", "/auth/mock-login", JSONObject()))
+        token = d.optString("accessToken").ifBlank { null }
+        d.optJSONObject("user")?.let { ApiMe(it.optString("id"), it.optString("name"), it.optString("phone"), 0, 0) }
+    } catch (e: Exception) { null }
+
+    fun fetchMe(): ApiMe = JSONObject(get("/me")).let {
+        ApiMe(it.optString("id"), it.optString("name"), it.optString("phone"), it.optInt("points"), it.optInt("balance"))
+    }
+    /** 钱包：积分 + 余额（分）。 */
+    fun fetchWallet(): Pair<Int, Int> = JSONObject(get("/me/wallet")).let { Pair(it.optInt("points"), it.optInt("balance")) }
+    /** 可领优惠券（后台建的真实券）。 */
+    fun fetchCoupons(): List<ApiCoupon> = JSONObject(get("/coupons")).getJSONArray("items").map {
+        ApiCoupon(it.optString("id"), it.optString("name"), it.optString("type"), it.optInt("amount"), it.optInt("threshold"), it.optInt("stock"))
+    }
+    /** 我的收藏（join 商品现状）。 */
+    fun fetchFavorites(): List<ApiFavorite> = JSONObject(get("/me/favorites")).getJSONArray("items").map {
+        ApiFavorite(it.optString("productId"), it.optString("title"), it.optString("img"), it.optInt("price"), it.optBoolean("onShelf"))
+    }
+    fun removeFavorite(productId: String): Boolean = try { send("DELETE", "/me/favorites/$productId", null); true } catch (e: Exception) { false }
+    /** 我的收货地址。 */
+    fun fetchAddresses(): List<ApiAddress> = JSONObject(get("/me/addresses")).getJSONArray("items").map {
+        ApiAddress(it.optString("id"), it.optString("receiver"), it.optString("phone"), it.optString("addr"), it.optBoolean("isDefault"))
+    }
 }
 
 private inline fun <T> JSONArray.map(f: (JSONObject) -> T): List<T> {

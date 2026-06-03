@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.jdo.ivi.data.Catalog
 import com.jdo.ivi.data.ShoppingState
+import com.jdo.ivi.data.UserState
 import com.jdo.ivi.data.imageModel
 import com.jdo.ivi.ui.components.*
 import com.jdo.ivi.ui.nav.Routes
@@ -38,19 +39,16 @@ import kotlin.math.roundToInt
 @Composable
 fun MallAddressesScreen(nav: (String) -> Unit, back: () -> Unit) {
     val c = JdoTheme.colors
-    data class Addr(val icon: String, val name: String, val tag: String, val addr: String, val def: Boolean)
+    LaunchedEffect(Unit) { UserState.load() } // 进入即刷新
+    val addrs = UserState.addresses // 接后端 /me/addresses
     var sel by remember { mutableStateOf(0) }
-    val addrs = listOf(
-        Addr("home","李先生 · 138****6789","家 · 默认","上海市 浦东新区 张江路 1888 弄 6 号", true),
-        Addr("company","李先生 · 138****6789","公司","上海市 黄浦区 南京东路 666 号 创智 28F", false),
-        Addr("car","当前位置 · 实时定位","车上","浦东张衡路停车场 · A 区 28 号位", false),
-    )
     MallBg {
         Column(Modifier.fillMaxSize()) {
             StatusBar()
-            SubBar("收货地址", back) { IconBtn("plus") {} }
+            SubBar("收货地址 · ${addrs.size} 个", back) { IconBtn("plus") {} }
             Row(Modifier.weight(1f).padding(36.dp), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    if (addrs.isEmpty()) Text("还没有收货地址", color = c.textMuted, fontSize = 20.sp)
                     addrs.forEachIndexed { i, a ->
                         Column(
                             Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(c.bg2.copy(0.55f))
@@ -59,11 +57,11 @@ fun MallAddressesScreen(nav: (String) -> Unit, back: () -> Unit) {
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(c.accent.copy(0.12f)), contentAlignment = Alignment.Center) {
-                                    Icon(jdoIcon(a.icon), null, tint = c.mint, modifier = Modifier.size(28.dp))
+                                    Icon(jdoIcon("location"), null, tint = c.mint, modifier = Modifier.size(28.dp))
                                 }
                                 Spacer(Modifier.width(14.dp))
-                                Text(a.name, color = c.textPrimary, fontSize = 24.sp, modifier = Modifier.weight(1f))
-                                Text(a.tag, color = if (a.def) c.mint else c.textMuted, fontSize = 16.sp)
+                                Text("${a.receiver} · ${a.phone}", color = c.textPrimary, fontSize = 24.sp, modifier = Modifier.weight(1f))
+                                if (a.isDefault) Text("默认", color = c.mint, fontSize = 16.sp)
                             }
                             Text(a.addr, color = c.textSecondary, fontSize = 20.sp)
                         }

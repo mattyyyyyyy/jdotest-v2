@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.jdo.ivi.data.Catalog
+import com.jdo.ivi.data.UserState
 import com.jdo.ivi.data.imageModel
 import com.jdo.ivi.ui.components.*
 import com.jdo.ivi.ui.nav.Routes
@@ -37,21 +38,23 @@ import com.jdo.ivi.ui.theme.MonoNumber
 @Composable
 fun MallProfileScreen(nav: (String) -> Unit, back: () -> Unit) {
     val c = JdoTheme.colors
+    LaunchedEffect(Unit) { UserState.load() } // 进入即刷新：后台改积分/券/收藏，退回再进即同步
     data class Tile(val icon: String, val label: String, val route: String)
     val orderTiles = listOf(
         Tile("package","待付款",Routes.MallOrders), Tile("package","待发货",Routes.MallOrders),
         Tile("package","待收货",Routes.MallTracking), Tile("star","待评价",Routes.MallReviews),
         Tile("back","退换/售后",Routes.MallAftersale),
     )
+    // 只保留接得上后端的入口（积分商城/车主钱包/浏览记录/我的车辆/帮助与客服 无后端，已删）
     val services = listOf(
-        Tile("star","我的收藏",Routes.MallFavorites), Tile("search","浏览记录",Routes.MallFavorites),
-        Tile("bolt","优惠券",Routes.MallCoupons), Tile("sparkles","积分商城",Routes.MallPoints),
-        Tile("package","车主钱包",Routes.MallWallet), Tile("location","收货地址",Routes.MallAddresses),
+        Tile("star","我的收藏",Routes.MallFavorites),
+        Tile("bolt","优惠券",Routes.MallCoupons),
+        Tile("location","收货地址",Routes.MallAddresses),
     )
     val menu = listOf(
-        Tile("location","收货地址",Routes.MallAddresses), Tile("car","我的车辆",Routes.MallSettings),
-        Tile("settings","行车安全",Routes.MallDriving), Tile("settings","主题与显示",Routes.MallSettings),
-        Tile("phone","帮助与客服",Routes.MallSettings),
+        Tile("location","收货地址",Routes.MallAddresses),
+        Tile("settings","行车安全",Routes.MallDriving),
+        Tile("settings","主题与显示",Routes.MallSettings),
     )
     MallBg {
         Column(Modifier.fillMaxSize()) {
@@ -66,14 +69,18 @@ fun MallProfileScreen(nav: (String) -> Unit, back: () -> Unit) {
                             .border(1.dp, c.mint.copy(0.2f), RoundedCornerShape(28.dp)).padding(32.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        AvatarBadge("李", 120.dp)
+                        AvatarBadge(UserState.name.take(1), 120.dp)
                         Spacer(Modifier.width(24.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("李先生", color = c.textPrimary, fontSize = 36.sp, fontWeight = FontWeight.Medium)
+                            Text(UserState.name, color = c.textPrimary, fontSize = 36.sp, fontWeight = FontWeight.Medium)
                             Spacer(Modifier.height(6.dp))
-                            Text("黄金车主 · Lv.4 · JDO X1 沪A·1234", color = c.gold, fontSize = 18.sp)
+                            Text(if (UserState.phone.isNotBlank()) "JDO 车主 · ${UserState.phone}" else "JDO 车主", color = c.gold, fontSize = 18.sp)
                         }
-                        listOf("42" to "订单","8248" to "积分","6" to "券").forEach { (n, l) ->
+                        listOf(
+                            UserState.orderCount.toString() to "订单",
+                            UserState.points.toString() to "积分",
+                            UserState.coupons.size.toString() to "券",
+                        ).forEach { (n, l) ->
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(start = 24.dp)) {
                                 Text(n, color = c.textPrimary, fontSize = 30.sp, style = MonoNumber)
                                 Text(l, color = c.textMuted, fontSize = 16.sp)
@@ -144,160 +151,51 @@ private fun ProfileTile(icon: String, label: String, onClick: () -> Unit) {
     }
 }
 
-/* ── 20 钱包 ── */
-@Composable
-fun MallWalletScreen(nav: (String) -> Unit, back: () -> Unit) {
-    val c = JdoTheme.colors
-    data class Txn(val name: String, val meta: String, val amt: Double, val time: String)
-    val txns = listOf(
-        Txn("订单支付 · JDO...887462","3 件商品 · 京东自营",-234.78,"今天 09:24"),
-        Txn("退款入账 · JDO...880102","退货退款",268.0,"今天 08:12"),
-        Txn("充电桩 · 浦东华业","快充 47kWh",-42.30,"昨天 15:48"),
-        Txn("签到奖励 · 第 12 天","连续签到",2.0,"昨天 09:00"),
-        Txn("加油 · 中石化 张江","95# 38.6L",-286.41,"5/20 22:14"),
-    )
-    MallBg {
-        Column(Modifier.fillMaxSize()) {
-            StatusBar()
-            SubBar("车主钱包", back) { IconBtn("settings") {} }
-            Row(Modifier.weight(1f).padding(36.dp), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                Column(Modifier.weight(1.2f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(22.dp)) {
-                    Box(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
-                            .background(Brush.linearGradient(listOf(Color(0xFF0C1832), Color(0xFF1E3A8A), Color(0xFF06B6D4)))).padding(32.dp),
-                    ) {
-                        Column {
-                            Text("车主钱包余额", color = Color.White.copy(0.85f), fontSize = 20.sp)
-                            Row(verticalAlignment = Alignment.Bottom) {
-                                Text("¥", color = Color.White.copy(0.8f), fontSize = 36.sp, style = MonoNumber)
-                                Text("234.50", color = Color.White, fontSize = 72.sp, fontWeight = FontWeight.SemiBold, style = MonoNumber)
-                            }
-                            Text("JDO 联名卡 **** 4521 · 累计消费 ¥ 12 480", color = Color.White.copy(0.85f), fontSize = 18.sp)
-                        }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        listOf("plus" to "充值","back" to "提现","sparkles" to "兑积分","bolt" to "充电加油").forEach { (ic, nm) ->
-                            GlassCard(Modifier.weight(1f), corner = 22.dp, padding = PaddingValues(vertical = 18.dp)) {
-                                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(jdoIcon(ic), null, tint = c.mint, modifier = Modifier.size(28.dp))
-                                        Spacer(Modifier.height(10.dp))
-                                        Text(nm, color = c.textPrimary, fontSize = 18.sp)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                Column(
-                    Modifier.weight(1f).clip(RoundedCornerShape(24.dp)).background(c.bg2.copy(0.6f))
-                        .border(1.dp, c.borderDefault, RoundedCornerShape(24.dp)).padding(28.dp).verticalScroll(rememberScrollState()),
-                ) {
-                    Text("交易明细 · 近 30 天", color = c.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.Medium)
-                    Spacer(Modifier.height(12.dp))
-                    txns.forEach { t ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(t.name, color = c.textPrimary, fontSize = 20.sp)
-                                Text(t.meta, color = c.textMuted, fontSize = 15.sp)
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text((if (t.amt > 0) "+ ¥ " else "− ¥ ") + "%.2f".format(kotlin.math.abs(t.amt)),
-                                    color = if (t.amt > 0) c.success else c.textPrimary, fontSize = 22.sp, style = MonoNumber)
-                                Text(t.time, color = c.textMuted, fontSize = 14.sp, style = MonoNumber)
-                            }
-                        }
-                        Divider()
-                    }
-                }
-            }
-        }
-    }
-}
-
-/* ── 16 积分商城 ── */
-@Composable
-fun MallPointsScreen(nav: (String) -> Unit, back: () -> Unit) {
-    val c = JdoTheme.colors
-    MallBg {
-        Column(Modifier.fillMaxSize()) {
-            StatusBar()
-            SubBar("积分商城 · 黄金车主双倍积分", back)
-            Column(Modifier.weight(1f).padding(36.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                Box(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
-                        .background(Brush.linearGradient(listOf(Color(0xFFD6BC8A), Color(0xFFA07D3C)))).padding(32.dp),
-                ) {
-                    Column {
-                        Text("JDO 车主积分", color = Color(0xFF2A1D05).copy(0.85f), fontSize = 20.sp)
-                        Text("8 248", color = Color(0xFF2A1D05), fontSize = 96.sp, fontWeight = FontWeight.Bold, style = MonoNumber)
-                        Text("本周 +142 · 距铂金 1752 分", color = Color(0xFF2A1D05).copy(0.85f), fontSize = 18.sp)
-                    }
-                }
-                SectionBar("兑换好物", "积分 + 现金任选")
-                LazyVerticalGrid(columns = GridCells.Fixed(4), modifier = Modifier.height(640.dp),
-                    horizontalArrangement = Arrangement.spacedBy(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                    items(Catalog.products.take(8), key = { it.id }) { p ->
-                        Column(Modifier.clip(RoundedCornerShape(20.dp)).background(c.bg2.copy(0.5f))) {
-                            AsyncImage(imageModel(p.img), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().aspectRatio(4f/3f))
-                            Column(Modifier.padding(14.dp)) {
-                                Text(p.title, color = c.textPrimary, fontSize = 18.sp, maxLines = 2)
-                                Spacer(Modifier.height(6.dp))
-                                Text("${(p.price * 100).toInt()} 积分", color = c.gold, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, style = MonoNumber)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/* ── 12 优惠券 ── */
+/* ── 12 优惠券（接后端 /coupons：后台建的真实券）── */
 @Composable
 fun MallCouponsScreen(nav: (String) -> Unit, back: () -> Unit) {
     val c = JdoTheme.colors
-    var tab by remember { mutableStateOf("avail") }
-    data class Coupon(val amt: Int, val min: String, val name: String, val expire: String, val tone: Color)
-    val coupons = listOf(
-        Coupon(50,"满 299 可用","车主权益日通用券","5/31 到期", c.error),
-        Coupon(20,"满 99 可用","车品类目优惠券","5/30 到期", c.mint),
-        Coupon(30,"满 199 可用","黄金车主专享券","6/15 到期", c.gold),
-        Coupon(100,"满 999 可用","大件直降券","6/30 到期", c.mint),
-    )
+    val coupons = UserState.coupons // 后台「营销-优惠券」建的真实可领券
     MallBg {
         Column(Modifier.fillMaxSize()) {
             StatusBar()
-            SubBar("优惠券中心 · JDO 黄金车主", back)
-            Row(Modifier.padding(horizontal = 36.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Chip("可使用 ${coupons.size}", tab == "avail") { tab = "avail" }
-                Chip("即将过期 3", tab == "soon") { tab = "soon" }
-                Chip("已使用 / 过期", tab == "used") { tab = "used" }
-            }
-            LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.weight(1f).padding(horizontal = 36.dp),
-                horizontalArrangement = Arrangement.spacedBy(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                items(coupons) { cp ->
-                    Row(
-                        Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(24.dp))
-                            .background(c.bg2.copy(0.55f)).border(1.dp, c.borderDefault, RoundedCornerShape(24.dp)),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(
-                            Modifier.width(200.dp).fillMaxHeight().background(cp.tone.copy(0.18f)),
-                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+            SubBar("优惠券中心 · 可领 ${coupons.size} 张", back)
+            if (coupons.isEmpty()) {
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text("暂无可领优惠券（后台「营销 / 优惠券」新增即同步）", color = c.textMuted, fontSize = 20.sp)
+                }
+            } else {
+                LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.weight(1f).padding(36.dp),
+                    horizontalArrangement = Arrangement.spacedBy(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                    items(coupons) { cp ->
+                        val tone = if (cp.type == "discount") c.gold else c.error
+                        // fixed: amount 是满减「分」；discount: amount = 折数*10（95=9.5折）
+                        val big = if (cp.type == "discount") "${cp.amount / 10.0}".trimEnd('0').trimEnd('.') else "${cp.amount / 100}"
+                        val unit = if (cp.type == "discount") "折" else "¥"
+                        val min = if (cp.threshold > 0) "满 ${cp.threshold / 100} 可用" else "无门槛"
+                        Row(
+                            Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(24.dp))
+                                .background(c.bg2.copy(0.55f)).border(1.dp, c.borderDefault, RoundedCornerShape(24.dp)),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Row(verticalAlignment = Alignment.Top) {
-                                Text("¥", color = cp.tone, fontSize = 28.sp, style = MonoNumber)
-                                Text("${cp.amt}", color = cp.tone, fontSize = 64.sp, fontWeight = FontWeight.Bold, style = MonoNumber)
+                            Column(
+                                Modifier.width(200.dp).fillMaxHeight().background(tone.copy(0.18f)),
+                                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+                            ) {
+                                Row(verticalAlignment = Alignment.Top) {
+                                    if (unit == "¥") Text("¥", color = tone, fontSize = 28.sp, style = MonoNumber)
+                                    Text(big, color = tone, fontSize = 64.sp, fontWeight = FontWeight.Bold, style = MonoNumber)
+                                    if (unit == "折") Text("折", color = tone, fontSize = 28.sp)
+                                }
+                                Text(min, color = c.textSecondary, fontSize = 16.sp)
                             }
-                            Text(cp.min, color = c.textSecondary, fontSize = 16.sp)
+                            Column(Modifier.weight(1f).padding(24.dp)) {
+                                Text(cp.name, color = c.textPrimary, fontSize = 24.sp, maxLines = 2)
+                                Spacer(Modifier.height(8.dp))
+                                Text("剩 ${cp.stock} 张", color = c.textMuted, fontSize = 16.sp, style = MonoNumber)
+                            }
+                            PrimaryButton("去使用", Modifier.padding(end = 20.dp)) { nav(Routes.MallCategory) }
                         }
-                        Column(Modifier.weight(1f).padding(24.dp)) {
-                            Text(cp.name, color = c.textPrimary, fontSize = 24.sp)
-                            Spacer(Modifier.height(8.dp))
-                            Text("⏰ ${cp.expire}", color = c.textMuted, fontSize = 16.sp, style = MonoNumber)
-                        }
-                        PrimaryButton("去使用", Modifier.padding(end = 20.dp)) { nav(Routes.MallCategory) }
                     }
                 }
             }

@@ -33,11 +33,9 @@ fun JdoNavHost(onToggleTheme: () -> Unit) {
         composable(Routes.MallLogin)    { MallLoginScreen(go, back) }
         composable(Routes.MallDriving)  { MallDrivingScreen(go, back) }
         composable(Routes.MallReviews)  { MallReviewsScreen(go, back) }
-        composable(Routes.MallPoints)   { MallPointsScreen(go, back) }
         composable(Routes.MallAftersale){ MallAftersaleScreen(go, back) }
         composable(Routes.MallTracking) { MallTrackingScreen(go, back) }
         composable(Routes.MallFavorites){ MallFavoritesScreen(go, back) }
-        composable(Routes.MallWallet)   { MallWalletScreen(go, back) }
         composable(Routes.MallSettings) { MallSettingsScreen(go, back, onToggleTheme) }
     }
 }
