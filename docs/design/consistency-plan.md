@@ -22,7 +22,7 @@
 | # | 业务点 | 现状（不统一） | 统一方案 |
 |---|---|---|---|
 | 1 | **购物车未接真实数据** | V3 购物车/结算用写死的 3 件；下单只提交这 3 件 | 新增 `cart` 实体 + API（加购/改量/删/清空）；V3 加购→购物车→结算全走 API |
-| ~~2~~ | 🟢 **消费端多屏接 API**（2026-06-02 基本完成）：orders ✅、addresses ✅（add-user）、wallet/points ✅（`/me/wallet`）、reviews ✅（add-consumer-reviews 过滤 hidden）、favorites/coupons/aftersale ✅（add-account-extras）、tracking ✅（add-fulfillment `/orders/:id/shipping`）。各域均有后端接口 + 测试 | 后端接口齐备；剩 V3/Android 前端页把 mock 替换为这些 API（前端工作） |
+| ~~2~~ | 🟡 **消费端多屏接 API**（后端齐，前端部分）：orders/cart/products/catalog ✅ 已接后端；后端接口齐备 addresses/wallet/points/reviews/favorites/coupons/aftersale（add-user/add-account-extras/add-consumer-reviews/add-fulfillment + 测试）。**但 Android 个人中心（MallAccount）的资料头(李先生/8248积分/42订单)、钱包流水、积分仍是写死 mock，未消费 `/me*` API**（2026-06-03 QA 实测发现）| 后端接口齐备；**剩 Android `我的/钱包/积分/优惠券/收藏` 屏把 mock 替换为 `/me`+`/me/wallet`+`/me/addresses`+`/coupons`+`/me/favorites`（需先加 UserState 起手 load /me）**——增量前端工作 |
 | ~~3~~ | ✅ **登录/鉴权已统一**：admin（add-admin-auth）+ 消费端车机扫码（auth-qr）+ 手机验证码（auth-login）均 apply+archive | 三入口齐备 |
 
 ### P1 · 字段/格式口径
