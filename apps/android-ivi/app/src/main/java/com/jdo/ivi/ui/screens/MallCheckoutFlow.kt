@@ -178,12 +178,18 @@ fun MallCheckoutScreen(nav: (String) -> Unit, back: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     Text("商品清单 · ${items.size} 件", color = c.textPrimary, fontSize = 22.sp)
-                    items.forEach { p ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            AsyncImage(imageModel(p.img), null, contentScale = ContentScale.Crop, modifier = Modifier.size(72.dp).clip(RoundedCornerShape(12.dp)))
-                            Spacer(Modifier.width(14.dp))
-                            Text(p.title, color = c.textPrimary, fontSize = 18.sp, maxLines = 2, modifier = Modifier.weight(1f))
-                            Text("¥${fmtPrice(p.priceFen * p.qty / 100.0)}", color = c.textPrimary, fontSize = 20.sp, style = MonoNumber)
+                    // 清单可滚动并占满剩余空间，把「实付 + 提交订单」钉在底部常驻（商品多时也不会把按钮顶出屏幕）
+                    Column(
+                        Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        items.forEach { p ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                AsyncImage(imageModel(p.img), null, contentScale = ContentScale.Crop, modifier = Modifier.size(72.dp).clip(RoundedCornerShape(12.dp)))
+                                Spacer(Modifier.width(14.dp))
+                                Text(p.title, color = c.textPrimary, fontSize = 18.sp, maxLines = 2, modifier = Modifier.weight(1f))
+                                Text("¥${fmtPrice(p.priceFen * p.qty / 100.0)}", color = c.textPrimary, fontSize = 20.sp, style = MonoNumber)
+                            }
                         }
                     }
                     Divider()

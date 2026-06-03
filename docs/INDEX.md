@@ -56,6 +56,7 @@
 
 | 日期 | Agent | 完成项 | 关键 commit |
 |---|---|---|---|
+| 2026-06-03 | claude-ui-aesthetic | **修「确认订单」提交按钮消失**：确认订单页右栏（商品清单+实付+提交订单）是不可滚动的普通 Column，购物车商品多（≥5 件）时清单把「实付+提交订单」撑出栏底被裁掉→下单按钮看不见也点不到。重构为：商品清单 `weight(1f)+verticalScroll` 占满剩余空间、可滚动，「实付+提交订单」钉在底部常驻（任意件数都可见）。emulator 实测 4 件清单下按钮 bounds 正常显示。assembleDebug 全绿 | _pending_ |
 | 2026-06-03 | claude-ui-aesthetic | **视觉 QA 整改（不再稀疏 + 砍超宽按钮）**：优惠券页/收藏页 由 `LazyVerticalGrid` 黏左上角→**居中 `FlowRow`**（少量数据时垂直+水平居中，不再大片留白）；超宽 `fillMaxWidth` 独立按钮改自然宽度——退出登录(我的/关于页)、售后「提交申请」(原 `weight(1f)` 占满整行→wrap-content，订单号移到上方说明文字)。emulator 实测：优惠券 2 张居中、收藏 2 件居中、按钮不再撑满。compileDebugKotlin + dead-ui guard 全绿 | _pending_ |
 | 2026-06-03 | claude-qa | **消费端去假数据 + 全屏接真实后端**：详情页删假「规格 S/M/L/XL」+假「库存86件」(所有商品含油卡都写死)→ 数量+真实评分；个人中心(资料/积分/券/收藏/地址)接 /me*；二级屏 评价←/reviews、物流←/orders/:id/shipping、售后←/me/aftersale(新增 POST 消费端发起售后→admin 可见，闭环实测)；砍无后端 mock(钱包/积分商城/我的车辆等)。api 95→100 测试 + Android build 全绿 | `b513519` `ea7d9b3` `57cf85a` |
 | 2026-06-03 | claude-qa | **全站 QA（前后台打通 + 逐按钮）**：Phase A 脚本化验证 **6 域后台↔前台全打通**（商品 新增/下架/改价/删占用分类409、营销 banner启停/券、交易 下单→后台/支付PAID/发货SHIPPING/非法409、客户 封禁拦登录/改积分同步、履约 自提点营业过滤/物流轨迹、看板 埋点pv累加）；Phase B/C admin+消费端逐按钮审计。**修 3 处死/误导按钮**：admin 消息铃铛（原无 onclick → 通知面板派生待发货/售后/低库存待办可跳转，浏览器实测显示「待发货1单/售后1单」）、⌘K（→ 聚焦搜索，实测）、消费端音乐播放键（clickable{} 空 → 切 play/pause，emulator 实测）。记录已知缺口：Android 个人中心仍写死 mock（consistency-plan P0#2）| `5d5eaa8` |
