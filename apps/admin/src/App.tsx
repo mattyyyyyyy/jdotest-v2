@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, setToken, type ResourceDef } from './api';
 
 /** 格式化单元格：分→元、布尔、图、列表。对齐内嵌 SPA 的类型化展示（data-dictionary）。 */
-function fmt(type: string, v: unknown): React.ReactNode {
+export function fmt(type: string, v: unknown): React.ReactNode {
   if (v == null) return <span className="muted">—</span>;
   switch (type) {
     case 'image':

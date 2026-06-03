@@ -48,7 +48,7 @@ CI 的 `pnpm test` 不达标即 **exit 1 → 红**（已实测：抬高门槛会
 |---|---|---|---|---|
 | 后端 `services/api` | `@vitest/coverage-v8` | Lines/Stmts **97.6%** · Funcs **98.8%** · Branch **80.4%** | lines/stmts/funcs ≥ **95**，branch ≥ **78** | `pnpm test` ✅ |
 | `packages/order-state-machine` | 同上 | 全部 **100%** | lines/stmts/funcs ≥ **90**，branch ≥ **85** | `pnpm test` ✅ |
-| admin（React） | Vitest + Testing Library | 0（零测试） | 待补：先要求非零 | ⬜ 待落地 |
+| admin（React） | Vitest + jsdom + Testing Library | Lines/Stmts **99.2%** · Branch **87.8%** · Funcs **78.6%**（13 测试：fmt + 登录→控制台流程 + api 封装层） | lines/stmts ≥ **90**，branch ≥ **80**，funcs ≥ **70** | `pnpm test` ✅ |
 | Android | JaCoCo | — | 纯逻辑模块 ≥ 40% | ⬜ 待落地 |
 
 > 原则：**门槛只升不降**；排除项见各 `vitest.config.ts`（server.ts 入口 / admin-spa.ts 字符串 / seed 数据）。
