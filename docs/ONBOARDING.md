@@ -178,9 +178,9 @@ npx serve mockups/jdo-pencil-v3 -p 8080
 
 详见 [`testing-strategy.md`](./testing-strategy.md) §待补 与 [`open-questions.md`](./open-questions.md)。重点（AI-coding 角度）：
 - **`pnpm lint` 是空壳**：无任何包定义 lint task，也无 ESLint/Prettier → CI 的 Lint 步骤当前空转。
-- ~~**无覆盖率度量**：vitest 没开 coverage，无门槛；`apps/admin` 零测试。~~ ✅ 已解（2026-06-03）：后端/状态机/admin 三处均接 `@vitest/coverage-v8` + 覆盖率门槛进 CI（`pnpm test` gate），admin 从 0→13 测试。剩 Android JaCoCo 待补。
+- ~~**无覆盖率度量**：vitest 没开 coverage，无门槛；`apps/admin` 零测试。~~ ✅ 已解（2026-06-03）：后端/状态机/admin 接 `@vitest/coverage-v8`、Android 接 JaCoCo，覆盖率门槛全进 CI；admin 从 0→13 测试。
 - **前端↔契约 漂移无护栏**：契约测试只守 openapi↔后端路由；安卓/admin 手写 fetch+解析那侧没护栏（banner 没接、假字段这类坑的根源）。
-- **Android 仪器测试不进 CI**（需 emulator）：UI↔后端接缝靠人工 emulator 验证。
+- ~~**Android 仪器测试不进 CI**（需 emulator）：UI↔后端接缝靠人工 emulator 验证。~~ ✅ 已解（2026-06-03）：CI `android-instrumented` job 用 `reactivecircus/android-emulator-runner` 起后端 + emulator 跑 `connectedDebugAndroidTest`。
 - **Android 无 detekt/ktlint**；TS 无 knip/ts-prune 死代码检测。
 
 ---

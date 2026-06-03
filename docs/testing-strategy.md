@@ -28,10 +28,10 @@
 | 前后台打通契约 | **admin 写→consumer 读** 6 域端到端（商品/营销/交易/客户/履约/看板）| 同上（`app.test.ts` §前后台打通契约）| ✅ 后端层数据流 |
 | API 契约漂移 | openapi.yaml 每个 path 都是已注册路由 | `contract.test.ts` | ✅ 契约 |
 | UI 死按钮 | 消费端 Compose 屏交互控件有没有空 handler | `bash tools/check-dead-ui.sh` | ✅ 死按钮 |
-| Android 纯逻辑 | fmtPrice / Catalog 过滤 | `./gradlew :app:testDebugUnitTest` | ✅ 局部纯函数 |
-| **Android UI ↔ 后端** | **屏幕有没有把后端数据显示出来** | `./gradlew :app:connectedDebugAndroidTest`（需 emulator + 后端）| 🟢 **接缝已覆盖**（`BackendDataRenderTest`：拉真后端→渲染→断言商品标题显示）；逐屏断言待扩 |
+| Android 纯逻辑 | fmtPrice / Catalog 过滤 + **JaCoCo 门槛** | `./gradlew :app:jacocoUnitVerification` | ✅ 局部纯函数（覆盖率 gate）|
+| **Android UI ↔ 后端** | **屏幕有没有把后端数据显示出来** | `./gradlew :app:connectedDebugAndroidTest`（CI `android-instrumented` job 用 android-emulator-runner 起后端 + emulator 跑）| 🟢 **接缝已覆盖 + 进 CI**（`BackendDataRenderTest`：拉真后端→渲染→断言商品标题显示；`PrimaryButtonTest`）；逐屏断言待扩 |
 
-**所以**：说"测试过 / 全绿"时必须讲清是哪一层。后端 106 绿 **不等于** Android 屏显示正确——后者目前主要靠**人工 emulator 验证**（仪器测试覆盖待补，需 SDK，CI 暂不跑）。
+**所以**：说"测试过 / 全绿"时必须讲清是哪一层。后端 106 绿 **不等于** Android 屏显示正确——但 Android 仪器测试现已进 CI（`android-instrumented`），UI↔后端接缝有自动断言把关，不再纯靠人工 emulator。
 
 ## 护栏（已落地，进 CI）
 - **死按钮护栏** `tools/check-dead-ui.sh`：扫消费端屏交互控件空 handler（点了没反应）。故意无操作加 `// dead-ok: <原因>`。首跑抓出 14 个，已修。
@@ -49,14 +49,16 @@ CI 的 `pnpm test` 不达标即 **exit 1 → 红**（已实测：抬高门槛会
 | 后端 `services/api` | `@vitest/coverage-v8` | Lines/Stmts **97.6%** · Funcs **98.8%** · Branch **80.4%** | lines/stmts/funcs ≥ **95**，branch ≥ **78** | `pnpm test` ✅ |
 | `packages/order-state-machine` | 同上 | 全部 **100%** | lines/stmts/funcs ≥ **90**，branch ≥ **85** | `pnpm test` ✅ |
 | admin（React） | Vitest + jsdom + Testing Library | Lines/Stmts **99.2%** · Branch **87.8%** · Funcs **78.6%**（13 测试：fmt + 登录→控制台流程 + api 封装层） | lines/stmts ≥ **90**，branch ≥ **80**，funcs ≥ **70** | `pnpm test` ✅ |
-| Android | JaCoCo | — | 纯逻辑模块 ≥ 40% | ⬜ 待落地 |
+| Android（JVM 单测） | JaCoCo（限定 `data/Catalog` 纯逻辑层） | 行覆盖 **63.2%**（60/95） | line ≥ **60** | `gradlew :app:jacocoUnitVerification`（CI android-unit）✅ |
+
+> Android 门槛**只限定 data 纯逻辑层**——Compose UI 靠仪器测试覆盖，不算进 JaCoCo，否则海量 UI 会把比例拉到接近 0。可临时验证牙齿：`-PjacocoMin=0.80`（基线 63% → exit 1）。
 
 > 原则：**门槛只升不降**；排除项见各 `vitest.config.ts`（server.ts 入口 / admin-spa.ts 字符串 / seed 数据）。
 > 提高门槛 = 改 `thresholds` 数字；新增代码覆盖率不得拉低整体（理想后续上 diff-coverage 卡新增行）。
 
 ## 待补（已知缺口，按优先级）
-1. **admin（React）从 0 补测试 + 覆盖率门槛**（当前 admin 还在门槛外）
-2. **Android 仪器测试断言"屏显示后端数据 / 关键按钮可见"**（直接防 banner/资料/mock/「下单按钮被裁掉」这类坑；需 emulator，CI 走 `reactivecircus/android-emulator-runner`）+ Android JaCoCo 门槛
+1. **逐屏仪器断言扩面**：当前仪器测试只断言「商品标题渲染 + 按钮回调」；应补「确认订单页提交按钮可见」「各页关键控件可见」等（直接防「下单按钮被裁掉」复发）
+2. **diff-coverage**：只卡新增/改动行的覆盖率，而非整体比例（更精准逼出 TDD）
 3. **admin（React）从 0 补测试**：组件测试 + Playwright 冒烟
 4. **detekt**（`EmptyFunctionBlock` + `UnusedPrivateMember`）补静态死代码检测
 5. **写死领域数据 lint**：屏文件里本地 `data class` 假模型 / 硬编码价格姓名（低误报版待打磨）

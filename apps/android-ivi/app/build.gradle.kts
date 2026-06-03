@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    jacoco // 单测覆盖率（TDD 的牙齿，限定 data 纯逻辑层）
 }
 
 android {
@@ -36,6 +37,55 @@ android {
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
+        }
+        getByName("debug") {
+            enableUnitTestCoverage = true // 让 testDebugUnitTest 产出 jacoco exec
+        }
+    }
+}
+
+// ── JaCoCo：单测覆盖率门槛（TDD 的牙齿）──
+// Android 可单测的纯逻辑面很小（Catalog 过滤/查找 + fmtPrice），所以**限定 data 层**，
+// 不把 Compose UI（靠仪器测试覆盖）算进来，否则门槛会被海量 UI 拉到接近 0、失去意义。
+jacoco { toolVersion = "0.8.12" }
+
+// 限定到纯逻辑类（当前 JVM 单测真正覆盖的范围）
+val coveredLogicClasses = listOf("**/data/Catalog*.class")
+
+tasks.register<JacocoReport>("jacocoUnitReport") {
+    dependsOn("testDebugUnitTest")
+    group = "verification"
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+    classDirectories.setFrom(
+        fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) { include(coveredLogicClasses) },
+    )
+    sourceDirectories.setFrom(files("src/main/java"))
+    executionData.setFrom(
+        fileTree(layout.buildDirectory) { include("**/testDebugUnitTest.exec", "**/*UnitTest.exec") },
+    )
+}
+
+tasks.register<JacocoCoverageVerification>("jacocoUnitVerification") {
+    dependsOn("jacocoUnitReport")
+    group = "verification"
+    classDirectories.setFrom(
+        fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) { include(coveredLogicClasses) },
+    )
+    sourceDirectories.setFrom(files("src/main/java"))
+    executionData.setFrom(
+        fileTree(layout.buildDirectory) { include("**/testDebugUnitTest.exec", "**/*UnitTest.exec") },
+    )
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                // 基线（2026-06-03）：data/Catalog 行覆盖 63.2%（60/95）。门槛 0.60，只升不降。
+                // 可临时覆盖验证牙齿：-PjacocoMin=0.80
+                minimum = ((project.findProperty("jacocoMin") as String?) ?: "0.60").toBigDecimal()
+            }
         }
     }
 }
