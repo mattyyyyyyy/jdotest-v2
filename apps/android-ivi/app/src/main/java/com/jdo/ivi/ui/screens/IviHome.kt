@@ -84,9 +84,9 @@ private fun QuickActionsCard(modifier: Modifier, nav: (String) -> Unit) {
     GlassCard(modifier.height(168.dp), padding = PaddingValues(14.dp)) {
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             QuickTile("search", "搜索", Modifier.weight(1f)) { nav(Routes.MallSearch) }
-            QuickTile("home", "回家", Modifier.weight(1f)) {}
-            QuickTile("company", "公司", Modifier.weight(1f)) {}
-            QuickTile("bolt", "充电", Modifier.weight(1f), tint = c.mint) {}
+            QuickTile("home", "回家", Modifier.weight(1f)) {} // dead-ok: 车机导航快捷位（无导航后端，占位）
+            QuickTile("company", "公司", Modifier.weight(1f)) {} // dead-ok: 车机导航快捷位（占位）
+            QuickTile("bolt", "充电", Modifier.weight(1f), tint = c.mint) {} // dead-ok: 找充电桩（无地图后端，占位）
         }
     }
 }

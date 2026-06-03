@@ -847,3 +847,50 @@ describe('fulfillment · 消费端自提点 / 物流（openspec/specs/fulfillmen
     expect((await get('/api/v1/orders/o-20002/shipping')).statusCode).toBe(401);
   });
 });
+
+// ===== 前后台打通契约（护栏3）：后台写 → 前台读，逐域端到端 =====
+// 把手动 QA 的「admin 改→consumer 看」固化成回归；断了 CI 红。覆盖 6 域。
+describe('前后台打通契约 · admin 写→consumer 读（6 域）', () => {
+  const post = (url: string, payload?: unknown): Promise<LightMyRequestResponse> =>
+    app.inject({ method: 'POST', url, payload } as InjectOptions) as Promise<LightMyRequestResponse>;
+  const userToken = async (): Promise<string> => (await post('/api/v1/auth/mock-login')).json().accessToken as string;
+  const ujson = async (url: string, t: string) =>
+    (await app.inject({ method: 'GET', url, headers: { authorization: `Bearer ${t}` } } as InjectOptions)).json();
+
+  it('商品：后台新增上架 → 消费端 /products 可见', async () => {
+    const p = (await inj({ method: 'POST', url: '/api/v1/admin/products', payload: { title: '打通-商品', cat: 'energy', price: 1000, onShelf: true } })).json();
+    expect((await inj({ method: 'GET', url: '/api/v1/products?cat=energy' })).json().items.some((x: { id: string }) => x.id === p.id)).toBe(true);
+  });
+
+  it('营销：后台停用 banner → 消费端 /bootstrap 不再返回；新增券 → /coupons 可见', async () => {
+    const bid = (await inj({ method: 'GET', url: '/api/v1/admin/banners' })).json().items[0].id;
+    await inj({ method: 'PATCH', url: `/api/v1/admin/banners/${bid}`, payload: { active: false } });
+    expect((await inj({ method: 'GET', url: '/api/v1/bootstrap' })).json().banners.some((b: { id: string }) => b.id === bid)).toBe(false);
+    await inj({ method: 'POST', url: '/api/v1/admin/coupons', payload: { name: '打通-券', type: 'fixed', amount: 500, threshold: 0, stock: 9, active: true } });
+    expect((await inj({ method: 'GET', url: '/api/v1/coupons' })).json().items.some((c: { name: string }) => c.name === '打通-券')).toBe(true);
+  });
+
+  it('交易：消费端下单 → 后台订单可见；支付确认 → 状态 PAID', async () => {
+    const oid = (await post('/api/v1/orders', { items: [{ title: '打通-下单', price: 1000, qty: 1 }], channel: 'car' })).json().order.id;
+    expect((await inj({ method: 'GET', url: '/api/v1/admin/orders' })).json().items.some((o: { id: string }) => o.id === oid)).toBe(true);
+    await post(`/api/v1/payments/${oid}/confirm`, {});
+    expect((await inj({ method: 'GET', url: `/api/v1/admin/orders/${oid}` })).json().status).toBe('PAID');
+  });
+
+  it('客户：后台改积分 → 消费端 /me/wallet 同步', async () => {
+    await inj({ method: 'PATCH', url: '/api/v1/admin/users/u-1001', payload: { points: 4321 } });
+    const t = await userToken();
+    expect((await ujson('/api/v1/me/wallet', t)).points).toBe(4321);
+  });
+
+  it('履约：后台新增营业自提点 → 消费端 /fulfillment/pickup-points 可见', async () => {
+    await inj({ method: 'POST', url: '/api/v1/admin/pickupPoints', payload: { name: '打通-自提', address: 'x', lat: 31, lng: 121, open: true } });
+    expect((await inj({ method: 'GET', url: '/api/v1/fulfillment/pickup-points?limit=20' })).json().items.some((p: { name: string }) => p.name === '打通-自提')).toBe(true);
+  });
+
+  it('看板：消费端埋点 → 后台 analytics pv 累加', async () => {
+    const before = (await inj({ method: 'GET', url: '/api/v1/admin/analytics' })).json().pv;
+    await post('/api/v1/events', { type: 'pageview' });
+    expect((await inj({ method: 'GET', url: '/api/v1/admin/analytics' })).json().pv).toBe(before + 1);
+  });
+});

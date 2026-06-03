@@ -90,7 +90,7 @@ fun MallOrdersScreen(nav: (String) -> Unit, back: () -> Unit) {
     MallBg {
         Column(Modifier.fillMaxSize()) {
             StatusBar()
-            SubBar("我的订单", back) { IconBtn("search") {} }
+            SubBar("我的订单", back)
             Row(Modifier.padding(horizontal = 36.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 listOf("all" to "全部", "unpaid" to "待付款", "paid" to "待发货", "shipping" to "待收货", "review" to "待评价")
                     .forEach { (id, label) -> Chip(label, tab == id) { tab = id } }
@@ -155,7 +155,7 @@ fun MallOrdersScreen(nav: (String) -> Unit, back: () -> Unit) {
                                     ShoppingState.selectOrderForPayment(cur.id, (cur.total * 100).toInt())
                                     nav(Routes.MallPay)
                                 }
-                                "PAID" -> OutlineButton("催发货", Modifier.weight(1f)) {}
+                                "PAID" -> OutlineButton("申请售后", Modifier.weight(1f)) { nav(Routes.MallAftersale) }
                                 "SHIPPING", "PICKUP_READY" -> PrimaryButton("查看物流", Modifier.weight(1f)) { nav(Routes.MallTracking) }
                                 "DELIVERED", "COMPLETED" -> {
                                     OutlineButton("申请售后", Modifier.weight(1f)) { nav(Routes.MallAftersale) }
@@ -189,7 +189,7 @@ fun MallTrackingScreen(nav: (String) -> Unit, back: () -> Unit) {
     MallBg {
         Column(Modifier.fillMaxSize()) {
             StatusBar()
-            SubBar("物流详情", back) { IconBtn("phone") {} }
+            SubBar("物流详情", back)
             Row(Modifier.weight(1f).padding(36.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 // 地图占位
                 Box(

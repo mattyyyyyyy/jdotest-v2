@@ -45,7 +45,7 @@ fun MallAddressesScreen(nav: (String) -> Unit, back: () -> Unit) {
     MallBg {
         Column(Modifier.fillMaxSize()) {
             StatusBar()
-            SubBar("收货地址 · ${addrs.size} 个", back) { IconBtn("plus") {} }
+            SubBar("收货地址 · ${addrs.size} 个", back)
             Row(Modifier.weight(1f).padding(36.dp), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     if (addrs.isEmpty()) Text("还没有收货地址", color = c.textMuted, fontSize = 20.sp)
@@ -94,10 +94,16 @@ fun MallSettingsScreen(nav: (String) -> Unit, back: () -> Unit, onToggleTheme: (
     var dark by remember { mutableStateOf(c.isDark) }
     var voice by remember { mutableStateOf(true) }
     var autoPay by remember { mutableStateOf(true) }
+    // 本地开关（Demo：仅会话内生效；接车厂设置存储时改成持久化）
+    var reduceMotion by remember { mutableStateOf(false) }
+    var autoDriving by remember { mutableStateOf(true) }
+    var hideVideo by remember { mutableStateOf(true) }
+    var orderPush by remember { mutableStateOf(true) }
+    var voiceAlert by remember { mutableStateOf(true) }
     MallBg {
         Column(Modifier.fillMaxSize()) {
             StatusBar()
-            SubBar("设置中心", back) { IconBtn("search") {} }
+            SubBar("设置中心", back)
             Row(Modifier.weight(1f).padding(horizontal = 36.dp, vertical = 20.dp), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
                 // 左导航
                 Column(Modifier.width(260.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -119,15 +125,15 @@ fun MallSettingsScreen(nav: (String) -> Unit, back: () -> Unit, onToggleTheme: (
                             SettingsTitle("主题与显示")
                             SettingsSwitch("深色模式", "夜间 / 长时间驾驶推荐", dark) { dark = it; onToggleTheme() }
                             Divider()
-                            SettingsSwitch("减少动态效果", "等同 prefers-reduced-motion", false) {}
+                            SettingsSwitch("减少动态效果", "等同 prefers-reduced-motion", reduceMotion) { reduceMotion = it }
                         }
                         "driving" -> GlassCard(Modifier.fillMaxWidth(), corner = 24.dp) {
                             SettingsTitle("行车安全")
-                            SettingsSwitch("车速 > 5km/h 自动进入行车态", "来源车厂 JS Bridge", true) {}
+                            SettingsSwitch("车速 > 5km/h 自动进入行车态", "来源车厂 JS Bridge", autoDriving) { autoDriving = it }
                             Divider()
                             SettingsSwitch("行车态优先语音搜索", "唤醒词「你好 JDO」", voice) { voice = it }
                             Divider()
-                            SettingsSwitch("行车态隐藏视频 / 自动播放", "符合座舱安全规范", true) {}
+                            SettingsSwitch("行车态隐藏视频 / 自动播放", "符合座舱安全规范", hideVideo) { hideVideo = it }
                         }
                         "pay" -> GlassCard(Modifier.fillMaxWidth(), corner = 24.dp) {
                             SettingsTitle("支付与免密")
@@ -137,9 +143,9 @@ fun MallSettingsScreen(nav: (String) -> Unit, back: () -> Unit, onToggleTheme: (
                         }
                         "notify" -> GlassCard(Modifier.fillMaxWidth(), corner = 24.dp) {
                             SettingsTitle("通知与声音")
-                            SettingsSwitch("订单状态推送", "下单 / 发货 / 配送 / 签收", true) {}
+                            SettingsSwitch("订单状态推送", "下单 / 发货 / 配送 / 签收", orderPush) { orderPush = it }
                             Divider()
-                            SettingsSwitch("物流到车语音播报", "骑手抵达时车机播报", true) {}
+                            SettingsSwitch("物流到车语音播报", "骑手抵达时车机播报", voiceAlert) { voiceAlert = it }
                         }
                         "account" -> GlassCard(Modifier.fillMaxWidth(), corner = 24.dp) {
                             SettingsTitle("账号与隐私")

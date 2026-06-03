@@ -12,6 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: UI 护栏 - 死按钮（消费端屏交互控件空 handler）
+        run: bash tools/check-dead-ui.sh
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
