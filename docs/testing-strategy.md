@@ -13,7 +13,7 @@
 | API 契约漂移 | openapi.yaml 每个 path 都是已注册路由 | `contract.test.ts` | ✅ 契约 |
 | UI 死按钮 | 消费端 Compose 屏交互控件有没有空 handler | `bash tools/check-dead-ui.sh` | ✅ 死按钮 |
 | Android 纯逻辑 | fmtPrice / Catalog 过滤 | `./gradlew :app:testDebugUnitTest` | ✅ 局部纯函数 |
-| **Android UI ↔ 后端** | **屏幕有没有把后端数据显示出来** | `./gradlew :app:connectedDebugAndroidTest`（需 emulator）| 🟡 **部分**（PrimaryButton；个人中心数据断言待补）|
+| **Android UI ↔ 后端** | **屏幕有没有把后端数据显示出来** | `./gradlew :app:connectedDebugAndroidTest`（需 emulator + 后端）| 🟢 **接缝已覆盖**（`BackendDataRenderTest`：拉真后端→渲染→断言商品标题显示）；逐屏断言待扩 |
 
 **所以**：说"测试过 / 全绿"时必须讲清是哪一层。后端 106 绿 **不等于** Android 屏显示正确——后者目前主要靠**人工 emulator 验证**（仪器测试覆盖待补，需 SDK，CI 暂不跑）。
 
