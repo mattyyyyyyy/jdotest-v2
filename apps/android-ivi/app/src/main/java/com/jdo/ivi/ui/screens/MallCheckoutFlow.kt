@@ -84,7 +84,7 @@ fun MallCartScreen(nav: (String) -> Unit, back: () -> Unit) {
                         Text("¥ ${"%.2f".format(subtotal)}", color = c.error, fontSize = 40.sp, fontWeight = FontWeight.SemiBold, style = MonoNumber)
                     }
                     ShoppingState.lastError?.let { Text(it, color = c.error, fontSize = 16.sp) }
-                    PrimaryButton("去结算 · ${selected.sumOf { it.qty }} 件", Modifier.fillMaxWidth()) {
+                    PrimaryButton("去结算 · ${selected.sumOf { it.qty }} 件", Modifier.fillMaxWidth().height(72.dp)) {
                         if (selected.isNotEmpty()) nav(Routes.MallCheckout)
                     }
                 }
@@ -192,7 +192,7 @@ fun MallCheckoutScreen(nav: (String) -> Unit, back: () -> Unit) {
                         Text("¥ ${"%.2f".format(total)}", color = c.error, fontSize = 40.sp, fontWeight = FontWeight.SemiBold, style = MonoNumber)
                     }
                     ShoppingState.lastError?.let { Text(it, color = c.error, fontSize = 16.sp) }
-                    PrimaryButton("提交订单", Modifier.fillMaxWidth()) {
+                    PrimaryButton("提交订单", Modifier.fillMaxWidth().height(72.dp)) {
                         if (items.isNotEmpty()) {
                             ShoppingState.checkoutSelectedAsync { nav(Routes.MallPay) }
                         }
