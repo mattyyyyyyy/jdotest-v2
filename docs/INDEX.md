@@ -56,6 +56,7 @@
 
 | 日期 | Agent | 完成项 | 关键 commit |
 |---|---|---|---|
+| 2026-06-03 | claude-onboarding-doc | **新增上手+开发流程总文档 `docs/ONBOARDING.md`**：一句话项目 + 仓库地图 + 跑起来命令（三端）+ **开发顺序时间线**（11 阶段，含依赖主线）+ **标准 feature 流程**（开工三件套→propose→apply→验证→commit→archive→push）+ **分角色阅读路径**（任何人/产品/工程/设计/决策背景，给新人的最短路径）+ 已知缺口 + 速查表。登记 INDEX §入口文档置顶 | _pending_ |
 | 2026-06-03 | claude-ui-aesthetic | **修「确认订单」提交按钮消失**：确认订单页右栏（商品清单+实付+提交订单）是不可滚动的普通 Column，购物车商品多（≥5 件）时清单把「实付+提交订单」撑出栏底被裁掉→下单按钮看不见也点不到。重构为：商品清单 `weight(1f)+verticalScroll` 占满剩余空间、可滚动，「实付+提交订单」钉在底部常驻（任意件数都可见）。emulator 实测 4 件清单下按钮 bounds 正常显示。assembleDebug 全绿 | _pending_ |
 | 2026-06-03 | claude-ui-aesthetic | **视觉 QA 整改（不再稀疏 + 砍超宽按钮）**：优惠券页/收藏页 由 `LazyVerticalGrid` 黏左上角→**居中 `FlowRow`**（少量数据时垂直+水平居中，不再大片留白）；超宽 `fillMaxWidth` 独立按钮改自然宽度——退出登录(我的/关于页)、售后「提交申请」(原 `weight(1f)` 占满整行→wrap-content，订单号移到上方说明文字)。emulator 实测：优惠券 2 张居中、收藏 2 件居中、按钮不再撑满。compileDebugKotlin + dead-ui guard 全绿 | _pending_ |
 | 2026-06-03 | claude-qa | **消费端去假数据 + 全屏接真实后端**：详情页删假「规格 S/M/L/XL」+假「库存86件」(所有商品含油卡都写死)→ 数量+真实评分；个人中心(资料/积分/券/收藏/地址)接 /me*；二级屏 评价←/reviews、物流←/orders/:id/shipping、售后←/me/aftersale(新增 POST 消费端发起售后→admin 可见，闭环实测)；砍无后端 mock(钱包/积分商城/我的车辆等)。api 95→100 测试 + Android build 全绿 | `b513519` `ea7d9b3` `57cf85a` |
@@ -90,6 +91,7 @@
 
 ## 📌 入口文档（必读）
 
+- [docs/ONBOARDING.md](./ONBOARDING.md) — ⭐ **新人/新 agent 第一份**：开发顺序时间线 + 标准 feature 流程 + 分角色阅读路径 + 跑起来命令 + 已知缺口 · Draft · 2026-06-03
 - [CLAUDE.md](../CLAUDE.md) — 项目协作公约 v3（Harness 5 层 + OpenSpec 原生 + admin 域）· Accepted · 2026-05-29
 - [docs/PRD.md](./PRD.md) — 产品需求文档 **v0.6（§Implementation Decisions 按唯一真相拆分到 architecture/backend-spec/api-contracts）** · Draft · 2026-06-01
 - [docs/architecture.md](./architecture.md) · [docs/backend-spec.md](./backend-spec.md) · [docs/api-contracts.md](./api-contracts.md) — **实现细节三件套（唯一真相）** · Draft · 2026-06-01
