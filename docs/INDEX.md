@@ -93,6 +93,7 @@
 - [docs/architecture.md](./architecture.md) · [docs/backend-spec.md](./backend-spec.md) · [docs/api-contracts.md](./api-contracts.md) — **实现细节三件套（唯一真相）** · Draft · 2026-06-01
 - [docs/scope.md](./scope.md) — **MVP 范围（admin 已入范围）** · Draft · 2026-05-29
 - [docs/constraints.md](./constraints.md) — **约束唯一真相**（must/should/optional/out × 驾驶安全 / 车机适配 / 业务 / 性能 / 工程协作）· Draft · 2026-06-01
+- [docs/testing-strategy.md](./testing-strategy.md) — **测试策略**（每层测什么 + 命令 + "全绿"的准确边界；护栏：死按钮/前后台打通契约/契约漂移；UI↔后端覆盖待补）· Draft · 2026-06-03
 - [docs/task-plan.md](./task-plan.md) — **第一阶段任务总索引**（当前落地状态 + 指向 consistency-plan / openspec changes）· Draft · 2026-06-01
 - [docs/open-questions.md](./open-questions.md) — **开放问题**（RBAC 未实施 / 持久化 / ADR-0009 sync 等 drift + 业务待拍板 + 已解决指针）· Draft · 2026-06-01
 - [mockups/jdo-pencil-v3/JDO 车机电商.html](../mockups/jdo-pencil-v3/JDO%20%E8%BD%A6%E6%9C%BA%E7%94%B5%E5%95%86.html) — **消费端主前端 · 21 屏 React 原型（V3，不重画）**· 需 HTTP server（`npx serve mockups/jdo-pencil-v3 -p 3000`）
