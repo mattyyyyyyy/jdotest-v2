@@ -165,15 +165,17 @@ fun MallFavoritesScreen(nav: (String) -> Unit, back: () -> Unit) {
                     Text("还没有收藏（商品详情点收藏即同步）", color = c.textMuted, fontSize = 20.sp)
                 }
             } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
-                    modifier = Modifier.weight(1f).padding(36.dp),
+                // 居中 FlowRow：少量收藏时不黏左上、不留大片空白
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                  FlowRow(
+                    Modifier.padding(36.dp),
                     horizontalArrangement = Arrangement.spacedBy(18.dp),
                     verticalArrangement = Arrangement.spacedBy(18.dp),
-                ) {
-                    items(favs, key = { it.productId }) { f ->
+                    maxItemsInEachRow = 4,
+                  ) {
+                    favs.forEach { f ->
                         Column(
-                            Modifier.clip(RoundedCornerShape(18.dp)).background(c.bg2.copy(0.5f))
+                            Modifier.width(300.dp).clip(RoundedCornerShape(18.dp)).background(c.bg2.copy(0.5f))
                                 .clickable { AppState.detailId = f.productId; nav(Routes.MallDetail) },
                         ) {
                             Box {
@@ -195,6 +197,7 @@ fun MallFavoritesScreen(nav: (String) -> Unit, back: () -> Unit) {
                             }
                         }
                     }
+                  }
                 }
             }
             Spacer(Modifier.height(20.dp))

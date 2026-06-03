@@ -159,7 +159,7 @@ fun MallSettingsScreen(nav: (String) -> Unit, back: () -> Unit, onToggleTheme: (
                             Divider()
                             SettingsRow("用户协议 / 隐私政策", "PIPL 合规版本")
                             Spacer(Modifier.height(16.dp))
-                            OutlineButton("退出登录", Modifier.fillMaxWidth()) { nav(Routes.MallLogin) }
+                            OutlineButton("退出登录") { nav(Routes.MallLogin) }
                         }
                     }
                 }

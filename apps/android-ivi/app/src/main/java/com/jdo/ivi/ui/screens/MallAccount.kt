@@ -120,7 +120,7 @@ fun MallProfileScreen(nav: (String) -> Unit, back: () -> Unit) {
                         }
                     }
                     Spacer(Modifier.height(20.dp))
-                    OutlineButton("退出登录 · 切换账号", Modifier.fillMaxWidth()) { nav(Routes.MallLogin) }
+                    OutlineButton("退出登录 · 切换账号") { nav(Routes.MallLogin) }
                 }
             }
         }
@@ -165,16 +165,17 @@ fun MallCouponsScreen(nav: (String) -> Unit, back: () -> Unit) {
                     Text("暂无可领优惠券（后台「营销 / 优惠券」新增即同步）", color = c.textMuted, fontSize = 20.sp)
                 }
             } else {
-                LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.weight(1f).padding(36.dp),
-                    horizontalArrangement = Arrangement.spacedBy(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                    items(coupons) { cp ->
+                // 居中的 FlowRow：少量券时不黏顶、不留大片空白
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                  FlowRow(Modifier.padding(36.dp), horizontalArrangement = Arrangement.spacedBy(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp), maxItemsInEachRow = 2) {
+                    coupons.forEach { cp ->
                         val tone = if (cp.type == "discount") c.gold else c.error
                         // fixed: amount 是满减「分」；discount: amount = 折数*10（95=9.5折）
                         val big = if (cp.type == "discount") "${cp.amount / 10.0}".trimEnd('0').trimEnd('.') else "${cp.amount / 100}"
                         val unit = if (cp.type == "discount") "折" else "¥"
                         val min = if (cp.threshold > 0) "满 ${cp.threshold / 100} 可用" else "无门槛"
                         Row(
-                            Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(24.dp))
+                            Modifier.width(560.dp).height(190.dp).clip(RoundedCornerShape(24.dp))
                                 .background(c.bg2.copy(0.55f)).border(1.dp, c.borderDefault, RoundedCornerShape(24.dp)),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -197,6 +198,7 @@ fun MallCouponsScreen(nav: (String) -> Unit, back: () -> Unit) {
                             PrimaryButton("去使用", Modifier.padding(end = 20.dp)) { nav(Routes.MallCategory) }
                         }
                     }
+                  }
                 }
             }
             Spacer(Modifier.height(20.dp))

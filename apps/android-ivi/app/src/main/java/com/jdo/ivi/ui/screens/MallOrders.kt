@@ -260,8 +260,9 @@ fun MallAftersaleScreen(nav: (String) -> Unit, back: () -> Unit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     listOf("仅退款", "退货退款", "换货", "上门维修").forEach { name -> Chip(name, type == name) { type = name } }
                 }
+                if (firstOrder != null) Text("目标订单：$firstOrder", color = c.textMuted, fontSize = 16.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PrimaryButton(if (firstOrder != null) "对订单 $firstOrder 提交「$type」" else "暂无可申请订单", Modifier.weight(1f)) {
+                    PrimaryButton(if (firstOrder != null) "提交「$type」申请" else "暂无可申请订单") {
                         val oid = firstOrder ?: return@PrimaryButton
                         scope.launch {
                             withContext(Dispatchers.IO) { runCatching { NetworkClient.createAftersale(oid, type) } }
