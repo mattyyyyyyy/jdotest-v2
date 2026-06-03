@@ -128,6 +128,10 @@ paths:
       tags: [consumer-account]
       summary: 我的售后单（经订单 userId 归属）
       responses: { '200': { description: list }, '401': { description: UNAUTHENTICATED } }
+    post:
+      tags: [consumer-account]
+      summary: 发起售后（仅本人订单；创建后台可见 pending 工单）
+      responses: { '201': { description: created }, '404': { description: ORDER_NOT_FOUND } }
 
   /api/v1/categories:
     get:

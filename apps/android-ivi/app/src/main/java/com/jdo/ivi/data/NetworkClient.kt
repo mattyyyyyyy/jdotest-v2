@@ -32,6 +32,12 @@ data class ApiCoupon(val id: String, val name: String, val type: String, val amo
 data class ApiFavorite(val productId: String, val title: String, val img: String, val priceFen: Int, val onShelf: Boolean)
 /** 收货地址。 */
 data class ApiAddress(val id: String, val receiver: String, val phone: String, val addr: String, val isDefault: Boolean)
+/** 商品评价。 */
+data class ApiReview(val id: String, val productId: String, val star: Int, val text: String)
+/** 售后工单。 */
+data class ApiAftersale(val id: String, val orderId: String, val reason: String, val status: String)
+/** 物流轨迹。 */
+data class ApiShipping(val orderId: String, val trackingNo: String, val status: String, val nodes: List<String>)
 
 /**
  * 与 web 后台同一后端（services/api，经 cloudflared 公网隧道）。
@@ -180,6 +186,27 @@ object NetworkClient {
     fun fetchAddresses(): List<ApiAddress> = JSONObject(get("/me/addresses")).getJSONArray("items").map {
         ApiAddress(it.optString("id"), it.optString("receiver"), it.optString("phone"), it.optString("addr"), it.optBoolean("isDefault"))
     }
+    /** 商品评价（过滤 hidden）；productId 可选。 */
+    fun fetchReviews(productId: String? = null): List<ApiReview> =
+        JSONObject(get("/reviews" + (productId?.let { "?productId=$it" } ?: ""))).getJSONArray("items").map {
+            ApiReview(it.optString("id"), it.optString("productId"), it.optInt("star"), it.optString("text"))
+        }
+    /** 我的售后工单。 */
+    fun fetchAftersale(): List<ApiAftersale> = JSONObject(get("/me/aftersale")).getJSONArray("items").map {
+        ApiAftersale(it.optString("id"), it.optString("orderId"), it.optString("reason"), it.optString("status"))
+    }
+    /** 发起售后（本人订单）。返回最新工单列表。 */
+    fun createAftersale(orderId: String, reason: String): List<ApiAftersale> =
+        JSONObject(send("POST", "/me/aftersale", JSONObject().put("orderId", orderId).put("reason", reason))).getJSONArray("items").map {
+            ApiAftersale(it.optString("id"), it.optString("orderId"), it.optString("reason"), it.optString("status"))
+        }
+    /** 订单物流轨迹（仅本人）。无记录返回 null。 */
+    fun fetchShipping(orderId: String): ApiShipping? = try {
+        JSONObject(get("/orders/$orderId/shipping")).let { j ->
+            val nodes = j.optJSONArray("nodes")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList()
+            if (j.isNull("trackingNo")) null else ApiShipping(orderId, j.optString("trackingNo"), j.optString("status"), nodes)
+        }
+    } catch (e: Exception) { null }
 }
 
 private inline fun <T> JSONArray.map(f: (JSONObject) -> T): List<T> {

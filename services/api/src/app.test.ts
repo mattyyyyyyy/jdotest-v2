@@ -778,6 +778,18 @@ describe('account-extras · 收藏/优惠券/售后（add-account-extras / opens
     expect((await get('/api/v1/coupons')).json().items.some((c: { id: string }) => c.id === 'cp-1')).toBe(false);
   });
 
+  it('消费端发起售后：本人订单→201 + 后台可见；他人订单→404', async () => {
+    const tA = await u1001();
+    // o-20001 属 u-1001
+    const r = await post('/api/v1/me/aftersale', { orderId: 'o-20001', reason: '消费端申请退款' }, tA);
+    expect(r.statusCode).toBe(201);
+    // 后台能看到这张新售后单
+    const adminAft = (await inj({ method: 'GET', url: '/api/v1/admin/aftersale' })).json().items;
+    expect(adminAft.some((a: { orderId: string }) => a.orderId === 'o-20001')).toBe(true);
+    // 他人订单（o-20003 属 u-1002）→ 404
+    expect((await post('/api/v1/me/aftersale', { orderId: 'o-20003', reason: 'x' }, tA)).statusCode).toBe(404);
+  });
+
   it('我的售后：按订单 userId 归属隔离', async () => {
     const tA = await u1001(); // 种子售后 as-1 属 o-20004(u-1003)，故 A(u-1001) 初始为空
     expect((await get('/api/v1/me/aftersale', tA)).json().items.length).toBe(0);

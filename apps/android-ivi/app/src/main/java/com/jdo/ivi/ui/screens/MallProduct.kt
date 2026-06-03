@@ -21,8 +21,11 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.jdo.ivi.data.AppState
 import com.jdo.ivi.data.Catalog
+import com.jdo.ivi.data.NetworkClient
 import com.jdo.ivi.data.ShoppingState
 import com.jdo.ivi.data.imageModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.jdo.ivi.ui.components.*
 import com.jdo.ivi.ui.nav.Routes
 import com.jdo.ivi.ui.theme.JdoTheme
@@ -39,7 +42,6 @@ fun MallDetailScreen(nav: (String) -> Unit, back: () -> Unit) {
     val p = Catalog.byId(AppState.detailId)
     val thumbs = listOf(p.img) + Catalog.byScene(p.scene).filter { it.id != p.id }.take(3).map { it.img }
     var thumb by remember { mutableStateOf(0) }
-    var size by remember { mutableStateOf("M") }
     var qty by remember { mutableStateOf(1) }
 
     MallBg {
@@ -82,15 +84,8 @@ fun MallDetailScreen(nav: (String) -> Unit, back: () -> Unit) {
                             Text("¥${fmtPrice(p.ori)}", color = c.textMuted, fontSize = 22.sp, style = MonoNumber)
                         }
                     }
-                    // 规格
-                    Text("规格", color = c.textSecondary, fontSize = 20.sp)
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        listOf("S", "M", "L", "XL").forEach { s ->
-                            SpecOpt(s, size == s) { size = s }
-                        }
-                    }
                     // 数量
-                    Text("数量 · 库存 86 件", color = c.textSecondary, fontSize = 20.sp)
+                    Text("数量", color = c.textSecondary, fontSize = 20.sp)
                     Row(
                         Modifier.clip(RoundedCornerShape(16.dp)).background(c.bg2.copy(0.5f))
                             .border(1.dp, c.borderDefault, RoundedCornerShape(16.dp)),
@@ -102,33 +97,21 @@ fun MallDetailScreen(nav: (String) -> Unit, back: () -> Unit) {
                         StepBtn("plus") { qty++ }
                     }
                     Spacer(Modifier.weight(1f))
-                    Text("车主评价 4.9 · 查看 2136 条 →", color = c.mint, fontSize = 20.sp,
+                    Text("车主评价 ${p.star} · 查看全部 →", color = c.mint, fontSize = 20.sp,
                         modifier = Modifier.clickable { nav(Routes.MallReviews) })
                     // CTA
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         OutlineButton("加入购物车", Modifier.weight(1f)) {
-                            ShoppingState.addCartItem(p.id, qty, size) { nav(Routes.MallCart) }
+                            ShoppingState.addCartItem(p.id, qty, "默认规格") { nav(Routes.MallCart) }
                         }
                         PrimaryButton("立即购买", Modifier.weight(1f)) {
-                            ShoppingState.addCartItem(p.id, qty, size) { nav(Routes.MallCheckout) }
+                            ShoppingState.addCartItem(p.id, qty, "默认规格") { nav(Routes.MallCheckout) }
                         }
                     }
                 }
             }
         }
     }
-}
-
-@Composable
-private fun SpecOpt(label: String, active: Boolean, onClick: () -> Unit) {
-    val c = JdoTheme.colors
-    Box(
-        Modifier.heightIn(min = 56.dp).clip(RoundedCornerShape(16.dp))
-            .background(if (active) c.accent.copy(0.15f) else c.bg2.copy(0.5f))
-            .border(1.dp, if (active) c.accent.copy(0.5f) else c.borderDefault, RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick).padding(horizontal = 28.dp),
-        contentAlignment = Alignment.Center,
-    ) { Text(label, color = if (active) c.mint else c.textPrimary, fontSize = 20.sp) }
 }
 
 @Composable
@@ -142,40 +125,44 @@ private fun StepBtn(icon: String, onClick: () -> Unit) {
 @Composable
 fun MallReviewsScreen(nav: (String) -> Unit, back: () -> Unit) {
     val c = JdoTheme.colors
-    data class Rv(val name: String, val stars: Int, val content: String, val likes: Int)
-    val reviews = listOf(
-        Rv("李***生", 5, "夏天车里一打开就是淡淡的木香，没有酒精的冲鼻感，车主党狂喜！", 184),
-        Rv("张**", 5, "回购第 4 次了，副驾后排都各放一个。挂车机上提示常买直接 1 秒下单。", 96),
-        Rv("M***ty", 4, "味道很好但持久度比预期略短，客服给了张 ¥20 券，比较满意。", 28),
-    )
+    // 接后端 /reviews（已过滤后台隐藏的）。综合评分由真实评价算。
+    var reviews by remember { mutableStateOf<List<com.jdo.ivi.data.ApiReview>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        reviews = withContext(Dispatchers.IO) { runCatching { NetworkClient.fetchReviews() }.getOrDefault(emptyList()) }
+    }
+    val avg = if (reviews.isEmpty()) 0.0 else reviews.sumOf { it.star }.toDouble() / reviews.size
     MallBg {
         Column(Modifier.fillMaxSize()) {
             StatusBar()
-            SubBar("车主评价", back) { IconBtn("cart", "3") { nav(Routes.MallCart) } }
+            SubBar("车主评价", back) { IconBtn("cart") { nav(Routes.MallCart) } }
             Row(Modifier.weight(1f).padding(36.dp), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
                 GlassCard(Modifier.width(340.dp), corner = 28.dp) {
                     Text("综合评分", color = c.textSecondary, fontSize = 18.sp)
                     Row(verticalAlignment = Alignment.Bottom) {
-                        Text("4.9", color = c.textPrimary, fontSize = 72.sp, fontWeight = FontWeight.SemiBold)
+                        Text(if (reviews.isEmpty()) "—" else "%.1f".format(avg), color = c.textPrimary, fontSize = 72.sp, fontWeight = FontWeight.SemiBold)
                         Text(" / 5.0", color = c.textMuted, fontSize = 24.sp)
                     }
                     Row { repeat(5) { Icon(jdoIcon("star"), null, tint = Color(0xFFF59E0B), modifier = Modifier.size(24.dp)) } }
                     Spacer(Modifier.height(8.dp))
-                    Text("共 2136 条 · 98% 推荐", color = c.textMuted, fontSize = 16.sp)
+                    Text("共 ${reviews.size} 条真实评价", color = c.textMuted, fontSize = 16.sp)
                 }
-                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                    reviews.forEach { r ->
-                        GlassCard(Modifier.fillMaxWidth(), corner = 24.dp) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                AvatarBadge(r.name.first().toString(), 52.dp)
-                                Spacer(Modifier.width(14.dp))
-                                Text(r.name, color = c.textPrimary, fontSize = 22.sp, modifier = Modifier.weight(1f))
-                                Row { repeat(r.stars) { Icon(jdoIcon("star"), null, tint = Color(0xFFF59E0B), modifier = Modifier.size(20.dp)) } }
+                if (reviews.isEmpty()) {
+                    Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                        Text("暂无评价（后台隐藏的不展示）", color = c.textMuted, fontSize = 20.sp)
+                    }
+                } else {
+                    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                        reviews.forEach { r ->
+                            GlassCard(Modifier.fillMaxWidth(), corner = 24.dp) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    AvatarBadge("车", 52.dp)
+                                    Spacer(Modifier.width(14.dp))
+                                    Text("车主 · ${r.productId}", color = c.textPrimary, fontSize = 22.sp, modifier = Modifier.weight(1f))
+                                    Row { repeat(r.star) { Icon(jdoIcon("star"), null, tint = Color(0xFFF59E0B), modifier = Modifier.size(20.dp)) } }
+                                }
+                                Spacer(Modifier.height(12.dp))
+                                Text(r.text, color = c.textPrimary, fontSize = 22.sp, lineHeight = 32.sp)
                             }
-                            Spacer(Modifier.height(12.dp))
-                            Text(r.content, color = c.textPrimary, fontSize = 22.sp, lineHeight = 32.sp)
-                            Spacer(Modifier.height(12.dp))
-                            Text("有用 · ${r.likes}", color = c.textMuted, fontSize = 18.sp)
                         }
                     }
                 }

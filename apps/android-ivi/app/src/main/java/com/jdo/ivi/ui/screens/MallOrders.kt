@@ -20,10 +20,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.jdo.ivi.data.ApiAftersale
+import com.jdo.ivi.data.ApiShipping
 import com.jdo.ivi.data.Catalog
+import com.jdo.ivi.data.NetworkClient
 import com.jdo.ivi.data.ShoppingState
 import com.jdo.ivi.data.imageModel
 import com.jdo.ivi.ui.components.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.jdo.ivi.ui.nav.Routes
 import com.jdo.ivi.ui.theme.JdoTheme
 import com.jdo.ivi.ui.theme.MonoNumber
@@ -169,13 +175,17 @@ fun MallOrdersScreen(nav: (String) -> Unit, back: () -> Unit) {
 @Composable
 fun MallTrackingScreen(nav: (String) -> Unit, back: () -> Unit) {
     val c = JdoTheme.colors
-    val feed = listOf(
-        "配送中 · 即将送达" to "距离车辆 480m · ETA 8 分钟",
-        "已揽收" to "顺丰同城 · 张师傅 · 今天 08:14",
-        "商家备货" to "JDO 浦东仓 · 昨天 19:30",
-        "付款完成" to "JDO 联名卡 · 昨天 18:02",
-        "下单成功" to "上海·浦东 JDO 车机 · 昨天 17:58",
-    )
+    // 接后端：取车主有物流记录的订单，展示真实轨迹（节点已由后端倒序，首个最新）。
+    var shipping by remember { mutableStateOf<ApiShipping?>(null) }
+    var loaded by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        shipping = withContext(Dispatchers.IO) {
+            val orders = runCatching { NetworkClient.fetchOrders() }.getOrDefault(emptyList())
+            orders.firstNotNullOfOrNull { runCatching { NetworkClient.fetchShipping(it.id) }.getOrNull() }
+        }
+        loaded = true
+    }
+    val feed = shipping?.nodes ?: emptyList()
     MallBg {
         Column(Modifier.fillMaxSize()) {
             StatusBar()
@@ -199,23 +209,21 @@ fun MallTrackingScreen(nav: (String) -> Unit, back: () -> Unit) {
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
                             .background(c.mint.copy(0.12f)).border(1.dp, c.mint.copy(0.3f), RoundedCornerShape(28.dp)).padding(28.dp),
                     ) {
-                        Text("配送中 · 即将送达", color = c.mint, fontSize = 20.sp)
-                        Spacer(Modifier.height(8.dp))
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text("8", color = c.textPrimary, fontSize = 56.sp, fontWeight = FontWeight.SemiBold, style = MonoNumber)
-                            Text(" 分钟 · 距离 480 m", color = c.textSecondary, fontSize = 20.sp)
+                        Text(shipping?.status ?: if (loaded) "暂无在途物流" else "加载中…", color = c.mint, fontSize = 24.sp)
+                        if (shipping != null) {
+                            Spacer(Modifier.height(8.dp))
+                            Text("运单号 ${shipping!!.trackingNo}", color = c.textSecondary, fontSize = 20.sp, style = MonoNumber)
                         }
                     }
-                    GlassCard(Modifier.fillMaxWidth(), corner = 24.dp) {
-                        Text("实时轨迹", color = c.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.Medium)
-                        Spacer(Modifier.height(12.dp))
-                        feed.forEachIndexed { i, (label, meta) ->
-                            Row(Modifier.padding(vertical = 8.dp)) {
-                                Box(Modifier.padding(top = 6.dp).size(14.dp).clip(CircleShape).background(if (i == 0) c.mint else c.borderStrong))
-                                Spacer(Modifier.width(16.dp))
-                                Column {
-                                    Text(label, color = c.textPrimary, fontSize = 20.sp)
-                                    Text(meta, color = c.textMuted, fontSize = 16.sp)
+                    if (feed.isNotEmpty()) {
+                        GlassCard(Modifier.fillMaxWidth(), corner = 24.dp) {
+                            Text("实时轨迹", color = c.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.Medium)
+                            Spacer(Modifier.height(12.dp))
+                            feed.forEachIndexed { i, node ->
+                                Row(Modifier.padding(vertical = 8.dp)) {
+                                    Box(Modifier.padding(top = 6.dp).size(14.dp).clip(CircleShape).background(if (i == 0) c.mint else c.borderStrong))
+                                    Spacer(Modifier.width(16.dp))
+                                    Text(node, color = if (i == 0) c.textPrimary else c.textMuted, fontSize = 20.sp)
                                 }
                             }
                         }
@@ -230,46 +238,55 @@ fun MallTrackingScreen(nav: (String) -> Unit, back: () -> Unit) {
 @Composable
 fun MallAftersaleScreen(nav: (String) -> Unit, back: () -> Unit) {
     val c = JdoTheme.colors
-    var type by remember { mutableStateOf("refund") }
-    val steps = listOf("提交申请","商家审核","退货 / 收货","退款完成")
+    val scope = rememberCoroutineScope()
+    var tickets by remember { mutableStateOf<List<ApiAftersale>>(emptyList()) }
+    var firstOrder by remember { mutableStateOf<String?>(null) }
+    var type by remember { mutableStateOf("仅退款") }
+    var hint by remember { mutableStateOf("") }
+    suspend fun reload() {
+        tickets = withContext(Dispatchers.IO) { runCatching { NetworkClient.fetchAftersale() }.getOrDefault(emptyList()) }
+        firstOrder = withContext(Dispatchers.IO) { runCatching { NetworkClient.fetchOrders().firstOrNull()?.id }.getOrNull() }
+    }
+    LaunchedEffect(Unit) { reload() }
+    val statusCn = mapOf("pending" to "待处理", "approved" to "已通过", "rejected" to "已驳回")
     MallBg {
         Column(Modifier.fillMaxSize()) {
             StatusBar()
-            SubBar("售后服务", back) { IconBtn("phone") {} }
-            Column(Modifier.weight(1f).padding(36.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                // 进度
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    steps.forEachIndexed { i, s ->
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Box(Modifier.size(44.dp).clip(CircleShape).background(if (i <= 1) c.mint else c.bg3.copy(0.6f)), contentAlignment = Alignment.Center) {
-                                Text("${i + 1}", color = if (i <= 1) Color(0xFF03171F) else c.textMuted, fontSize = 18.sp, style = MonoNumber)
+            SubBar("售后服务", back)
+            Column(Modifier.weight(1f).padding(36.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                // 发起售后（真实创建，后台可见）
+                Text("发起售后", color = c.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.Medium)
+                Text("售后类型", color = c.textSecondary, fontSize = 18.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    listOf("仅退款", "退货退款", "换货", "上门维修").forEach { name -> Chip(name, type == name) { type = name } }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PrimaryButton(if (firstOrder != null) "对订单 $firstOrder 提交「$type」" else "暂无可申请订单", Modifier.weight(1f)) {
+                        val oid = firstOrder ?: return@PrimaryButton
+                        scope.launch {
+                            withContext(Dispatchers.IO) { runCatching { NetworkClient.createAftersale(oid, type) } }
+                            reload(); hint = "已提交，后台「售后」可见"
+                        }
+                    }
+                }
+                if (hint.isNotBlank()) Text(hint, color = c.mint, fontSize = 16.sp)
+                Divider()
+                // 我的售后工单（真实）
+                Text("我的售后工单 · ${tickets.size}", color = c.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.Medium)
+                if (tickets.isEmpty()) {
+                    Text("暂无售后工单", color = c.textMuted, fontSize = 18.sp)
+                } else {
+                    tickets.forEach { t ->
+                        GlassCard(Modifier.fillMaxWidth(), corner = 20.dp) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("订单 ${t.orderId}", color = c.textPrimary, fontSize = 22.sp)
+                                    Text(t.reason, color = c.textMuted, fontSize = 16.sp)
+                                }
+                                Text(statusCn[t.status] ?: t.status, color = if (t.status == "approved") c.success else c.mint, fontSize = 20.sp)
                             }
-                            Spacer(Modifier.height(6.dp))
-                            Text(s, color = if (i <= 1) c.textPrimary else c.textMuted, fontSize = 16.sp)
                         }
-                        if (i < steps.size - 1) Box(Modifier.weight(1f).height(3.dp).padding(horizontal = 8.dp).background(if (i < 1) c.mint else c.borderDefault))
                     }
-                }
-                Text("售后类型", color = c.textSecondary, fontSize = 20.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    listOf("refund" to "仅退款", "return" to "退货退款", "exchange" to "换货", "repair" to "上门维修").forEach { (id, name) ->
-                        Chip(name, type == id) { type = id }
-                    }
-                }
-                GlassCard(Modifier.fillMaxWidth(), corner = 20.dp) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        AsyncImage(imageModel(Catalog.byId("e5").img), null, contentScale = ContentScale.Crop, modifier = Modifier.size(88.dp).clip(RoundedCornerShape(14.dp)))
-                        Spacer(Modifier.width(16.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(Catalog.byId("e5").title, color = c.textPrimary, fontSize = 22.sp)
-                            Text("规格 · 默认 · ×1", color = c.textMuted, fontSize = 16.sp)
-                        }
-                        Text("¥ 79.00", color = c.textPrimary, fontSize = 24.sp, style = MonoNumber)
-                    }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlineButton("撤销申请", Modifier.weight(1f)) { back() }
-                    PrimaryButton("提交售后", Modifier.weight(1f)) { back() }
                 }
             }
         }

@@ -270,6 +270,17 @@ export function buildApp(): FastifyInstance {
     return { items: store.aftersaleByUser(p.sub) };
   });
 
+  // 消费端发起售后：仅本人订单可申请；创建后台可见的售后单（pending）。
+  app.post('/api/v1/me/aftersale', async (req, reply) => {
+    const p = requireUser(req, reply);
+    if (!p) return reply;
+    const body = z.object({ orderId: z.string(), reason: z.string().min(1) }).parse(req.body);
+    const order = store.get('orders', body.orderId);
+    if (!order || order.userId !== p.sub) return reply.code(404).send(errBody('ORDER_NOT_FOUND', '订单不存在', { orderId: body.orderId }));
+    const ticket = store.create('aftersale', { orderId: body.orderId, reason: body.reason, status: 'pending', createdAt: new Date().toISOString().slice(0, 10) });
+    return reply.code(201).send({ ok: true, ticket, items: store.aftersaleByUser(p.sub) });
+  });
+
   // ============ 消费端履约 /api/v1/fulfillment/*（openspec/specs/fulfillment）============
   // 自提点 / 物流轨迹读取，数据源与后台 admin-fulfillment 同源。
   app.get('/api/v1/fulfillment/pickup-points', async (req) => {
